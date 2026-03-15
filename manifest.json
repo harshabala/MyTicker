@@ -1,0 +1,46 @@
+{
+  "manifest_version": 3,
+  "name": "MyTicker",
+  "description": "MyTicker shows a live running strip of your stock holdings across brokers with 5-minute and daily P&L.",
+  "version": "0.1.0",
+  "action": {
+    "default_title": "MyTicker",
+    "default_popup": "popup.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "permissions": [
+    "storage",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://finnhub.io/*"
+  ],
+  "content_scripts": [
+    {
+      "matches": ["<all_urls>"],
+      "js": ["contentScript.js"],
+      "run_at": "document_start"
+    }
+  ],
+  "commands": {
+    "toggle-myticker": {
+      "suggested_key": {
+        "default": "Ctrl+Shift+Y"
+      },
+      "description": "Toggle MyTicker on or off"
+    }
+  },
+  "options_page": "options.html",
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "ticker.css"
+      ],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}
+

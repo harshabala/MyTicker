@@ -1,0 +1,205 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <title>MyTicker Settings</title>
+    <style>
+      body {
+        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        margin: 0;
+        padding: 16px;
+        background: #f9fafb;
+      }
+      h1 {
+        font-size: 20px;
+        margin-bottom: 12px;
+      }
+      h2 {
+        font-size: 16px;
+        margin-top: 20px;
+        margin-bottom: 8px;
+      }
+      .card {
+        background: white;
+        border-radius: 8px;
+        padding: 12px 16px;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
+        margin-bottom: 12px;
+      }
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-size: 13px;
+      }
+      input[type="text"],
+      select {
+        width: 100%;
+        padding: 6px 8px;
+        font-size: 13px;
+        border-radius: 4px;
+        border: 1px solid #d1d5db;
+      }
+      input[type="file"] {
+        font-size: 13px;
+      }
+      button {
+        padding: 6px 10px;
+        font-size: 13px;
+        border-radius: 4px;
+        border: none;
+        cursor: pointer;
+        background: #2563eb;
+        color: white;
+      }
+      button.secondary {
+        background: #6b7280;
+      }
+      .row {
+        display: flex;
+        gap: 8px;
+        align-items: center;
+        margin-top: 8px;
+      }
+      .small {
+        font-size: 12px;
+        color: #6b7280;
+      }
+      ul {
+        padding-left: 18px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>MyTicker Settings</h1>
+
+    <div class="card">
+      <h2>Broker holdings (CSV)</h2>
+      <p class="small">
+        Export your holdings CSV from Zerodha, Groww, Upstox, etc. and upload it here. Data stays
+        local in your browser.
+      </p>
+      <label>
+        Broker preset
+        <select id="brokerPreset">
+          <option value="generic">Generic CSV</option>
+          <option value="zerodha">Zerodha</option>
+          <option value="groww">Groww</option>
+          <option value="upstox">Upstox</option>
+        </select>
+      </label>
+      <label>
+        CSV file
+        <input type="file" id="csvFile" accept=".csv,text/csv" />
+      </label>
+      <div class="row">
+        <button id="importCsvButton">Import holdings</button>
+        <span id="csvStatus" class="small"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Holdings preview</h2>
+      <p class="small">
+        This is a read-only view of what MyTicker has loaded. Refresh after importing CSV or
+        changing crypto settings.
+      </p>
+      <div class="row">
+        <button id="refreshPreviewButton">Refresh preview</button>
+        <span id="previewStatus" class="small"></span>
+      </div>
+      <pre
+        id="holdingsPreview"
+        class="small"
+        style="margin-top: 8px; max-height: 200px; overflow: auto; background: #111827; color: #e5e7eb; padding: 8px; border-radius: 4px;"
+      ></pre>
+    </div>
+
+    <div class="card">
+      <h2>Market data provider</h2>
+      <p class="small">
+        Configure a price API for live quotes. For now MyTicker supports Finnhub via your API key.
+      </p>
+      <label>
+        Finnhub API key
+        <input type="text" id="finnhubApiKey" placeholder="Finnhub API token" />
+      </label>
+      <label>
+        Refresh interval (minutes)
+        <input type="text" id="refreshMinutes" />
+      </label>
+      <div class="row">
+        <button id="saveProviderButton">Save provider settings</button>
+        <span id="providerStatus" class="small"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Crypto</h2>
+      <p class="small">
+        Optionally include crypto in the ticker. You can track a default top 5 coin list or your
+        own holdings.
+      </p>
+      <label>
+        <input type="checkbox" id="includeCrypto" />
+        Include crypto in MyTicker
+      </label>
+      <label>
+        Mode
+        <select id="cryptoMode">
+          <option value="top5">Top 5 coins (watchlist)</option>
+          <option value="manual">My crypto holdings</option>
+        </select>
+      </label>
+      <label>
+        My holdings (one per line, <code>SYMBOL, quantity</code>)
+        <textarea
+          id="cryptoHoldingsText"
+          rows="4"
+          style="width: 100%; font-family: monospace; font-size: 12px;"
+          placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
+        ></textarea>
+      </label>
+      <div class="row">
+        <button id="saveCryptoButton">Save crypto settings</button>
+        <span id="cryptoStatus" class="small"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Appearance</h2>
+      <label>
+        Show in ticker
+        <div class="row" style="margin-top: 4px;">
+          <label style="flex: 1;">
+            <input type="checkbox" id="showStocks" checked />
+            Stocks
+          </label>
+          <label style="flex: 1;">
+            <input type="checkbox" id="showCrypto" checked />
+            Crypto
+          </label>
+        </div>
+      </label>
+      <label>
+        Ticker speed (seconds per loop)
+        <input type="text" id="tickerSpeed" />
+      </label>
+      <div class="row">
+        <button id="saveAppearanceButton">Save appearance</button>
+        <span id="appearanceStatus" class="small"></span>
+      </div>
+    </div>
+
+    <div class="card">
+      <h2>Tips</h2>
+      <ul class="small">
+        <li>Use the extension popup to quickly turn MyTicker on or off.</li>
+        <li>Re-import a CSV whenever your broker holdings change.</li>
+        <li>Ensure your symbols match your quote provider (e.g., TCS.NS for NSE via Finnhub).</li>
+      </ul>
+    </div>
+
+    <script type="module" src="options.js"></script>
+  </body>
+</html>
+
