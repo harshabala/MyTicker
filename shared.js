@@ -1,13 +1,17 @@
 // Shared data models and helpers for the extension.
+// This file is loaded both as an ES module (background, options, popup)
+// and as a plain script (content script). We attach everything to
+// globalThis so the content script can access it, and also export
+// for ES module consumers.
 
-export const STORAGE_KEYS = {
+const STORAGE_KEYS = {
   settings: "pts_settings",
   holdings: "pts_holdings",
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state"
 };
 
-export const DEFAULT_SETTINGS = {
+const DEFAULT_SETTINGS = {
   enabled: true,
   priceProvider: "finnhub",
   priceProviderConfig: {
@@ -37,7 +41,7 @@ export const DEFAULT_SETTINGS = {
  *   [symbol]: Array<{ t: number, p: number }>
  * }
  */
-export function mergePriceSnapshots(history, quotes, timestamp) {
+function mergePriceSnapshots(history, quotes, timestamp) {
   const next = { ...history };
   const cutoff = timestamp - 15 * 60 * 1000; // keep last 15 minutes
 
@@ -76,7 +80,7 @@ export function mergePriceSnapshots(history, quotes, timestamp) {
  *   }
  * }
  */
-export function computePositionsState(holdings, priceHistory, now) {
+function computePositionsState(holdings, priceHistory, now) {
   const windowStart = now - 5 * 60 * 1000;
   let totalCostDayBase = 0;
   let totalValueNow = 0;
@@ -96,7 +100,9 @@ export function computePositionsState(holdings, priceHistory, now) {
         window5mPnl: 0,
         window5mPnlPct: 0,
         dayPnl: 0,
-        dayPnlPct: 0
+        dayPnlPct: 0,
+        assetClass: h.assetClass || "stock",
+        brokerId: h.brokerId
       };
     }
 
@@ -109,7 +115,11 @@ export function computePositionsState(holdings, priceHistory, now) {
     const window5mPnl = (lastPrice - baseline5m) * h.quantity;
     const window5mPnlPct = baseline5m ? ((lastPrice - baseline5m) / baseline5m) * 100 : 0;
 
-    // Daily baseline: use prevClose from latest sample if available, else first sample of the day.
+    // Daily baseline: prefer prevClose from the API (exchange-aware),
+    // which correctly handles timezone differences (e.g. an Indian user
+    // tracking NYSE stocks sees P&L relative to NYSE's previous close,
+    // not midnight IST). Falls back to earliest sample of the local day
+    // only when prevClose is unavailable.
     let dayBaseline = latest.prevClose ?? null;
     if (dayBaseline == null) {
       const startOfDay = getStartOfDayTimestamp(now);
@@ -173,9 +183,52 @@ export function computePositionsState(holdings, priceHistory, now) {
   };
 }
 
+/**
+ * Format a number with a leading sign.
+ * Centralised here to avoid duplication across content script and popup.
+ */
+function formatSigned(value) {
+  const num = Number(value) || 0;
+  if (num > 0) return `+${num.toFixed(2)}`;
+  return num.toFixed(2);
+}
+
+/**
+ * Format a value as currency (USD).
+ */
+function formatCurrency(value, currency = "USD") {
+  const num = Number(value) || 0;
+  try {
+    return num.toLocaleString("en-US", { style: "currency", currency });
+  } catch {
+    return `$${num.toFixed(2)}`;
+  }
+}
+
 function getStartOfDayTimestamp(now) {
   const d = new Date(now);
   d.setHours(0, 0, 0, 0);
   return d.getTime();
 }
 
+// Expose on globalThis for content-script (non-module) usage.
+if (typeof globalThis !== "undefined") {
+  globalThis.MyTickerShared = {
+    STORAGE_KEYS,
+    DEFAULT_SETTINGS,
+    mergePriceSnapshots,
+    computePositionsState,
+    formatSigned,
+    formatCurrency
+  };
+}
+
+// ES module exports for background, options, popup.
+export {
+  STORAGE_KEYS,
+  DEFAULT_SETTINGS,
+  mergePriceSnapshots,
+  computePositionsState,
+  formatSigned,
+  formatCurrency
+};

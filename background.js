@@ -20,6 +20,13 @@ const DEFAULT_TOP5_CRYPTO = [
   "BINANCE:SOLUSDT"
 ];
 
+// Issue #8: In-flight lock to prevent concurrent poll execution.
+let pollInFlight = false;
+
+// Issue #10: Track consecutive API failures for stale-data warning.
+let consecutiveFailures = 0;
+let lastSuccessfulFetch = 0;
+
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     if (!data[STORAGE_KEYS.settings]) {
@@ -27,8 +34,11 @@ chrome.runtime.onInstalled.addListener(() => {
     }
   });
 
-  // Set up a default alarm for polling
-  chrome.alarms.create("price-poll", { periodInMinutes: 1 });
+  // Issue #3: Added delayInMinutes so the first alarm fires quickly after install.
+  chrome.alarms.create("price-poll", {
+    delayInMinutes: 0.1,
+    periodInMinutes: 1
+  });
 });
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -48,6 +58,10 @@ chrome.commands.onCommand.addListener((command) => {
 });
 
 async function handlePricePoll() {
+  // Issue #8: Prevent concurrent polls.
+  if (pollInFlight) return;
+  pollInFlight = true;
+
   try {
     const [syncData, localData] = await Promise.all([
       chrome.storage.sync.get([STORAGE_KEYS.settings]),
@@ -99,15 +113,50 @@ async function handlePricePoll() {
     const quotes = await priceProvider.getQuotes(symbols, apiConfig);
     const now = Date.now();
 
+    if (quotes.length > 0) {
+      consecutiveFailures = 0;
+      lastSuccessfulFetch = now;
+    } else {
+      consecutiveFailures++;
+    }
+
     const newHistory = mergePriceSnapshots(priceHistory, quotes, now);
     const positionsState = computePositionsState(holdings, newHistory, now);
 
-    chrome.storage.local.set({
-      [STORAGE_KEYS.priceHistory]: newHistory,
-      [STORAGE_KEYS.positionsState]: positionsState
-    });
+    // Issue #10: Add stale-data warning if no successful fetch in 5+ minutes.
+    const staleThreshold = 5 * 60 * 1000;
+    if (lastSuccessfulFetch > 0 && (now - lastSuccessfulFetch) > staleThreshold) {
+      positionsState.staleWarning = true;
+    }
+
+    // Issue #9: Wrap storage.set in try/catch to handle quota errors.
+    try {
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.priceHistory]: newHistory,
+        [STORAGE_KEYS.positionsState]: positionsState
+      });
+    } catch (storageErr) {
+      console.warn("[MyTicker] Storage quota exceeded, pruning history", storageErr);
+      // Aggressive prune: keep only last 5 minutes of history.
+      const aggressiveCutoff = now - 5 * 60 * 1000;
+      for (const [sym, list] of Object.entries(newHistory)) {
+        const pruned = list.filter((s) => s.t >= aggressiveCutoff);
+        if (!pruned.length) {
+          delete newHistory[sym];
+        } else {
+          newHistory[sym] = pruned;
+        }
+      }
+      await chrome.storage.local.set({
+        [STORAGE_KEYS.priceHistory]: newHistory,
+        [STORAGE_KEYS.positionsState]: positionsState
+      });
+    }
   } catch (err) {
     console.error("Error in handlePricePoll", err);
+    consecutiveFailures++;
+  } finally {
+    pollInFlight = false;
   }
 }
 
@@ -166,5 +215,3 @@ function buildCombinedHoldings(baseHoldings, settings) {
 
   return enriched;
 }
-
-

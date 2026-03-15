@@ -4,202 +4,615 @@
     <meta charset="utf-8" />
     <title>MyTicker Settings</title>
     <style>
-      body {
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      :root {
+        --bg: #0d0f14;
+        --bg-surface: rgba(20, 22, 30, 0.95);
+        --bg-hover: rgba(28, 31, 42, 0.95);
+        --border: rgba(255, 255, 255, 0.06);
+        --border-focus: rgba(34, 211, 238, 0.4);
+        --text-primary: #f1f3f5;
+        --text-secondary: #858b98;
+        --text-tertiary: #555a66;
+        --accent: #22d3ee;
+        --accent-hover: #06b6d4;
+        --green: #4ade80;
+        --red: #f87171;
+        --radius: 12px;
+        --radius-sm: 8px;
+      }
+
+      * {
         margin: 0;
-        padding: 16px;
-        background: #f9fafb;
+        padding: 0;
+        box-sizing: border-box;
       }
-      h1 {
-        font-size: 20px;
-        margin-bottom: 12px;
+
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        background: var(--bg);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
+        min-height: 100vh;
       }
-      h2 {
-        font-size: 16px;
-        margin-top: 20px;
-        margin-bottom: 8px;
+
+      .page {
+        max-width: 640px;
+        margin: 0 auto;
+        padding: 32px 24px 48px;
       }
-      .card {
-        background: white;
+
+      /* Header */
+      .page-header {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        margin-bottom: 32px;
+      }
+
+      .page-header img {
+        width: 36px;
+        height: 36px;
         border-radius: 8px;
-        padding: 12px 16px;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.06);
-        margin-bottom: 12px;
       }
-      label {
-        display: block;
-        margin-bottom: 6px;
+
+      .page-header-text h1 {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+      }
+
+      .page-header-text p {
         font-size: 13px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
       }
+
+      /* Sections */
+      .section {
+        margin-bottom: 24px;
+      }
+
+      .section-title {
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-tertiary);
+        margin-bottom: 8px;
+        padding-left: 4px;
+      }
+
+      .card {
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        overflow: hidden;
+      }
+
+      .card-item {
+        padding: 14px 16px;
+        border-bottom: 1px solid var(--border);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        transition: background 0.15s ease;
+      }
+
+      .card-item:last-child {
+        border-bottom: none;
+      }
+
+      .card-item:hover {
+        background: var(--bg-hover);
+      }
+
+      .card-item .item-left {
+        flex: 1;
+      }
+
+      .card-item .item-label {
+        font-size: 14px;
+        font-weight: 500;
+      }
+
+      .card-item .item-desc {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+
+      /* Inputs */
       input[type="text"],
-      select {
+      input[type="password"],
+      select,
+      textarea {
         width: 100%;
-        padding: 6px 8px;
+        padding: 10px 12px;
         font-size: 13px;
-        border-radius: 4px;
-        border: 1px solid #d1d5db;
+        font-family: inherit;
+        border-radius: var(--radius-sm);
+        border: 1px solid var(--border);
+        background: rgba(0, 0, 0, 0.3);
+        color: var(--text-primary);
+        outline: none;
+        transition: border-color 0.2s ease, box-shadow 0.2s ease;
       }
-      input[type="file"] {
-        font-size: 13px;
+
+      input[type="text"]:focus,
+      input[type="password"]:focus,
+      select:focus,
+      textarea:focus {
+        border-color: var(--border-focus);
+        box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
       }
-      button {
-        padding: 6px 10px;
+
+      select {
+        cursor: pointer;
+        appearance: none;
+        background-image: url("data:image/svg+xml,%3Csvg width='10' height='6' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0 0l5 6 5-6z' fill='%23858b98'/%3E%3C/svg%3E");
+        background-repeat: no-repeat;
+        background-position: right 12px center;
+        padding-right: 32px;
+      }
+
+      select option {
+        background: #14161e;
+        color: var(--text-primary);
+      }
+
+      textarea {
+        resize: vertical;
+        font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
+        font-size: 12px;
+        line-height: 1.5;
+      }
+
+      /* Inline field (label + input) */
+      .field {
+        padding: 12px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .field:last-child {
+        border-bottom: none;
+      }
+
+      .field-label {
         font-size: 13px;
-        border-radius: 4px;
+        font-weight: 500;
+        margin-bottom: 6px;
+        color: var(--text-secondary);
+      }
+
+      .field-hint {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 4px;
+      }
+
+      /* Toggle switch */
+      .toggle-switch {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        cursor: pointer;
+        flex-shrink: 0;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        inset: 0;
+        background: #2a2d3a;
+        border-radius: 11px;
+        transition: background 0.2s ease;
+      }
+
+      .toggle-slider::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background: var(--accent);
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(16px);
+      }
+
+      /* Buttons */
+      .btn {
+        padding: 9px 16px;
+        font-size: 13px;
+        font-weight: 500;
+        font-family: inherit;
+        border-radius: var(--radius-sm);
         border: none;
         cursor: pointer;
-        background: #2563eb;
-        color: white;
-      }
-      button.secondary {
-        background: #6b7280;
-      }
-      .row {
-        display: flex;
-        gap: 8px;
+        transition: all 0.15s ease;
+        display: inline-flex;
         align-items: center;
-        margin-top: 8px;
+        gap: 6px;
       }
-      .small {
+
+      .btn-primary {
+        background: var(--accent);
+        color: #0a0a0a;
+      }
+
+      .btn-primary:hover {
+        background: var(--accent-hover);
+        transform: translateY(-1px);
+      }
+
+      .btn-primary:active {
+        transform: translateY(0);
+      }
+
+      .btn-secondary {
+        background: rgba(255, 255, 255, 0.06);
+        color: var(--text-secondary);
+      }
+
+      .btn-secondary:hover {
+        background: rgba(255, 255, 255, 0.1);
+        color: var(--text-primary);
+      }
+
+      .btn-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 16px;
+      }
+
+      /* Drag drop zone */
+      .drop-zone {
+        border: 2px dashed var(--border);
+        border-radius: var(--radius-sm);
+        padding: 24px 16px;
+        text-align: center;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        margin: 12px 16px;
+      }
+
+      .drop-zone:hover,
+      .drop-zone.dragover {
+        border-color: var(--accent);
+        background: rgba(34, 211, 238, 0.04);
+      }
+
+      .drop-zone .drop-icon {
+        font-size: 24px;
+        margin-bottom: 6px;
+      }
+
+      .drop-zone .drop-text {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .drop-zone .drop-hint {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 4px;
+      }
+
+      .drop-zone input[type="file"] {
+        display: none;
+      }
+
+      /* Status badge */
+      .status-badge {
         font-size: 12px;
-        color: #6b7280;
+        color: var(--green);
+        font-weight: 500;
+        transition: opacity 0.3s ease;
       }
-      ul {
-        padding-left: 18px;
+
+      .status-badge.error {
+        color: var(--red);
+      }
+
+      /* Holdings preview */
+      .preview-container {
+        margin: 0 16px 12px;
+        max-height: 200px;
+        overflow-y: auto;
+        border-radius: var(--radius-sm);
+        background: rgba(0, 0, 0, 0.4);
+        border: 1px solid var(--border);
+      }
+
+      .preview-table {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 12px;
+      }
+
+      .preview-table th {
+        text-align: left;
+        padding: 8px 10px;
+        font-weight: 600;
+        font-size: 10px;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        color: var(--text-tertiary);
+        background: rgba(255, 255, 255, 0.02);
+        border-bottom: 1px solid var(--border);
+        position: sticky;
+        top: 0;
+      }
+
+      .preview-table td {
+        padding: 6px 10px;
+        color: var(--text-secondary);
+        border-bottom: 1px solid rgba(255, 255, 255, 0.03);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .preview-table tr:last-child td {
+        border-bottom: none;
+      }
+
+      .preview-empty {
+        padding: 20px;
+        text-align: center;
+        font-size: 12px;
+        color: var(--text-tertiary);
+      }
+
+      /* Toast notification */
+      .toast {
+        position: fixed;
+        bottom: 24px;
+        left: 50%;
+        transform: translateX(-50%) translateY(80px);
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        padding: 10px 20px;
+        border-radius: 999px;
+        font-size: 13px;
+        font-weight: 500;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
+        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        opacity: 0;
+        z-index: 100;
+        pointer-events: none;
+      }
+
+      .toast.show {
+        transform: translateX(-50%) translateY(0);
+        opacity: 1;
+      }
+
+      .toast.success {
+        color: var(--green);
+      }
+
+      .toast.error {
+        color: var(--red);
+      }
+
+      /* Tips section */
+      .tips-list {
+        padding: 12px 16px;
+      }
+
+      .tips-list li {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+        line-height: 1.5;
+        list-style: none;
+        padding-left: 16px;
+        position: relative;
+      }
+
+      .tips-list li::before {
+        content: "→";
+        position: absolute;
+        left: 0;
+        color: var(--accent);
+        font-weight: 600;
+      }
+
+      /* Footer */
+      .page-footer {
+        text-align: center;
+        padding-top: 16px;
+        font-size: 11px;
+        color: var(--text-tertiary);
       }
     </style>
   </head>
   <body>
-    <h1>MyTicker Settings</h1>
-
-    <div class="card">
-      <h2>Broker holdings (CSV)</h2>
-      <p class="small">
-        Export your holdings CSV from Zerodha, Groww, Upstox, etc. and upload it here. Data stays
-        local in your browser.
-      </p>
-      <label>
-        Broker preset
-        <select id="brokerPreset">
-          <option value="generic">Generic CSV</option>
-          <option value="zerodha">Zerodha</option>
-          <option value="groww">Groww</option>
-          <option value="upstox">Upstox</option>
-        </select>
-      </label>
-      <label>
-        CSV file
-        <input type="file" id="csvFile" accept=".csv,text/csv" />
-      </label>
-      <div class="row">
-        <button id="importCsvButton">Import holdings</button>
-        <span id="csvStatus" class="small"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Holdings preview</h2>
-      <p class="small">
-        This is a read-only view of what MyTicker has loaded. Refresh after importing CSV or
-        changing crypto settings.
-      </p>
-      <div class="row">
-        <button id="refreshPreviewButton">Refresh preview</button>
-        <span id="previewStatus" class="small"></span>
-      </div>
-      <pre
-        id="holdingsPreview"
-        class="small"
-        style="margin-top: 8px; max-height: 200px; overflow: auto; background: #111827; color: #e5e7eb; padding: 8px; border-radius: 4px;"
-      ></pre>
-    </div>
-
-    <div class="card">
-      <h2>Market data provider</h2>
-      <p class="small">
-        Configure a price API for live quotes. For now MyTicker supports Finnhub via your API key.
-      </p>
-      <label>
-        Finnhub API key
-        <input type="text" id="finnhubApiKey" placeholder="Finnhub API token" />
-      </label>
-      <label>
-        Refresh interval (minutes)
-        <input type="text" id="refreshMinutes" />
-      </label>
-      <div class="row">
-        <button id="saveProviderButton">Save provider settings</button>
-        <span id="providerStatus" class="small"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Crypto</h2>
-      <p class="small">
-        Optionally include crypto in the ticker. You can track a default top 5 coin list or your
-        own holdings.
-      </p>
-      <label>
-        <input type="checkbox" id="includeCrypto" />
-        Include crypto in MyTicker
-      </label>
-      <label>
-        Mode
-        <select id="cryptoMode">
-          <option value="top5">Top 5 coins (watchlist)</option>
-          <option value="manual">My crypto holdings</option>
-        </select>
-      </label>
-      <label>
-        My holdings (one per line, <code>SYMBOL, quantity</code>)
-        <textarea
-          id="cryptoHoldingsText"
-          rows="4"
-          style="width: 100%; font-family: monospace; font-size: 12px;"
-          placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
-        ></textarea>
-      </label>
-      <div class="row">
-        <button id="saveCryptoButton">Save crypto settings</button>
-        <span id="cryptoStatus" class="small"></span>
-      </div>
-    </div>
-
-    <div class="card">
-      <h2>Appearance</h2>
-      <label>
-        Show in ticker
-        <div class="row" style="margin-top: 4px;">
-          <label style="flex: 1;">
-            <input type="checkbox" id="showStocks" checked />
-            Stocks
-          </label>
-          <label style="flex: 1;">
-            <input type="checkbox" id="showCrypto" checked />
-            Crypto
-          </label>
+    <div class="page">
+      <div class="page-header">
+        <img src="icons/icon48.png" alt="MyTicker" />
+        <div class="page-header-text">
+          <h1>MyTicker Settings</h1>
+          <p>Configure your portfolio, data source, and appearance.</p>
         </div>
-      </label>
-      <label>
-        Ticker speed (seconds per loop)
-        <input type="text" id="tickerSpeed" />
-      </label>
-      <div class="row">
-        <button id="saveAppearanceButton">Save appearance</button>
-        <span id="appearanceStatus" class="small"></span>
+      </div>
+
+      <!-- Broker CSV Import -->
+      <div class="section">
+        <div class="section-title">Portfolio Import</div>
+        <div class="card">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Broker preset</div>
+              <div class="item-desc">Match your CSV format</div>
+            </div>
+            <select id="brokerPreset" style="width: auto; min-width: 140px;">
+              <option value="generic">Generic CSV</option>
+              <option value="zerodha">Zerodha</option>
+              <option value="groww">Groww</option>
+              <option value="upstox">Upstox</option>
+            </select>
+          </div>
+
+          <div class="drop-zone" id="dropZone">
+            <div class="drop-icon">📂</div>
+            <div class="drop-text">Drop your CSV file here, or click to browse</div>
+            <div class="drop-hint">Supports Zerodha, Groww, Upstox, and generic CSV formats</div>
+            <input type="file" id="csvFile" accept=".csv,text/csv" />
+          </div>
+
+          <div class="btn-row">
+            <button class="btn btn-primary" id="importCsvButton">Import holdings</button>
+            <span class="status-badge" id="csvStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Holdings Preview -->
+      <div class="section">
+        <div class="section-title">Holdings Preview</div>
+        <div class="card">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Current portfolio</div>
+              <div class="item-desc">Read-only view of loaded holdings</div>
+            </div>
+            <button class="btn btn-secondary" id="refreshPreviewButton">Refresh</button>
+          </div>
+          <div class="preview-container" id="holdingsPreview">
+            <div class="preview-empty">No holdings loaded</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Data -->
+      <div class="section">
+        <div class="section-title">Market Data</div>
+        <div class="card">
+          <div class="field">
+            <div class="field-label">Finnhub API key</div>
+            <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" />
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io" target="_blank" style="color: var(--accent); text-decoration: none;">finnhub.io</a></div>
+          </div>
+          <div class="field">
+            <div class="field-label">Refresh interval (minutes)</div>
+            <input type="text" id="refreshMinutes" placeholder="1" />
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="saveProviderButton">Save</button>
+            <button class="btn btn-secondary" id="testConnectionButton">Test connection</button>
+            <span class="status-badge" id="providerStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Crypto -->
+      <div class="section">
+        <div class="section-title">Crypto</div>
+        <div class="card">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Include crypto</div>
+              <div class="item-desc">Add crypto assets to your ticker</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="includeCrypto" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Mode</div>
+            </div>
+            <select id="cryptoMode" style="width: auto; min-width: 160px;">
+              <option value="top5">Top 5 (watchlist)</option>
+              <option value="manual">My holdings</option>
+            </select>
+          </div>
+          <div class="field" id="cryptoManualField">
+            <div class="field-label">Manual holdings</div>
+            <textarea
+              id="cryptoHoldingsText"
+              rows="3"
+              placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
+            ></textarea>
+            <div class="field-hint">One per line: SYMBOL, quantity</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="saveCryptoButton">Save</button>
+            <span class="status-badge" id="cryptoStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Appearance -->
+      <div class="section">
+        <div class="section-title">Appearance</div>
+        <div class="card">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Show stocks</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="showStocks" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label">Show crypto</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="showCrypto" checked />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
+          <div class="field">
+            <div class="field-label">Ticker speed (seconds per loop)</div>
+            <input type="text" id="tickerSpeed" placeholder="40" />
+            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="saveAppearanceButton">Save</button>
+            <span class="status-badge" id="appearanceStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Tips -->
+      <div class="section">
+        <div class="section-title">Tips</div>
+        <div class="card">
+          <ul class="tips-list">
+            <li>Use the extension popup or <kbd style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
+            <li>Re-import CSV whenever your broker holdings change.</li>
+            <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
+            <li>Hover over the ticker strip to pause scrolling.</li>
+          </ul>
+        </div>
+      </div>
+
+      <div class="page-footer">
+        MyTicker v0.2.0 · Data stays local in your browser
       </div>
     </div>
 
-    <div class="card">
-      <h2>Tips</h2>
-      <ul class="small">
-        <li>Use the extension popup to quickly turn MyTicker on or off.</li>
-        <li>Re-import a CSV whenever your broker holdings change.</li>
-        <li>Ensure your symbols match your quote provider (e.g., TCS.NS for NSE via Finnhub).</li>
-      </ul>
-    </div>
+    <div class="toast" id="toast"></div>
 
     <script type="module" src="options.js"></script>
   </body>
 </html>
-

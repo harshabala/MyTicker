@@ -1,0 +1,151 @@
+// Standalone test script for shared.js core logic.
+// Run with: node test_fixtures/test_shared.mjs
+// Tests the pure-logic functions without requiring Chrome APIs.
+
+import {
+  STORAGE_KEYS,
+  DEFAULT_SETTINGS,
+  mergePriceSnapshots,
+  computePositionsState,
+  formatSigned,
+  formatCurrency
+} from "../shared.js";
+
+let passed = 0;
+let failed = 0;
+
+function assert(condition, message) {
+  if (condition) {
+    passed++;
+    console.log(`  ✅ ${message}`);
+  } else {
+    failed++;
+    console.error(`  ❌ ${message}`);
+  }
+}
+
+function assertApprox(actual, expected, epsilon, message) {
+  assert(
+    Math.abs(actual - expected) < epsilon,
+    `${message} (got ${actual}, expected ~${expected})`
+  );
+}
+
+// ── Test Suite: STORAGE_KEYS ──
+console.log("\n🔑 STORAGE_KEYS");
+assert(STORAGE_KEYS.settings === "pts_settings", "settings key correct");
+assert(STORAGE_KEYS.holdings === "pts_holdings", "holdings key correct");
+assert(STORAGE_KEYS.priceHistory === "pts_price_history", "priceHistory key correct");
+assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState key correct");
+
+// ── Test Suite: DEFAULT_SETTINGS ──
+console.log("\n⚙️  DEFAULT_SETTINGS");
+assert(DEFAULT_SETTINGS.enabled === true, "enabled by default");
+assert(DEFAULT_SETTINGS.priceProvider === "finnhub", "default provider is finnhub");
+assert(DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed === 40, "default speed is 40s");
+assert(DEFAULT_SETTINGS.cryptoConfig.includeCrypto === false, "crypto disabled by default");
+
+// ── Test Suite: formatSigned ──
+console.log("\n🔢 formatSigned");
+assert(formatSigned(42.5) === "+42.50", "positive value shows +");
+assert(formatSigned(-10.3) === "-10.30", "negative value shows -");
+assert(formatSigned(0) === "0.00", "zero shows 0.00");
+assert(formatSigned(null) === "0.00", "null treated as 0");
+assert(formatSigned(undefined) === "0.00", "undefined treated as 0");
+assert(formatSigned("abc") === "0.00", "NaN string treated as 0");
+
+// ── Test Suite: formatCurrency ──
+console.log("\n💰 formatCurrency");
+const usd = formatCurrency(1234.5);
+assert(usd.includes("1,234.50") || usd.includes("1234.50"), `formatCurrency USD: ${usd}`);
+assert(formatCurrency(null) === "$0.00" || formatCurrency(null).includes("0.00"), "null → $0.00");
+
+// ── Test Suite: mergePriceSnapshots ──
+console.log("\n📊 mergePriceSnapshots");
+
+const now = Date.now();
+const history1 = {};
+const quotes1 = [
+  { symbol: "AAPL", lastPrice: 180, prevClose: 178 },
+  { symbol: "MSFT", lastPrice: 385, prevClose: 380 }
+];
+const merged1 = mergePriceSnapshots(history1, quotes1, now);
+assert(merged1["AAPL"].length === 1, "AAPL has 1 snapshot after first merge");
+assert(merged1["MSFT"].length === 1, "MSFT has 1 snapshot after first merge");
+assert(merged1["AAPL"][0].p === 180, "AAPL price is 180");
+assert(merged1["AAPL"][0].prevClose === 178, "AAPL prevClose is 178");
+
+// Second merge with new price.
+const quotes2 = [{ symbol: "AAPL", lastPrice: 182, prevClose: 178 }];
+const merged2 = mergePriceSnapshots(merged1, quotes2, now + 60000);
+assert(merged2["AAPL"].length === 2, "AAPL has 2 snapshots after second merge");
+assert(merged2["AAPL"][1].p === 182, "latest AAPL price is 182");
+
+// Stale data pruning (> 15 minutes old).
+const oldHistory = {
+  "OLD": [{ t: now - 20 * 60 * 1000, p: 100 }]
+};
+const merged3 = mergePriceSnapshots(oldHistory, [], now);
+assert(!merged3["OLD"], "stale symbol pruned after 15 minutes");
+
+// ── Test Suite: computePositionsState ──
+console.log("\n📈 computePositionsState");
+
+const holdings = [
+  { symbol: "AAPL", displayName: "AAPL", quantity: 10, assetClass: "stock", brokerId: "test" },
+  { symbol: "MSFT", displayName: "MSFT", quantity: 5, assetClass: "stock", brokerId: "test" }
+];
+
+const testHistory = {
+  "AAPL": [
+    { t: now - 10 * 60 * 1000, p: 178, prevClose: 175 },
+    { t: now - 2 * 60 * 1000, p: 180, prevClose: 175 }
+  ],
+  "MSFT": [
+    { t: now - 10 * 60 * 1000, p: 380, prevClose: 378 },
+    { t: now - 1 * 60 * 1000, p: 385, prevClose: 378 }
+  ]
+};
+
+const state = computePositionsState(holdings, testHistory, now);
+assert(state.positions.length === 2, "2 positions computed");
+
+const aaplPos = state.positions.find((p) => p.symbol === "AAPL");
+assert(aaplPos !== undefined, "AAPL position exists");
+assert(aaplPos.lastPrice === 180, "AAPL last price is 180");
+
+// Day P&L: (180 - 175) * 10 = 50
+assertApprox(aaplPos.dayPnl, 50, 0.01, "AAPL day P&L is 50");
+
+// Day P&L %: ((180 - 175) / 175) * 100 ≈ 2.857
+assertApprox(aaplPos.dayPnlPct, 2.857, 0.01, "AAPL day P&L % ≈ 2.857");
+
+const msftPos = state.positions.find((p) => p.symbol === "MSFT");
+assert(msftPos !== undefined, "MSFT position exists");
+// Day P&L: (385 - 378) * 5 = 35
+assertApprox(msftPos.dayPnl, 35, 0.01, "MSFT day P&L is 35");
+
+// Aggregate day P&L should be sum
+assertApprox(state.aggregate.dayPnl, 85, 0.01, "aggregate day P&L is 85");
+assert(state.aggregate.dayPnlPct > 0, "aggregate day P&L % is positive");
+
+// Empty holdings
+const emptyState = computePositionsState([], {}, now);
+assert(emptyState.positions.length === 0, "empty holdings → 0 positions");
+assert(emptyState.aggregate.dayPnl === 0, "empty → 0 day P&L");
+
+// Holdings with no price history
+const noHistState = computePositionsState(
+  [{ symbol: "UNKNOWN", displayName: "UNKNOWN", quantity: 100, brokerId: "x" }],
+  {},
+  now
+);
+assert(noHistState.positions[0].lastPrice === null, "no-history position has null lastPrice");
+assert(noHistState.positions[0].window5mPnl === 0, "no-history position has 0 window P&L");
+
+// ── Summary ──
+console.log(`\n${"═".repeat(40)}`);
+console.log(`  Results: ${passed} passed, ${failed} failed`);
+console.log(`${"═".repeat(40)}\n`);
+
+process.exit(failed > 0 ? 1 : 0);

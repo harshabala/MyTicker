@@ -1,6 +1,8 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
+// This file is loaded as a non-module content script. It accesses shared
+// constants via globalThis.MyTickerShared (set by shared.js loaded before this).
 
-import { STORAGE_KEYS } from "./shared.js";
+const { STORAGE_KEYS, formatSigned } = globalThis.MyTickerShared || {};
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const TICKER_STYLE_ID = "pts-ticker-style";
@@ -9,6 +11,11 @@ const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 init();
 
 function init() {
+  if (!STORAGE_KEYS) {
+    console.error("[MyTicker] shared.js did not load before contentScript.js");
+    return;
+  }
+
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings];
     if (!settings || settings.enabled) {
@@ -102,10 +109,19 @@ function renderTicker(state) {
 
   container.innerHTML = "";
 
+  // Show stale-data indicator if present
+  if (state?.staleWarning) {
+    const staleEl = document.createElement("div");
+    staleEl.className = "pts-stale-indicator";
+    staleEl.textContent = "⚠ Stale";
+    staleEl.title = "Price data may be outdated – check your API key or network";
+    container.appendChild(staleEl);
+  }
+
   const aggregate = document.createElement("div");
   aggregate.className = "pts-aggregate";
-  const aggPnl = state?.aggregate?.dayPnl ?? 0;
-  const aggPct = state?.aggregate?.dayPnlPct ?? 0;
+  const aggPnl = Number(state?.aggregate?.dayPnl) || 0;
+  const aggPct = Number(state?.aggregate?.dayPnlPct) || 0;
   const aggDirClass = aggPnl > 0 ? "pts-up" : aggPnl < 0 ? "pts-down" : "pts-flat";
 
   aggregate.classList.add(aggDirClass);
@@ -130,8 +146,14 @@ function renderTicker(state) {
       item.classList.add("pts-crypto");
     }
 
+    // Null-safe: default to 0 if fields are missing (Issue #6)
+    const w5pnl = Number(pos.window5mPnl) || 0;
+    const w5pct = Number(pos.window5mPnlPct) || 0;
+    const dPnl = Number(pos.dayPnl) || 0;
+    const dPct = Number(pos.dayPnlPct) || 0;
+
     const dirClass =
-      pos.window5mPnl > 0 ? "pts-up" : pos.window5mPnl < 0 ? "pts-down" : "pts-flat";
+      w5pnl > 0 ? "pts-up" : w5pnl < 0 ? "pts-down" : "pts-flat";
     item.classList.add(dirClass);
 
     const iconSpan = document.createElement("span");
@@ -140,22 +162,18 @@ function renderTicker(state) {
 
     const nameSpan = document.createElement("span");
     nameSpan.className = "pts-symbol";
-    nameSpan.textContent = pos.displayName;
+    nameSpan.textContent = pos.displayName || pos.symbol || "—";
 
     const arrowSpan = document.createElement("span");
     arrowSpan.className = "pts-arrow";
     arrowSpan.textContent =
-      pos.window5mPnl > 0 ? "▲" : pos.window5mPnl < 0 ? "▼" : "●";
+      w5pnl > 0 ? "▲" : w5pnl < 0 ? "▼" : "●";
 
     const changeSpan = document.createElement("span");
     changeSpan.className = "pts-change";
-    changeSpan.textContent = `${formatSigned(pos.window5mPnl)} (${pos.window5mPnlPct.toFixed(
-      2
-    )}%)`;
+    changeSpan.textContent = `${formatSigned(w5pnl)} (${w5pct.toFixed(2)}%)`;
 
-    item.title = `Last: ${pos.lastPrice ?? "-"} | Qty: ${pos.quantity} | Day: ${formatSigned(
-      pos.dayPnl
-    )} (${pos.dayPnlPct.toFixed(2)}%)`;
+    item.title = `Last: ${pos.lastPrice ?? "—"} | Qty: ${pos.quantity ?? 0} | Day: ${formatSigned(dPnl)} (${dPct.toFixed(2)}%)`;
 
     item.appendChild(iconSpan);
     item.appendChild(nameSpan);
@@ -166,12 +184,6 @@ function renderTicker(state) {
 
   scrollWrapper.appendChild(scrollInner);
   container.appendChild(scrollWrapper);
-}
-
-function formatSigned(value) {
-  const num = Number(value) || 0;
-  if (num > 0) return `+${num.toFixed(2)}`;
-  return num.toFixed(2);
 }
 
 function getInitials(name) {
@@ -195,5 +207,3 @@ function applyTickerSpeed(settings) {
     `${Number(duration)}s`
   );
 }
-
-

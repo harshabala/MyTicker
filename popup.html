@@ -4,52 +4,357 @@
     <meta charset="utf-8" />
     <title>MyTicker</title>
     <style>
+      :root {
+        --bg-primary: #0f1117;
+        --bg-card: rgba(23, 25, 35, 0.95);
+        --bg-card-hover: rgba(30, 33, 45, 0.95);
+        --border: rgba(255, 255, 255, 0.06);
+        --text-primary: #f1f3f5;
+        --text-secondary: #858b98;
+        --text-tertiary: #555a66;
+        --accent: #22d3ee;
+        --green: #4ade80;
+        --red: #f87171;
+        --radius: 10px;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
       body {
-        min-width: 260px;
-        padding: 12px;
-        font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+        min-width: 320px;
+        max-width: 320px;
+        padding: 16px;
+        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        background: var(--bg-primary);
+        color: var(--text-primary);
+        -webkit-font-smoothing: antialiased;
+        -moz-osx-font-smoothing: grayscale;
       }
-      h1 {
-        font-size: 16px;
-        margin: 0 0 8px;
-      }
-      .row {
+
+      /* Header */
+      .header {
         display: flex;
         align-items: center;
         justify-content: space-between;
+        margin-bottom: 16px;
+      }
+
+      .header-left {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+      }
+
+      .header-left img {
+        width: 20px;
+        height: 20px;
+        border-radius: 4px;
+      }
+
+      .header-left h1 {
+        font-size: 15px;
+        font-weight: 600;
+        letter-spacing: -0.02em;
+      }
+
+      .version-badge {
+        font-size: 10px;
+        color: var(--text-tertiary);
+        background: rgba(255, 255, 255, 0.04);
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 500;
+      }
+
+      /* Toggle switch */
+      .toggle-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 10px 12px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 12px;
+      }
+
+      .toggle-label {
+        font-size: 13px;
+        color: var(--text-secondary);
+      }
+
+      .toggle-switch {
+        position: relative;
+        width: 38px;
+        height: 22px;
+        cursor: pointer;
+      }
+
+      .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+      }
+
+      .toggle-slider {
+        position: absolute;
+        inset: 0;
+        background: #2a2d3a;
+        border-radius: 11px;
+        transition: background 0.2s ease;
+      }
+
+      .toggle-slider::before {
+        content: "";
+        position: absolute;
+        left: 3px;
+        top: 3px;
+        width: 16px;
+        height: 16px;
+        background: white;
+        border-radius: 50%;
+        transition: transform 0.2s ease;
+      }
+
+      .toggle-switch input:checked + .toggle-slider {
+        background: var(--accent);
+      }
+
+      .toggle-switch input:checked + .toggle-slider::before {
+        transform: translateX(16px);
+      }
+
+      /* Summary card */
+      .summary-card {
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        padding: 14px;
+        margin-bottom: 12px;
+      }
+
+      .summary-card .label {
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-tertiary);
+        margin-bottom: 6px;
+      }
+
+      .pnl-row {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+        margin-bottom: 2px;
+      }
+
+      .pnl-value {
+        font-size: 22px;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .pnl-pct {
+        font-size: 13px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .holdings-count {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        margin-top: 4px;
+      }
+
+      .pnl-positive { color: var(--green); }
+      .pnl-negative { color: var(--red); }
+      .pnl-flat { color: var(--text-secondary); }
+
+      /* Status bar */
+      .status-bar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        margin-bottom: 12px;
+      }
+
+      .status-dot {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+        background: var(--green);
+        margin-right: 6px;
+        display: inline-block;
+        animation: pulse-dot 2s ease-in-out infinite;
+      }
+
+      .status-dot.disconnected {
+        background: var(--red);
+        animation: none;
+      }
+
+      .status-dot.stale {
+        background: #fbbf24;
+      }
+
+      .status-text {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        display: flex;
+        align-items: center;
+      }
+
+      .status-time {
+        font-size: 11px;
+        color: var(--text-tertiary);
+      }
+
+      @keyframes pulse-dot {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.3; }
+      }
+
+      /* Top movers */
+      .movers-section {
+        margin-bottom: 12px;
+      }
+
+      .movers-section .label {
+        font-size: 11px;
+        font-weight: 500;
+        text-transform: uppercase;
+        letter-spacing: 0.06em;
+        color: var(--text-tertiary);
         margin-bottom: 8px;
       }
-      button {
-        padding: 4px 10px;
-        font-size: 12px;
-        cursor: pointer;
+
+      .mover-item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 8px 12px;
+        background: var(--bg-card);
+        border: 1px solid var(--border);
+        border-radius: 8px;
+        margin-bottom: 4px;
+        transition: background 0.15s ease;
       }
-      .summary {
-        font-size: 12px;
-        color: #4b5563;
+
+      .mover-item:hover {
+        background: var(--bg-card-hover);
       }
-      .link {
-        color: #2563eb;
-        cursor: pointer;
+
+      .mover-name {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .mover-change {
         font-size: 12px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
+      /* Footer link */
+      .footer {
+        text-align: center;
+        margin-top: 4px;
+      }
+
+      .footer a {
+        font-size: 12px;
+        color: var(--accent);
+        text-decoration: none;
+        cursor: pointer;
+        opacity: 0.8;
+        transition: opacity 0.15s;
+      }
+
+      .footer a:hover {
+        opacity: 1;
         text-decoration: underline;
+      }
+
+      /* Empty state */
+      .empty-state {
+        text-align: center;
+        padding: 24px 12px;
+      }
+
+      .empty-state .emoji {
+        font-size: 28px;
+        margin-bottom: 8px;
+      }
+
+      .empty-state .title {
+        font-size: 14px;
+        font-weight: 600;
+        margin-bottom: 4px;
+      }
+
+      .empty-state .subtitle {
+        font-size: 12px;
+        color: var(--text-tertiary);
+        line-height: 1.5;
+      }
+
+      /* Keyboard shortcut hint */
+      .shortcut-hint {
+        text-align: center;
+        font-size: 10px;
+        color: var(--text-tertiary);
+        margin-top: 8px;
+      }
+
+      .shortcut-hint kbd {
+        background: rgba(255, 255, 255, 0.06);
+        padding: 1px 5px;
+        border-radius: 3px;
+        font-family: inherit;
+        font-size: 10px;
+        border: 1px solid var(--border);
       }
     </style>
   </head>
   <body>
-    <h1>MyTicker</h1>
-    <div class="row">
-      <span>Ticker strip</span>
-      <label>
+    <div class="header">
+      <div class="header-left">
+        <img src="icons/icon32.png" alt="MyTicker" />
+        <h1>MyTicker</h1>
+      </div>
+      <span class="version-badge">v0.2</span>
+    </div>
+
+    <div class="toggle-row">
+      <span class="toggle-label">Ticker strip</span>
+      <label class="toggle-switch">
         <input type="checkbox" id="enabledToggle" />
-        Enabled
+        <span class="toggle-slider"></span>
       </label>
     </div>
-    <div class="summary" id="summary">Loading…</div>
-    <div style="margin-top: 8px;">
-      <span id="openOptions" class="link">Open settings</span>
+
+    <div id="mainContent">
+      <!-- Dynamically filled by popup.js -->
     </div>
+
+    <div class="footer">
+      <a id="openOptions" href="#">Open settings →</a>
+    </div>
+
+    <div class="shortcut-hint">
+      Toggle: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd>
+    </div>
+
     <script type="module" src="popup.js"></script>
   </body>
 </html>
-
