@@ -32,12 +32,26 @@ chrome.runtime.onInstalled.addListener(() => {
     if (!data[STORAGE_KEYS.settings]) {
       chrome.storage.sync.set({ [STORAGE_KEYS.settings]: DEFAULT_SETTINGS });
     }
+    const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+    const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+    chrome.alarms.create("price-poll", {
+      delayInMinutes: 0.1,
+      periodInMinutes: interval
+    });
   });
+});
 
-  // Issue #3: Added delayInMinutes so the first alarm fires quickly after install.
-  chrome.alarms.create("price-poll", {
-    delayInMinutes: 0.1,
-    periodInMinutes: 1
+// Re-create alarm on service worker startup (MV3 workers restart frequently).
+chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+  const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+  const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+  chrome.alarms.get("price-poll", (existing) => {
+    if (!existing) {
+      chrome.alarms.create("price-poll", {
+        delayInMinutes: 0.1,
+        periodInMinutes: interval
+      });
+    }
   });
 });
 
@@ -123,6 +137,8 @@ async function handlePricePoll() {
     const newHistory = mergePriceSnapshots(priceHistory, quotes, now);
     const positionsState = computePositionsState(holdings, newHistory, now);
 
+    positionsState.updatedAt = now;
+
     // Issue #10: Add stale-data warning if no successful fetch in 5+ minutes.
     const staleThreshold = 5 * 60 * 1000;
     if (lastSuccessfulFetch > 0 && (now - lastSuccessfulFetch) > staleThreshold) {
@@ -187,15 +203,16 @@ function buildCombinedHoldings(baseHoldings, settings) {
       if (!c.symbol) continue;
       const qty = Number(c.quantity) || 0;
       if (!qty) continue;
+      const rawSymbol = String(c.symbol).trim();
       enriched.push({
         brokerId: "crypto-manual",
         assetClass: "crypto",
-        symbol: String(c.symbol).trim(),
+        symbol: rawSymbol,
         exchange: "CRYPTO",
         quantity: qty,
         avgPrice: 0,
         currency: "USD",
-        displayName: String(c.symbol).trim()
+        displayName: cleanCryptoDisplayName(rawSymbol)
       });
     }
   } else if (cryptoConfig.mode === "top5") {
@@ -208,10 +225,16 @@ function buildCombinedHoldings(baseHoldings, settings) {
         quantity: 1,
         avgPrice: 0,
         currency: "USD",
-        displayName: sym
+        displayName: cleanCryptoDisplayName(sym)
       });
     }
   }
 
   return enriched;
+}
+
+// Strip exchange prefix (e.g. "BINANCE:BTCUSDT" → "BTCUSDT")
+function cleanCryptoDisplayName(symbol) {
+  const parts = symbol.split(":");
+  return parts.length > 1 ? parts[parts.length - 1] : symbol;
 }

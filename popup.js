@@ -44,6 +44,16 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 });
 
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return "Updated just now";
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "Updated just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `Updated ${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `Updated ${hours}h ago`;
+}
+
 function renderPopupContent(container, state) {
   container.innerHTML = "";
 
@@ -68,14 +78,32 @@ function renderPopupContent(container, state) {
   // Summary card
   const summaryCard = document.createElement("div");
   summaryCard.className = "summary-card";
-  summaryCard.innerHTML = `
-    <div class="label">Today's P&L</div>
-    <div class="pnl-row">
-      <span class="pnl-value ${pnlClass}">${formatSigned(dayPnl)}</span>
-      <span class="pnl-pct ${pnlClass}">${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%</span>
-    </div>
-    <div class="holdings-count">${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""} tracked</div>
-  `;
+
+  const label = document.createElement("div");
+  label.className = "label";
+  label.textContent = "Today's P&L";
+
+  const pnlRow = document.createElement("div");
+  pnlRow.className = "pnl-row";
+
+  const pnlValue = document.createElement("span");
+  pnlValue.className = `pnl-value ${pnlClass}`;
+  pnlValue.textContent = formatSigned(dayPnl);
+
+  const pnlPct = document.createElement("span");
+  pnlPct.className = `pnl-pct ${pnlClass}`;
+  pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+
+  pnlRow.appendChild(pnlValue);
+  pnlRow.appendChild(pnlPct);
+
+  const holdingsCount = document.createElement("div");
+  holdingsCount.className = "holdings-count";
+  holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""} tracked`;
+
+  summaryCard.appendChild(label);
+  summaryCard.appendChild(pnlRow);
+  summaryCard.appendChild(holdingsCount);
   container.appendChild(summaryCard);
 
   // Status bar
@@ -83,10 +111,20 @@ function renderPopupContent(container, state) {
   const statusLabel = state.staleWarning ? "Data may be stale" : "Live";
   const statusBar = document.createElement("div");
   statusBar.className = "status-bar";
-  statusBar.innerHTML = `
-    <span class="status-text"><span class="status-dot ${statusClass}"></span>${statusLabel}</span>
-    <span class="status-time">Updated just now</span>
-  `;
+
+  const statusText = document.createElement("span");
+  statusText.className = "status-text";
+  const statusDot = document.createElement("span");
+  statusDot.className = `status-dot ${statusClass}`;
+  statusText.appendChild(statusDot);
+  statusText.appendChild(document.createTextNode(statusLabel));
+
+  const statusTime = document.createElement("span");
+  statusTime.className = "status-time";
+  statusTime.textContent = formatTimeAgo(state.updatedAt);
+
+  statusBar.appendChild(statusText);
+  statusBar.appendChild(statusTime);
   container.appendChild(statusBar);
 
   // Top movers (best + worst by day P&L %)
@@ -107,10 +145,17 @@ function renderPopupContent(container, state) {
       const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
       const item = document.createElement("div");
       item.className = "mover-item";
-      item.innerHTML = `
-        <span class="mover-name">${pos.displayName || pos.symbol}</span>
-        <span class="mover-change ${cls}">${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%</span>
-      `;
+
+      const nameSpan = document.createElement("span");
+      nameSpan.className = "mover-name";
+      nameSpan.textContent = pos.displayName || pos.symbol;
+
+      const changeSpan = document.createElement("span");
+      changeSpan.className = `mover-change ${cls}`;
+      changeSpan.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+
+      item.appendChild(nameSpan);
+      item.appendChild(changeSpan);
       moversSection.appendChild(item);
     }
 

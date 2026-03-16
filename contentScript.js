@@ -80,12 +80,13 @@ function ensureTickerContainer() {
 
   document.documentElement.insertBefore(bar, document.body);
 
-  // Push the page content down a bit, preserving any existing inline margin.
-  const existingMargin = document.body.style.marginTop;
+  // Push the page content down, adding to any existing margin.
   if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
-    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, existingMargin || "");
+    const computed = window.getComputedStyle(document.body).marginTop;
+    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, computed || "0px");
   }
-  document.body.style.marginTop = "32px";
+  const originalPx = parseInt(document.body.getAttribute(ORIGINAL_MARGIN_ATTR), 10) || 0;
+  document.body.style.marginTop = (originalPx + 32) + "px";
 }
 
 function removeTickerContainer() {
@@ -94,12 +95,10 @@ function removeTickerContainer() {
     existing.parentNode.removeChild(existing);
   }
 
-  if (document.body) {
+  if (document.body && document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
     const original = document.body.getAttribute(ORIGINAL_MARGIN_ATTR);
-    if (original !== null) {
-      document.body.style.marginTop = original;
-      document.body.removeAttribute(ORIGINAL_MARGIN_ATTR);
-    }
+    document.body.style.marginTop = original;
+    document.body.removeAttribute(ORIGINAL_MARGIN_ATTR);
   }
 }
 

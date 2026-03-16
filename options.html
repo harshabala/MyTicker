@@ -124,6 +124,7 @@
 
       /* Inputs */
       input[type="text"],
+      input[type="number"],
       input[type="password"],
       select,
       textarea {
@@ -140,6 +141,7 @@
       }
 
       input[type="text"]:focus,
+      input[type="number"]:focus,
       input[type="password"]:focus,
       select:focus,
       textarea:focus {
@@ -477,6 +479,7 @@
 
           <div class="btn-row">
             <button class="btn btn-primary" id="importCsvButton">Import holdings</button>
+            <button class="btn btn-secondary" id="clearHoldingsButton">Clear all</button>
             <span class="status-badge" id="csvStatus"></span>
           </div>
         </div>
@@ -510,7 +513,7 @@
           </div>
           <div class="field">
             <div class="field-label">Refresh interval (minutes)</div>
-            <input type="text" id="refreshMinutes" placeholder="1" />
+            <input type="number" id="refreshMinutes" placeholder="1" min="1" max="60" />
           </div>
           <div class="btn-row">
             <button class="btn btn-primary" id="saveProviderButton">Save</button>
@@ -583,7 +586,7 @@
           </div>
           <div class="field">
             <div class="field-label">Ticker speed (seconds per loop)</div>
-            <input type="text" id="tickerSpeed" placeholder="40" />
+            <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
             <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
           </div>
           <div class="btn-row">

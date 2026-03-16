@@ -26,6 +26,7 @@ const showCryptoEl = document.getElementById("showCrypto");
 const refreshPreviewButton = document.getElementById("refreshPreviewButton");
 const holdingsPreviewEl = document.getElementById("holdingsPreview");
 
+const clearHoldingsButton = document.getElementById("clearHoldingsButton");
 const toastEl = document.getElementById("toast");
 
 init();
@@ -61,8 +62,17 @@ function init() {
     updateCryptoManualVisibility();
   });
 
+  // Show existing holdings count on load
+  chrome.storage.local.get([STORAGE_KEYS.holdings], (localData) => {
+    const count = (localData[STORAGE_KEYS.holdings] || []).length;
+    if (count > 0) {
+      csvStatusEl.textContent = `${count} holdings`;
+    }
+  });
+
   // Event listeners
   importCsvButton.addEventListener("click", handleImportCsv);
+  clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("saveAppearanceButton").addEventListener("click", handleSaveAppearance);
   document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
@@ -124,7 +134,7 @@ function handleImportCsv() {
     try {
       const text = String(reader.result || "");
       const rows = parseCsv(text);
-      const holdings = mapRowsToHoldings(rows, preset.columns, presetKey);
+      const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
       if (!holdings.length) {
         showToast("No holdings found in CSV.", "error");
         return;
@@ -144,6 +154,14 @@ function handleImportCsv() {
     showToast("Error reading file.", "error");
   };
   reader.readAsText(file);
+}
+
+function handleClearHoldings() {
+  chrome.storage.local.remove([STORAGE_KEYS.holdings, STORAGE_KEYS.positionsState, STORAGE_KEYS.priceHistory], () => {
+    csvStatusEl.textContent = "";
+    showToast("All holdings cleared", "success");
+    handleRefreshPreview();
+  });
 }
 
 function handleSaveProvider() {
@@ -279,24 +297,37 @@ function handleRefreshPreview() {
         return;
       }
 
-      let html = `<table class="preview-table">
-        <thead>
-          <tr>
-            <th>Symbol</th>
-            <th>Qty</th>
-            <th>Broker</th>
-            <th>Exchange</th>
-          </tr>
-        </thead>
-        <tbody>`;
+      const table = document.createElement("table");
+      table.className = "preview-table";
+
+      const thead = document.createElement("thead");
+      const headerRow = document.createElement("tr");
+      for (const label of ["Symbol", "Qty", "Broker", "Exchange"]) {
+        const th = document.createElement("th");
+        th.textContent = label;
+        headerRow.appendChild(th);
+      }
+      thead.appendChild(headerRow);
+      table.appendChild(thead);
+
+      const tbody = document.createElement("tbody");
 
       for (const h of holdings) {
-        html += `<tr>
-          <td style="color: var(--text-primary); font-weight: 500;">${h.displayName || h.symbol}</td>
-          <td>${h.quantity}</td>
-          <td>${h.brokerId || "—"}</td>
-          <td>${h.exchange || "—"}</td>
-        </tr>`;
+        const tr = document.createElement("tr");
+        const tdSym = document.createElement("td");
+        tdSym.style.cssText = "color: var(--text-primary); font-weight: 500;";
+        tdSym.textContent = h.displayName || h.symbol;
+        const tdQty = document.createElement("td");
+        tdQty.textContent = h.quantity;
+        const tdBroker = document.createElement("td");
+        tdBroker.textContent = h.brokerId || "\u2014";
+        const tdExchange = document.createElement("td");
+        tdExchange.textContent = h.exchange || "\u2014";
+        tr.appendChild(tdSym);
+        tr.appendChild(tdQty);
+        tr.appendChild(tdBroker);
+        tr.appendChild(tdExchange);
+        tbody.appendChild(tr);
       }
 
       if (cryptoConfig.includeCrypto) {
@@ -304,22 +335,36 @@ function handleRefreshPreview() {
         if (mode === "manual") {
           const manual = Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : [];
           for (const c of manual) {
-            html += `<tr>
-              <td style="color: #fbbf24; font-weight: 500;">${c.symbol}</td>
-              <td>${c.quantity}</td>
-              <td>manual</td>
-              <td>CRYPTO</td>
-            </tr>`;
+            const tr = document.createElement("tr");
+            const tdSym = document.createElement("td");
+            tdSym.style.cssText = "color: #fbbf24; font-weight: 500;";
+            tdSym.textContent = c.symbol;
+            const tdQty = document.createElement("td");
+            tdQty.textContent = c.quantity;
+            const tdBroker = document.createElement("td");
+            tdBroker.textContent = "manual";
+            const tdExchange = document.createElement("td");
+            tdExchange.textContent = "CRYPTO";
+            tr.appendChild(tdSym);
+            tr.appendChild(tdQty);
+            tr.appendChild(tdBroker);
+            tr.appendChild(tdExchange);
+            tbody.appendChild(tr);
           }
         } else {
-          html += `<tr>
-            <td colspan="4" style="text-align: center; color: var(--text-tertiary);">Top 5 watchlist enabled</td>
-          </tr>`;
+          const tr = document.createElement("tr");
+          const td = document.createElement("td");
+          td.colSpan = 4;
+          td.style.cssText = "text-align: center; color: var(--text-tertiary);";
+          td.textContent = "Top 5 watchlist enabled";
+          tr.appendChild(td);
+          tbody.appendChild(tr);
         }
       }
 
-      html += `</tbody></table>`;
-      holdingsPreviewEl.innerHTML = html;
+      table.appendChild(tbody);
+      holdingsPreviewEl.innerHTML = "";
+      holdingsPreviewEl.appendChild(table);
     });
   });
 }
