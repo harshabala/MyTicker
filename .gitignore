@@ -12,6 +12,8 @@ Thumbs.db
 # Build artifacts
 *.zip
 dist/
+*.pem
+*.crx
 
 # Node (test dependencies)
 node_modules/
