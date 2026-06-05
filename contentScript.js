@@ -1,8 +1,6 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
-// This file is loaded as a non-module content script. It accesses shared
-// constants via globalThis.MyTickerShared (set by shared.js loaded before this).
 
-const { STORAGE_KEYS, formatSigned } = globalThis.MyTickerShared || {};
+import { STORAGE_KEYS, formatSigned } from "./shared.js";
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const TICKER_STYLE_ID = "pts-ticker-style";
@@ -11,14 +9,9 @@ const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 init();
 
 function init() {
-  if (!STORAGE_KEYS) {
-    console.error("[MyTicker] shared.js did not load before contentScript.js");
-    return;
-  }
-
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings];
-    if (!settings || settings.enabled) {
+    if (settings?.enabled) {
       ensureTickerContainer();
       applyTickerSpeed(settings);
     }
@@ -80,13 +73,14 @@ function ensureTickerContainer() {
 
   document.documentElement.insertBefore(bar, document.body);
 
-  // Push the page content down, adding to any existing margin.
+  // Push the page content down, adding to any existing offset.
   if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
-    const computed = window.getComputedStyle(document.body).marginTop;
-    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, computed || "0px");
+    const rect = document.body.getBoundingClientRect();
+    const offset = Math.max(0, rect.top);
+    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
   }
-  const originalPx = parseInt(document.body.getAttribute(ORIGINAL_MARGIN_ATTR), 10) || 0;
-  document.body.style.marginTop = (originalPx + 32) + "px";
+  const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
+  document.body.style.marginTop = `${originalPx + 32}px`;
 }
 
 function removeTickerContainer() {
@@ -96,8 +90,8 @@ function removeTickerContainer() {
   }
 
   if (document.body && document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
-    const original = document.body.getAttribute(ORIGINAL_MARGIN_ATTR);
-    document.body.style.marginTop = original;
+    const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
+    document.body.style.marginTop = originalPx > 0 ? `${originalPx}px` : "";
     document.body.removeAttribute(ORIGINAL_MARGIN_ATTR);
   }
 }

@@ -1,14 +1,11 @@
-// Shared data models and helpers for the extension.
-// This file is loaded both as an ES module (background, options, popup)
-// and as a plain script (content script). We attach everything to
-// globalThis so the content script can access it, and also export
-// for ES module consumers.
+// Shared data models and helpers for the extension (ES module).
 
 const STORAGE_KEYS = {
   settings: "pts_settings",
   holdings: "pts_holdings",
   priceHistory: "pts_price_history",
-  positionsState: "pts_positions_state"
+  positionsState: "pts_positions_state",
+  pollHealth: "pts_poll_health"
 };
 
 const DEFAULT_SETTINGS = {
@@ -211,19 +208,7 @@ function getStartOfDayTimestamp(now) {
   return d.getTime();
 }
 
-// Expose on globalThis for content-script (non-module) usage.
-if (typeof globalThis !== "undefined") {
-  globalThis.MyTickerShared = {
-    STORAGE_KEYS,
-    DEFAULT_SETTINGS,
-    mergePriceSnapshots,
-    computePositionsState,
-    formatSigned,
-    formatCurrency
-  };
-}
-
-// ES module exports for background, options, popup.
+// ES module exports for background, options, popup, and content script.
 export {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
