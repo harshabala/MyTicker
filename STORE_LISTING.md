@@ -20,9 +20,9 @@ The ticker scrolls smoothly across the top of every page. Hover to pause. Click 
 
 ### 🪙 Crypto Support
 
-Optionally add crypto to your ticker:
-• Track the **Top 5 coins** (BTC, ETH, BNB, XRP, SOL) as a watchlist
-• Or add your own holdings manually
+Optionally add crypto to your ticker (via Finnhub, `BINANCE:SYMBOL` format):
+• **Top 5 watchlist** — BTC, ETH, BNB, XRP, SOL (unit price change, qty 1)
+• **Manual holdings** — e.g. `BINANCE:BTCUSDT, 0.5` (one symbol per line)
 
 ### 🔒 100% Private
 
@@ -36,7 +36,7 @@ Your data NEVER leaves your browser:
 • Dark glassmorphism popup with P&L at a glance
 • Apple-style settings page with drag-and-drop CSV import
 • Smooth animations and glow effects
-• Keyboard shortcut: Ctrl+Shift+Y to toggle
+• Keyboard shortcut: Ctrl+Shift+Y (Mac: ⌘+Shift+Y) to toggle
 
 ### 📊 Supported Brokers
 

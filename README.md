@@ -24,7 +24,7 @@
 | **Live Ticker Strip** | A sleek dark bar at the top of every page with scrolling stock & crypto prices |
 | **5-min & Daily P&L** | See both short-window and full-day profit/loss for each holding |
 | **Multi-Broker CSV Import** | Drag-and-drop CSV files from Zerodha, Groww, Upstox, or any generic format |
-| **Crypto Support** | Track Top 5 coins or add your own crypto holdings manually |
+| **Crypto Support** | Finnhub/Binance symbols — Top 5 watchlist or manual holdings (`BINANCE:BTCUSDT`) |
 | **One-Click Toggle** | Enable/disable via popup or `Ctrl+Shift+Y` keyboard shortcut |
 | **Premium Dark UI** | Glassmorphism popup, Apple-style settings, glow effects on the ticker |
 | **100% Local Data** | Your holdings and API keys never leave your browser |
@@ -124,7 +124,7 @@ MyTicker/
 ├── shared.js              # Core P&L engine + shared utilities
 ├── priceProviders.js      # Finnhub API client (batched + cached)
 ├── csvParser.js           # CSV parser with broker presets
-├── brokerAdapters.js      # Broker API stubs (future: live sync)
+
 ├── popup.html / popup.js  # Extension popup UI
 ├── options.html / options.js  # Settings page UI
 ├── ticker.css             # Ticker strip styles + animations
