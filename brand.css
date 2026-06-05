@@ -2,6 +2,8 @@
  * MyTicker brand tokens — Obsidian Gold (minimal Apple variant)
  * Palette #4 refined: lower chroma, neutral surfaces, subtle gold accent.
  */
+@import url("motion.css");
+
 :root {
   --bg: #000000;
   --bg-surface: #1c1c1e;

@@ -36,6 +36,7 @@ const clearHoldingsButton = document.getElementById("clearHoldingsButton");
 const toastEl = document.getElementById("toast");
 
 const setupWelcomeEl = document.getElementById("setupWelcome");
+const setupStatusEl = document.getElementById("setupStatus");
 const statusApiEl = document.getElementById("statusApi");
 const statusHoldingsEl = document.getElementById("statusHoldings");
 const statusSyncEl = document.getElementById("statusSync");
@@ -180,7 +181,9 @@ async function refreshSetupUI() {
   const status = await getSetupStatus();
 
   if (setupWelcomeEl) {
-    setupWelcomeEl.hidden = !(status.firstInstall || !status.complete);
+    const showWelcome = status.firstInstall || !status.complete;
+    setupWelcomeEl.hidden = false;
+    setupWelcomeEl.classList.toggle("is-visible", showWelcome);
   }
 
   setPill(statusApiEl, status.hasApiKey, "API key");
@@ -190,6 +193,18 @@ async function refreshSetupUI() {
 
   if (rateLimitWarnEl) {
     rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
+  }
+
+  if (status.complete && setupStatusEl) {
+    chrome.storage.local.get(["pts_setup_shimmered"], (data) => {
+      if (!data.pts_setup_shimmered) {
+        setupStatusEl.classList.add("setup-complete-shimmer");
+        chrome.storage.local.set({ pts_setup_shimmered: true });
+        setTimeout(() => {
+          setupStatusEl.classList.remove("setup-complete-shimmer");
+        }, 1000);
+      }
+    });
   }
 
   const step = status.hasApiKey ? (status.hasHoldings ? 3 : 2) : 1;
@@ -215,7 +230,9 @@ function setPill(el, ok, label) {
 
 function updateCryptoManualVisibility() {
   if (cryptoManualField) {
-    cryptoManualField.style.display = cryptoModeEl.value === "manual" ? "block" : "none";
+    const open = cryptoModeEl.value === "manual";
+    cryptoManualField.classList.toggle("is-open", open);
+    cryptoManualField.setAttribute("aria-hidden", open ? "false" : "true");
   }
 }
 
@@ -428,6 +445,10 @@ function normalizeCryptoSymbol(raw) {
 }
 
 function handleRefreshPreview() {
+  if (holdingsPreviewEl) {
+    holdingsPreviewEl.classList.add("preview-updating");
+  }
+
   chrome.storage.local.get([STORAGE_KEYS.holdings], (localData) => {
     chrome.storage.sync.get([STORAGE_KEYS.settings], (syncData) => {
       const holdings = localData[STORAGE_KEYS.holdings] || [];
@@ -436,6 +457,9 @@ function handleRefreshPreview() {
 
       if (!holdings.length && !cryptoConfig.includeCrypto) {
         holdingsPreviewEl.innerHTML = `<div class="preview-empty">No holdings loaded — import a CSV above</div>`;
+        requestAnimationFrame(() => {
+          holdingsPreviewEl.classList.remove("preview-updating");
+        });
         return;
       }
 
@@ -507,6 +531,10 @@ function handleRefreshPreview() {
       table.appendChild(tbody);
       holdingsPreviewEl.innerHTML = "";
       holdingsPreviewEl.appendChild(table);
+
+      requestAnimationFrame(() => {
+        holdingsPreviewEl.classList.remove("preview-updating");
+      });
     });
   });
 }
@@ -516,9 +544,12 @@ let toastTimeout = null;
 function showToast(message, type = "success") {
   toastEl.textContent = message;
   toastEl.className = `toast ${type}`;
-  // Force reflow for re-animation
   void toastEl.offsetWidth;
-  toastEl.classList.add("show");
+  toastEl.classList.add("toast-enter", "show");
+
+  requestAnimationFrame(() => {
+    toastEl.classList.remove("toast-enter");
+  });
 
   if (toastTimeout) clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => {

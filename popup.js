@@ -5,6 +5,16 @@ import {
 } from "./shared.js";
 import { getSetupStatus } from "./onboarding.js";
 
+const VIEW_CHECKLIST = "checklist";
+const VIEW_LOADING = "loading";
+const VIEW_PNL = "pnl";
+const VIEW_EMPTY = "empty";
+
+let currentView = null;
+let checklistStaggered = false;
+let lastAggregateSign = null;
+let popupHasRendered = false;
+
 document.addEventListener("DOMContentLoaded", () => {
   const enabledToggle = document.getElementById("enabledToggle");
   const openOptions = document.getElementById("openOptions");
@@ -57,26 +67,162 @@ function setPlatformShortcut(el) {
   }
 }
 
+function prefersReducedMotion() {
+  return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+}
+
+function waitMs(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function fadeOutView(viewEl) {
+  if (!viewEl || prefersReducedMotion()) return;
+  viewEl.classList.add("view-exit");
+  await Promise.race([
+    new Promise((resolve) => {
+      viewEl.addEventListener("transitionend", resolve, { once: true });
+    }),
+    waitMs(180)
+  ]);
+}
+
+function mountView(container, viewEl, viewName) {
+  viewEl.classList.add("popup-view", "view-enter");
+  container.appendChild(viewEl);
+  currentView = viewName;
+
+  if (!prefersReducedMotion()) {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        viewEl.classList.remove("view-enter");
+      });
+    });
+  } else {
+    viewEl.classList.remove("view-enter");
+  }
+}
+
 async function refreshPopup(container) {
-  container.innerHTML = "";
-  const loading = document.createElement("div");
-  loading.className = "loading-state";
-  loading.textContent = "Loading…";
-  container.appendChild(loading);
+  const showLoading = !popupHasRendered;
+  const outgoing = container.querySelector(".popup-view");
+
+  if (showLoading && !outgoing) {
+    const loading = document.createElement("div");
+    loading.className = "popup-view loading-state view-enter";
+    loading.textContent = "Loading…";
+    container.appendChild(loading);
+    currentView = VIEW_LOADING;
+  }
 
   const [status, local] = await Promise.all([
     getSetupStatus(),
     chrome.storage.local.get([STORAGE_KEYS.positionsState])
   ]);
 
-  container.innerHTML = "";
-
+  const state = local[STORAGE_KEYS.positionsState];
+  let nextView = VIEW_PNL;
   if (!status.complete) {
-    renderSetupChecklist(container, status);
+    nextView = VIEW_CHECKLIST;
+  } else if (!state?.positions?.length) {
+    nextView = VIEW_EMPTY;
+  }
+
+  if (currentView === nextView && outgoing) {
+    if (nextView === VIEW_CHECKLIST) {
+      updateChecklistInPlace(outgoing, status);
+    } else if (nextView === VIEW_PNL) {
+      updatePnlInPlace(outgoing, state);
+    }
+    popupHasRendered = true;
     return;
   }
 
-  renderPopupContent(container, local[STORAGE_KEYS.positionsState]);
+  const loadingEl = container.querySelector(".loading-state");
+  if (loadingEl) {
+    await fadeOutView(loadingEl);
+    loadingEl.remove();
+  } else if (outgoing) {
+    await fadeOutView(outgoing);
+    outgoing.remove();
+  }
+
+  container.innerHTML = "";
+
+  const viewEl = document.createElement("div");
+  if (nextView === VIEW_CHECKLIST) {
+    renderSetupChecklist(viewEl, status);
+    if (!checklistStaggered) {
+      viewEl.classList.add("checklist-stagger");
+      checklistStaggered = true;
+    }
+  } else if (nextView === VIEW_EMPTY) {
+    renderEmptyState(viewEl);
+  } else {
+    renderPopupContent(viewEl, state);
+  }
+
+  mountView(container, viewEl, nextView);
+  popupHasRendered = true;
+}
+
+function updateChecklistInPlace(viewEl, status) {
+  const items = viewEl.querySelectorAll(".checklist-item");
+  const steps = [
+    status.hasApiKey,
+    status.hasHoldings,
+    status.hasLiveData
+  ];
+  items.forEach((row, i) => {
+    row.classList.toggle("done", !!steps[i]);
+    const icon = row.querySelector(".check-icon");
+    if (icon) {
+      icon.textContent = steps[i] ? "✓" : String(i + 1);
+    }
+  });
+}
+
+function updatePnlInPlace(viewEl, state) {
+  if (!state?.positions?.length) return;
+
+  const currency = state.displayCurrency || "INR";
+  const agg = state.aggregate || { dayPnl: 0, dayPnlPct: 0 };
+  const dayPnl = Number(agg.dayPnl) || 0;
+  const dayPnlPct = Number(agg.dayPnlPct) || 0;
+  const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
+  const newSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
+
+  const pnlValue = viewEl.querySelector(".pnl-value");
+  const pnlPct = viewEl.querySelector(".pnl-pct");
+  const holdingsCount = viewEl.querySelector(".holdings-count");
+  const statusTime = viewEl.querySelector(".status-time");
+  const summaryCard = viewEl.querySelector(".summary-card");
+
+  if (pnlValue) {
+    pnlValue.className = `pnl-value ${pnlClass}`;
+    pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
+  }
+  if (pnlPct) {
+    pnlPct.className = `pnl-pct ${pnlClass}`;
+    pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+  }
+  if (holdingsCount) {
+    holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""} tracked`;
+  }
+  if (statusTime) {
+    statusTime.textContent = formatTimeAgo(state.updatedAt);
+  }
+
+  if (
+    summaryCard &&
+    lastAggregateSign &&
+    lastAggregateSign !== newSign &&
+    !prefersReducedMotion()
+  ) {
+    summaryCard.classList.remove("pnl-flash");
+    void summaryCard.offsetWidth;
+    summaryCard.classList.add("pnl-flash");
+  }
+  lastAggregateSign = newSign;
 }
 
 function renderSetupChecklist(container, status) {
@@ -92,26 +238,24 @@ function renderSetupChecklist(container, status) {
     {
       done: status.hasApiKey,
       label: "Add Finnhub API key",
-      hint: "Free at finnhub.io — takes ~30 seconds",
-      action: "Open settings → Market Data"
+      hint: "Free at finnhub.io — takes ~30 seconds"
     },
     {
       done: status.hasHoldings,
       label: "Import broker CSV",
-      hint: "Zerodha, Groww, or Upstox holdings export",
-      action: "Settings → Portfolio Import"
+      hint: "Zerodha, Groww, or Upstox holdings export"
     },
     {
       done: status.hasLiveData,
       label: "See live P&L on any tab",
-      hint: "Visit a webpage after steps 1 & 2",
-      action: "Ticker appears at the top"
+      hint: "Visit a webpage after steps 1 & 2"
     }
   ];
 
   steps.forEach((step, i) => {
     const row = document.createElement("div");
     row.className = `checklist-item${step.done ? " done" : ""}`;
+    row.style.setProperty("--stagger-index", String(i));
     const icon = document.createElement("span");
     icon.className = "check-icon";
     icon.textContent = step.done ? "✓" : String(i + 1);
@@ -131,7 +275,7 @@ function renderSetupChecklist(container, status) {
 
   const btn = document.createElement("button");
   btn.type = "button";
-  btn.className = "btn-setup";
+  btn.className = "btn-setup btn-pressable";
   btn.textContent = status.hasApiKey ? "Continue setup in Settings →" : "Start setup →";
   btn.addEventListener("click", () => {
     if (chrome.runtime.openOptionsPage) {
@@ -140,6 +284,24 @@ function renderSetupChecklist(container, status) {
   });
   card.appendChild(btn);
 
+  container.appendChild(card);
+}
+
+function renderEmptyState(container) {
+  const card = document.createElement("div");
+  card.className = "summary-card";
+  const empty = document.createElement("div");
+  empty.className = "empty-state";
+  const title = document.createElement("div");
+  title.className = "title";
+  title.textContent = "Waiting for prices…";
+  const subtitle = document.createElement("div");
+  subtitle.className = "subtitle";
+  subtitle.textContent =
+    "Holdings loaded. Open Settings and click Test connection, or wait for the next refresh.";
+  empty.appendChild(title);
+  empty.appendChild(subtitle);
+  card.appendChild(empty);
   container.appendChild(card);
 }
 
@@ -155,20 +317,7 @@ function formatTimeAgo(timestamp) {
 
 function renderPopupContent(container, state) {
   if (!state || !state.positions || !state.positions.length) {
-    const card = document.createElement("div");
-    card.className = "summary-card";
-    const empty = document.createElement("div");
-    empty.className = "empty-state";
-    const title = document.createElement("div");
-    title.className = "title";
-    title.textContent = "Waiting for prices…";
-    const subtitle = document.createElement("div");
-    subtitle.className = "subtitle";
-    subtitle.textContent = "Holdings loaded. Open Settings and click Test connection, or wait for the next refresh.";
-    empty.appendChild(title);
-    empty.appendChild(subtitle);
-    card.appendChild(empty);
-    container.appendChild(card);
+    renderEmptyState(container);
     return;
   }
 
@@ -177,6 +326,7 @@ function renderPopupContent(container, state) {
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
   const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
+  lastAggregateSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
 
   const summaryCard = document.createElement("div");
   summaryCard.className = "summary-card";

@@ -203,11 +203,54 @@
       }
 
       .setup-welcome {
-        padding: 14px 16px;
+        padding: 0 16px;
         font-size: 13px;
         line-height: 1.5;
         color: var(--text-secondary);
-        border-bottom: 1px solid var(--border);
+        border-bottom: 1px solid transparent;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition:
+          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
+          opacity var(--motion-fast, 150ms) ease,
+          padding var(--motion-medium, 250ms) var(--ease-out, ease),
+          border-color var(--motion-fast, 150ms) ease;
+      }
+
+      .setup-welcome.is-visible {
+        padding: 14px 16px;
+        max-height: 120px;
+        opacity: 1;
+        border-bottom-color: var(--border);
+      }
+
+      .setup-status.setup-complete-shimmer {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .setup-status.setup-complete-shimmer::after {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: linear-gradient(
+          105deg,
+          transparent 35%,
+          rgba(201, 176, 112, 0.12) 50%,
+          transparent 65%
+        );
+        animation: setup-shimmer 0.9s var(--ease-out, ease) 1;
+        pointer-events: none;
+      }
+
+      @keyframes setup-shimmer {
+        from {
+          transform: translateX(-100%);
+        }
+        to {
+          transform: translateX(100%);
+        }
       }
 
       .setup-wizard {
@@ -250,22 +293,56 @@
       }
 
       .warn-banner {
-        padding: 12px 16px;
+        padding: 0 16px;
         font-size: 12px;
         color: var(--yellow);
         background: rgba(255, 214, 10, 0.08);
-        border-bottom: 1px solid var(--border);
-        display: none;
+        border-bottom: 1px solid transparent;
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        transition:
+          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
+          opacity var(--motion-fast, 150ms) ease,
+          padding var(--motion-medium, 250ms) var(--ease-out, ease),
+          border-color var(--motion-fast, 150ms) ease;
       }
 
       .warn-banner.visible {
-        display: block;
+        padding: 12px 16px;
+        max-height: 96px;
+        opacity: 1;
+        border-bottom-color: var(--border);
       }
 
       .section-highlight {
         outline: 2px solid var(--accent);
         outline-offset: 4px;
         border-radius: var(--radius);
+        transition: outline-color var(--motion-fast, 150ms) ease, outline-offset var(--motion-fast, 150ms) ease;
+      }
+
+      #cryptoManualField {
+        max-height: 0;
+        opacity: 0;
+        overflow: hidden;
+        margin: 0;
+        padding-top: 0;
+        padding-bottom: 0;
+        transition:
+          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
+          opacity var(--motion-fast, 150ms) ease,
+          padding var(--motion-medium, 250ms) var(--ease-out, ease);
+      }
+
+      #cryptoManualField.is-open {
+        max-height: 220px;
+        opacity: 1;
+      }
+
+      .preview-container.preview-updating {
+        opacity: 0.55;
+        transition: opacity var(--motion-fast, 150ms) ease;
       }
 
       details.crypto-details > summary {
@@ -282,6 +359,21 @@
 
       details.crypto-details[open] summary {
         border-bottom: 1px solid var(--border);
+      }
+
+      details.crypto-details > div {
+        display: grid;
+        grid-template-rows: 0fr;
+        transition: grid-template-rows var(--motion-medium, 250ms) var(--ease-out, ease);
+      }
+
+      details.crypto-details[open] > div {
+        grid-template-rows: 1fr;
+      }
+
+      details.crypto-details > div > * {
+        overflow: hidden;
+        min-height: 0;
       }
 
       /* Toggle switch */
@@ -353,7 +445,14 @@
       }
 
       .btn-primary:active {
-        transform: translateY(0);
+        transform: translateY(0) scale(0.97);
+      }
+
+      .btn {
+        transition:
+          background var(--motion-fast, 150ms) ease,
+          color var(--motion-fast, 150ms) ease,
+          transform var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .btn-secondary {
@@ -492,6 +591,26 @@
       .toast.show {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
+        backdrop-filter: blur(12px);
+        -webkit-backdrop-filter: blur(12px);
+      }
+
+      .toast.toast-enter {
+        filter: blur(6px);
+        transition:
+          transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+          opacity 0.3s ease,
+          filter var(--motion-medium, 250ms) var(--ease-out, ease);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .setup-status.setup-complete-shimmer::after {
+          animation: none;
+        }
+
+        details.crypto-details > div {
+          transition: none;
+        }
       }
 
       .toast.success {
@@ -588,8 +707,8 @@
             <div class="field-hint">Finnhub free tier: ~60 calls/min. Each holding uses one call per refresh.</div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" id="saveProviderButton">Save</button>
-            <button class="btn btn-secondary" id="testConnectionButton">Test connection</button>
+            <button class="btn btn-primary btn-pressable" id="saveProviderButton">Save</button>
+            <button class="btn btn-secondary btn-pressable" id="testConnectionButton">Test connection</button>
             <span class="status-badge" id="providerStatus"></span>
           </div>
         </div>
@@ -679,7 +798,7 @@
             <div class="field-hint">One per line: BINANCE:PAIR, quantity. Top 5 mode is a watchlist (qty 1, unit price P&amp;L).</div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" id="saveCryptoButton">Save</button>
+            <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>
             <span class="status-badge" id="cryptoStatus"></span>
           </div>
           </div>
@@ -714,7 +833,7 @@
             <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
           </div>
           <div class="btn-row">
-            <button class="btn btn-primary" id="saveAppearanceButton">Save</button>
+            <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save</button>
             <span class="status-badge" id="appearanceStatus"></span>
           </div>
         </div>

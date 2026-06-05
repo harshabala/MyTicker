@@ -51,7 +51,8 @@
   "web_accessible_resources": [
     {
       "resources": [
-        "ticker.css"
+        "ticker.css",
+        "motion.css"
       ],
       "matches": ["<all_urls>"]
     }

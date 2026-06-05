@@ -1,3 +1,5 @@
+@import url("motion.css");
+
 .pts-ticker-bar {
   position: fixed;
   top: 0;
@@ -14,7 +16,25 @@
   box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.06);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
-  animation: pts-bar-fadein 0.3s ease-out;
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity var(--motion-bar-enter, 300ms) var(--ease-out, ease),
+    transform var(--motion-bar-enter, 300ms) var(--ease-out, ease);
+}
+
+.pts-ticker-bar.pts-ticker-visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.pts-ticker-bar.pts-ticker-exiting {
+  opacity: 0;
+  transform: translateY(-100%);
+  transition:
+    opacity var(--motion-fast, 150ms) var(--ease-out, ease),
+    transform var(--motion-fast, 150ms) var(--ease-out, ease);
+  pointer-events: none;
 }
 
 .pts-stale-indicator {
@@ -34,6 +54,10 @@
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
 }
 
+.pts-aggregate.pts-aggregate-flash {
+  animation: pts-aggregate-flash var(--motion-fast, 150ms) var(--ease-out, ease);
+}
+
 .pts-scroll-wrapper {
   overflow: hidden;
   flex: 1 1 auto;
@@ -45,12 +69,24 @@
   animation: pts-scroll var(--pts-ticker-duration, 40s) linear infinite;
 }
 
+.pts-scroll-inner.pts-scroll-static {
+  animation: none;
+  flex-wrap: nowrap;
+  overflow-x: auto;
+  max-width: 100%;
+  scrollbar-width: none;
+}
+
+.pts-scroll-inner.pts-scroll-static::-webkit-scrollbar {
+  display: none;
+}
+
 .pts-item {
   display: inline-flex;
   align-items: center;
   padding: 0 16px;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
-  transition: background 0.15s ease;
+  transition: background var(--motion-fast, 150ms) var(--ease-standard, ease);
 }
 
 .pts-item:hover {
@@ -112,8 +148,22 @@
   text-decoration: underline;
 }
 
-.pts-scroll-wrapper:hover .pts-scroll-inner {
+.pts-scroll-wrapper:hover .pts-scroll-inner:not(.pts-scroll-static) {
   animation-play-state: paused;
+}
+
+.pts-ticker-bar.pts-reduced-motion .pts-stale-indicator {
+  animation: none;
+}
+
+.pts-ticker-bar.pts-reduced-motion .pts-scroll-inner {
+  animation: none;
+}
+
+.pts-ticker-bar.pts-reduced-motion {
+  opacity: 1;
+  transform: none;
+  transition: none;
 }
 
 @keyframes pts-scroll {
@@ -125,17 +175,6 @@
   }
 }
 
-@keyframes pts-bar-fadein {
-  from {
-    opacity: 0;
-    transform: translateY(-100%);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
 @keyframes pts-pulse {
   0%,
   100% {
@@ -143,5 +182,42 @@
   }
   50% {
     opacity: 0.45;
+  }
+}
+
+@keyframes pts-aggregate-flash {
+  0% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 0.55;
+  }
+  100% {
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pts-ticker-bar {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
+
+  .pts-ticker-bar.pts-ticker-exiting {
+    opacity: 0;
+    transition: opacity var(--motion-fast, 0ms) ease;
+  }
+
+  .pts-stale-indicator {
+    animation: none;
+  }
+
+  .pts-scroll-inner {
+    animation: none;
+  }
+
+  .pts-aggregate.pts-aggregate-flash {
+    animation: none;
   }
 }

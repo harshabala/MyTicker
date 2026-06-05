@@ -326,6 +326,58 @@
         font-size: 13px;
       }
 
+      .popup-view {
+        transition: opacity var(--motion-fast, 150ms) var(--ease-out, ease);
+      }
+
+      .popup-view.view-enter {
+        opacity: 0;
+      }
+
+      .popup-view.view-exit {
+        opacity: 0;
+      }
+
+      .summary-card.pnl-flash {
+        animation: pnl-flash var(--motion-fast, 150ms) var(--ease-out, ease);
+      }
+
+      @keyframes pnl-flash {
+        0% { opacity: 1; }
+        45% { opacity: 0.65; }
+        100% { opacity: 1; }
+      }
+
+      .checklist-stagger .checklist-item {
+        opacity: 0;
+        transform: translateY(6px);
+        animation: checklist-stagger var(--motion-medium, 250ms) var(--ease-out, ease) forwards;
+        animation-delay: calc(var(--stagger-index, 0) * 60ms + 40ms);
+      }
+
+      @keyframes checklist-stagger {
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        .status-dot {
+          animation: none;
+        }
+
+        .checklist-stagger .checklist-item {
+          opacity: 1;
+          transform: none;
+          animation: none;
+        }
+
+        .summary-card.pnl-flash {
+          animation: none;
+        }
+      }
+
       .setup-checklist .checklist-item {
         display: flex;
         gap: 10px;
@@ -379,10 +431,15 @@
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
+        transition: background var(--motion-fast, 150ms) ease, transform var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .btn-setup:hover {
         background: var(--accent-hover);
+      }
+
+      .footer a:active {
+        transform: scale(0.98);
       }
     </style>
   </head>
