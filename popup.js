@@ -58,15 +58,25 @@ function renderPopupContent(container, state) {
   container.innerHTML = "";
 
   if (!state || !state.positions || !state.positions.length) {
-    container.innerHTML = `
-      <div class="summary-card">
-        <div class="empty-state">
-          <div class="emoji">📈</div>
-          <div class="title">No holdings yet</div>
-          <div class="subtitle">Import your portfolio CSV or add crypto<br/>holdings in settings to get started.</div>
-        </div>
-      </div>
-    `;
+    const card = document.createElement("div");
+    card.className = "summary-card";
+    const empty = document.createElement("div");
+    empty.className = "empty-state";
+    const emoji = document.createElement("div");
+    emoji.className = "emoji";
+    emoji.textContent = "📈";
+    const title = document.createElement("div");
+    title.className = "title";
+    title.textContent = "No holdings yet";
+    const subtitle = document.createElement("div");
+    subtitle.className = "subtitle";
+    subtitle.textContent =
+      "Import your portfolio CSV or add crypto holdings in settings to get started.";
+    empty.appendChild(emoji);
+    empty.appendChild(title);
+    empty.appendChild(subtitle);
+    card.appendChild(empty);
+    container.appendChild(card);
     return;
   }
 
@@ -135,7 +145,10 @@ function renderPopupContent(container, state) {
   if (sorted.length >= 2) {
     const moversSection = document.createElement("div");
     moversSection.className = "movers-section";
-    moversSection.innerHTML = `<div class="label">Top Movers</div>`;
+    const moversLabel = document.createElement("div");
+    moversLabel.className = "label";
+    moversLabel.textContent = "Top Movers";
+    moversSection.appendChild(moversLabel);
 
     const best = sorted[0];
     const worst = sorted[sorted.length - 1];

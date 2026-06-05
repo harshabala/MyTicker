@@ -514,6 +514,7 @@
           <div class="field">
             <div class="field-label">Refresh interval (minutes)</div>
             <input type="number" id="refreshMinutes" placeholder="1" min="1" max="60" />
+            <div class="field-hint">Finnhub free tier: ~60 calls/min. Each holding uses one call per refresh.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary" id="saveProviderButton">Save</button>
@@ -530,7 +531,7 @@
           <div class="card-item">
             <div class="item-left">
               <div class="item-label">Include crypto</div>
-              <div class="item-desc">Add crypto assets to your ticker</div>
+              <div class="item-desc">Finnhub quotes via BINANCE:SYMBOL (e.g. BINANCE:BTCUSDT)</div>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="includeCrypto" />
@@ -553,7 +554,7 @@
               rows="3"
               placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
             ></textarea>
-            <div class="field-hint">One per line: SYMBOL, quantity</div>
+            <div class="field-hint">One per line: BINANCE:PAIR, quantity. Top 5 mode is a watchlist (qty 1, unit price P&amp;L).</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary" id="saveCryptoButton">Save</button>
