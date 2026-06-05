@@ -5,7 +5,8 @@ import {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
   computePositionsState,
-  mergePriceSnapshots
+  mergePriceSnapshots,
+  inferDisplayCurrency
 } from "./shared.js";
 
 import { FinnhubPriceProvider } from "./priceProviders.js";
@@ -67,7 +68,7 @@ chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   }
 });
 
-chrome.runtime.onInstalled.addListener(() => {
+chrome.runtime.onInstalled.addListener((details) => {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     if (!data[STORAGE_KEYS.settings]) {
       chrome.storage.sync.set({ [STORAGE_KEYS.settings]: DEFAULT_SETTINGS });
@@ -79,6 +80,17 @@ chrome.runtime.onInstalled.addListener(() => {
       periodInMinutes: interval
     });
   });
+
+  if (details.reason === "install") {
+    chrome.storage.local.set({
+      [STORAGE_KEYS.onboarding]: {
+        firstInstall: true,
+        wizardStep: 1,
+        setupComplete: false
+      }
+    });
+    chrome.runtime.openOptionsPage();
+  }
 });
 
 // Re-create alarm on service worker startup (MV3 workers restart frequently).
@@ -180,6 +192,7 @@ async function handlePricePoll() {
     const positionsState = computePositionsState(holdings, newHistory, now);
 
     positionsState.updatedAt = now;
+    positionsState.displayCurrency = inferDisplayCurrency(baseHoldings);
 
     // Issue #10: Stale if no successful fetch in 5+ minutes or repeated empty polls.
     const timeStale =

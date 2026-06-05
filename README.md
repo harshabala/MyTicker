@@ -26,7 +26,8 @@
 | **Multi-Broker CSV Import** | Drag-and-drop CSV files from Zerodha, Groww, Upstox, or any generic format |
 | **Crypto Support** | Finnhub/Binance symbols — Top 5 watchlist or manual holdings (`BINANCE:BTCUSDT`) |
 | **One-Click Toggle** | Enable/disable via popup or `Ctrl+Shift+Y` keyboard shortcut |
-| **Premium Dark UI** | Glassmorphism popup, Apple-style settings, glow effects on the ticker |
+| **Premium Dark UI** | Apple-minimal Obsidian Gold theme, guided 3-step setup |
+| **First-run onboarding** | Setup wizard, status dashboard, popup checklist for new users |
 | **100% Local Data** | Your holdings and API keys never leave your browser |
 | **Test Connection** | Validate your API key with one click before going live |
 
@@ -107,12 +108,15 @@ CSV Upload → csvParser.js → chrome.storage.local (holdings)
 4. Click **Load unpacked** → select the cloned folder
 5. Click the MyTicker icon in your toolbar
 
-### Setup
+### Setup (~2 minutes)
 
-1. **Get a free API key** from [finnhub.io](https://finnhub.io) (takes 30 seconds)
-2. Open **MyTicker Settings** → paste your API key → click **Test connection**
-3. **Import holdings**: drag-and-drop your broker's CSV export, or add crypto manually
-4. Visit any webpage — your ticker strip appears at the top!
+On first install, **Settings opens automatically** with a 3-step wizard:
+
+1. **API key** — free at [finnhub.io](https://finnhub.io/register) → Save → Test connection (validates `TCS.NS`)
+2. **Import CSV** — drag-and-drop Zerodha/Groww/Upstox holdings export (NSE symbols auto-get `.NS`)
+3. **Go live** — visit any tab; today's P&L appears in the ticker strip and popup
+
+The extension popup shows a checklist until setup is complete.
 
 ## 📁 Project Structure
 

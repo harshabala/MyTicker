@@ -178,6 +178,112 @@
         margin-top: 4px;
       }
 
+      .setup-status {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 8px;
+        padding: 14px 16px;
+      }
+
+      .status-pill {
+        font-size: 12px;
+        padding: 8px 10px;
+        border-radius: var(--radius-sm);
+        background: var(--bg-hover);
+        border: 1px solid var(--border);
+      }
+
+      .status-pill.ok {
+        border-color: rgba(48, 209, 88, 0.35);
+        color: var(--green);
+      }
+
+      .status-pill.pending {
+        color: var(--text-tertiary);
+      }
+
+      .setup-welcome {
+        padding: 14px 16px;
+        font-size: 13px;
+        line-height: 1.5;
+        color: var(--text-secondary);
+        border-bottom: 1px solid var(--border);
+      }
+
+      .setup-wizard {
+        padding: 14px 16px;
+      }
+
+      .wizard-steps {
+        display: flex;
+        gap: 8px;
+        margin-bottom: 12px;
+        flex-wrap: wrap;
+      }
+
+      .wizard-step {
+        font-size: 11px;
+        padding: 6px 10px;
+        border-radius: 999px;
+        border: 1px solid var(--border);
+        color: var(--text-tertiary);
+        cursor: pointer;
+        background: transparent;
+        font-family: inherit;
+      }
+
+      .wizard-step.active {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-muted);
+      }
+
+      .wizard-step.done {
+        color: var(--green);
+      }
+
+      .wizard-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+        margin-bottom: 10px;
+        line-height: 1.45;
+      }
+
+      .warn-banner {
+        padding: 12px 16px;
+        font-size: 12px;
+        color: var(--yellow);
+        background: rgba(255, 214, 10, 0.08);
+        border-bottom: 1px solid var(--border);
+        display: none;
+      }
+
+      .warn-banner.visible {
+        display: block;
+      }
+
+      .section-highlight {
+        outline: 2px solid var(--accent);
+        outline-offset: 4px;
+        border-radius: var(--radius);
+      }
+
+      details.crypto-details > summary {
+        cursor: pointer;
+        padding: 14px 16px;
+        font-size: 14px;
+        font-weight: 500;
+        list-style: none;
+      }
+
+      details.crypto-details > summary::-webkit-details-marker {
+        display: none;
+      }
+
+      details.crypto-details[open] summary {
+        border-bottom: 1px solid var(--border);
+      }
+
       /* Toggle switch */
       .toggle-switch {
         position: relative;
@@ -438,9 +544,60 @@
         </div>
       </div>
 
-      <!-- Broker CSV Import -->
-      <div class="section">
-        <div class="section-title">Portfolio Import</div>
+      <!-- Setup status -->
+      <div class="section" id="section-setup">
+        <div class="section-title">Setup Status</div>
+        <div class="card">
+          <div class="setup-welcome" id="setupWelcome" hidden>
+            Welcome to MyTicker. Complete the steps below to see your portfolio P&amp;L on every tab.
+          </div>
+          <div class="setup-status" id="setupStatus">
+            <div class="status-pill pending" id="statusApi">○ API key</div>
+            <div class="status-pill pending" id="statusHoldings">○ Holdings</div>
+            <div class="status-pill pending" id="statusSync">○ Last sync</div>
+            <div class="status-pill pending" id="statusLive">○ Live data</div>
+          </div>
+          <div class="warn-banner" id="rateLimitWarn">
+            Large portfolio: Finnhub free tier allows ~60 calls/min. Use a 2+ minute refresh interval or fewer holdings.
+          </div>
+          <div class="setup-wizard" id="setupWizard">
+            <div class="wizard-steps">
+              <button type="button" class="wizard-step active" data-step="1" id="wizStep1">1. API key</button>
+              <button type="button" class="wizard-step" data-step="2" id="wizStep2">2. Import CSV</button>
+              <button type="button" class="wizard-step" data-step="3" id="wizStep3">3. Go live</button>
+            </div>
+            <p class="wizard-hint" id="wizardHint">
+              Step 1: Get a free key at finnhub.io, paste below, then Save and Test connection.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Market Data (step 1) -->
+      <div class="section" id="section-market">
+        <div class="section-title">Market Data — Step 1</div>
+        <div class="card">
+          <div class="field">
+            <div class="field-label">Finnhub API key</div>
+            <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" />
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">finnhub.io</a> (no card required)</div>
+          </div>
+          <div class="field">
+            <div class="field-label">Refresh interval (minutes)</div>
+            <input type="number" id="refreshMinutes" placeholder="1" min="1" max="60" />
+            <div class="field-hint">Finnhub free tier: ~60 calls/min. Each holding uses one call per refresh.</div>
+          </div>
+          <div class="btn-row">
+            <button class="btn btn-primary" id="saveProviderButton">Save</button>
+            <button class="btn btn-secondary" id="testConnectionButton">Test connection</button>
+            <span class="status-badge" id="providerStatus"></span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Broker CSV Import (step 2) -->
+      <div class="section" id="section-import">
+        <div class="section-title">Portfolio Import — Step 2</div>
         <div class="card">
           <div class="card-item">
             <div class="item-left">
@@ -487,32 +644,12 @@
         </div>
       </div>
 
-      <!-- Market Data -->
-      <div class="section">
-        <div class="section-title">Market Data</div>
-        <div class="card">
-          <div class="field">
-            <div class="field-label">Finnhub API key</div>
-            <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" />
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io" target="_blank" style="color: var(--accent); text-decoration: none;">finnhub.io</a></div>
-          </div>
-          <div class="field">
-            <div class="field-label">Refresh interval (minutes)</div>
-            <input type="number" id="refreshMinutes" placeholder="1" min="1" max="60" />
-            <div class="field-hint">Finnhub free tier: ~60 calls/min. Each holding uses one call per refresh.</div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-primary" id="saveProviderButton">Save</button>
-            <button class="btn btn-secondary" id="testConnectionButton">Test connection</button>
-            <span class="status-badge" id="providerStatus"></span>
-          </div>
-        </div>
-      </div>
-
-      <!-- Crypto -->
-      <div class="section">
-        <div class="section-title">Crypto</div>
-        <div class="card">
+      <!-- Crypto (optional, collapsed) -->
+      <div class="section" id="section-crypto">
+        <div class="section-title">Optional</div>
+        <details class="card crypto-details" id="cryptoDetails">
+          <summary>Crypto (advanced)</summary>
+          <div>
           <div class="card-item">
             <div class="item-left">
               <div class="item-label">Include crypto</div>
@@ -545,7 +682,8 @@
             <button class="btn btn-primary" id="saveCryptoButton">Save</button>
             <span class="status-badge" id="cryptoStatus"></span>
           </div>
-        </div>
+          </div>
+        </details>
       </div>
 
       <!-- Appearance -->
@@ -587,7 +725,8 @@
         <div class="section-title">Tips</div>
         <div class="card">
           <ul class="tips-list">
-            <li>Use the extension popup or <kbd style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
+            <li>Use the extension popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
+            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code> for Finnhub.</li>
             <li>Re-import CSV whenever your broker holdings change.</li>
             <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
             <li>Hover over the ticker strip to pause scrolling.</li>

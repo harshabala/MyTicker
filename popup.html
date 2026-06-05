@@ -318,6 +318,72 @@
         font-size: 10px;
         border: 1px solid var(--border);
       }
+
+      .loading-state {
+        text-align: center;
+        padding: 24px;
+        color: var(--text-tertiary);
+        font-size: 13px;
+      }
+
+      .setup-checklist .checklist-item {
+        display: flex;
+        gap: 10px;
+        align-items: flex-start;
+        padding: 8px 0;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .setup-checklist .checklist-item:last-of-type {
+        border-bottom: none;
+      }
+
+      .setup-checklist .check-icon {
+        width: 22px;
+        height: 22px;
+        border-radius: 999px;
+        background: var(--bg-hover);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: 600;
+        flex-shrink: 0;
+      }
+
+      .setup-checklist .checklist-item.done .check-icon {
+        background: var(--accent-muted);
+        color: var(--accent);
+      }
+
+      .check-label {
+        font-size: 13px;
+        font-weight: 500;
+      }
+
+      .check-hint {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 2px;
+      }
+
+      .btn-setup {
+        width: 100%;
+        margin-top: 12px;
+        padding: 10px;
+        border: none;
+        border-radius: var(--radius-sm);
+        background: var(--accent);
+        color: #000;
+        font-size: 13px;
+        font-weight: 600;
+        cursor: pointer;
+        font-family: inherit;
+      }
+
+      .btn-setup:hover {
+        background: var(--accent-hover);
+      }
     </style>
   </head>
   <body>
@@ -345,9 +411,7 @@
       <a id="openOptions" href="#">Open settings →</a>
     </div>
 
-    <div class="shortcut-hint">
-      Toggle: <kbd>Ctrl</kbd>+<kbd>Shift</kbd>+<kbd>Y</kbd>
-    </div>
+    <div class="shortcut-hint" id="shortcutHint"></div>
 
     <script type="module" src="popup.js"></script>
   </body>

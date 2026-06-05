@@ -8,7 +8,9 @@ import {
   mergePriceSnapshots,
   computePositionsState,
   formatSigned,
-  formatCurrency
+  formatCurrency,
+  formatSignedCurrency,
+  inferDisplayCurrency
 } from "../shared.js";
 
 let passed = 0;
@@ -142,6 +144,12 @@ const noHistState = computePositionsState(
 );
 assert(noHistState.positions[0].lastPrice === null, "no-history position has null lastPrice");
 assert(noHistState.positions[0].window5mPnl === 0, "no-history position has 0 window P&L");
+
+// ── Currency formatting ──
+assert(formatSignedCurrency(1000, "INR").includes("1"), "INR signed format includes digits");
+assert(formatSignedCurrency(-50, "USD").startsWith("-"), "USD negative has minus");
+assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "INR" }]) === "INR", "infer INR majority");
+assert(inferDisplayCurrency([{ currency: "USD" }]) === "USD", "infer USD");
 
 // ── Summary ──
 console.log(`\n${"═".repeat(40)}`);

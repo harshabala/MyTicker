@@ -5,7 +5,8 @@ const STORAGE_KEYS = {
   holdings: "pts_holdings",
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
-  pollHealth: "pts_poll_health"
+  pollHealth: "pts_poll_health",
+  onboarding: "pts_onboarding"
 };
 
 const DEFAULT_SETTINGS = {
@@ -191,15 +192,38 @@ function formatSigned(value) {
 }
 
 /**
- * Format a value as currency (USD).
+ * Format a value as currency (INR or USD).
  */
-function formatCurrency(value, currency = "USD") {
+function formatCurrency(value, currency = "INR") {
   const num = Number(value) || 0;
+  const cur = currency === "USD" ? "USD" : "INR";
   try {
-    return num.toLocaleString("en-US", { style: "currency", currency });
+    return num.toLocaleString(cur === "INR" ? "en-IN" : "en-US", {
+      style: "currency",
+      currency: cur,
+      maximumFractionDigits: 2
+    });
   } catch {
-    return `$${num.toFixed(2)}`;
+    return cur === "INR" ? `₹${num.toFixed(2)}` : `$${num.toFixed(2)}`;
   }
+}
+
+/**
+ * Signed currency for P&L displays (e.g. +₹1,234.56).
+ */
+function formatSignedCurrency(value, currency = "INR") {
+  const num = Number(value) || 0;
+  const abs = formatCurrency(Math.abs(num), currency);
+  if (num > 0) return `+${abs}`;
+  if (num < 0) return `-${abs}`;
+  return abs;
+}
+
+/** Pick INR when most holdings are Indian brokers. */
+function inferDisplayCurrency(holdings) {
+  if (!holdings?.length) return "INR";
+  const inrCount = holdings.filter((h) => (h.currency || "INR") === "INR").length;
+  return inrCount >= holdings.length / 2 ? "INR" : "USD";
 }
 
 function getStartOfDayTimestamp(now) {
@@ -215,5 +239,7 @@ export {
   mergePriceSnapshots,
   computePositionsState,
   formatSigned,
-  formatCurrency
+  formatCurrency,
+  formatSignedCurrency,
+  inferDisplayCurrency
 };

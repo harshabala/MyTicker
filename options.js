@@ -1,5 +1,11 @@
 import { STORAGE_KEYS, DEFAULT_SETTINGS } from "./shared.js";
-import { BROKER_PRESETS, parseCsv, mapRowsToHoldings } from "./csvParser.js";
+import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
+import {
+  getSetupStatus,
+  markWizardStep,
+  completeSetup,
+  formatLastSync
+} from "./onboarding.js";
 
 const brokerPresetEl = document.getElementById("brokerPreset");
 const csvFileEl = document.getElementById("csvFile");
@@ -29,9 +35,27 @@ const holdingsPreviewEl = document.getElementById("holdingsPreview");
 const clearHoldingsButton = document.getElementById("clearHoldingsButton");
 const toastEl = document.getElementById("toast");
 
+const setupWelcomeEl = document.getElementById("setupWelcome");
+const statusApiEl = document.getElementById("statusApi");
+const statusHoldingsEl = document.getElementById("statusHoldings");
+const statusSyncEl = document.getElementById("statusSync");
+const statusLiveEl = document.getElementById("statusLive");
+const rateLimitWarnEl = document.getElementById("rateLimitWarn");
+const wizardHintEl = document.getElementById("wizardHint");
+const sectionMarket = document.getElementById("section-market");
+const sectionImport = document.getElementById("section-import");
+
+const WIZARD_HINTS = {
+  1: "Step 1: Get a free key at finnhub.io, paste below, then Save and Test connection (uses TCS.NS for India).",
+  2: "Step 2: Export holdings CSV from Zerodha/Groww/Upstox, drop it below. NSE symbols get .NS automatically.",
+  3: "Step 3: Visit any webpage — your ticker shows today's P&L at the top. Use the popup for a summary."
+};
+
 init();
 
 function init() {
+  setPlatformShortcut(document.getElementById("tipsShortcut"));
+  wireWizardSteps();
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
@@ -111,6 +135,82 @@ function init() {
 
   // Populate preview on load.
   handleRefreshPreview();
+  refreshSetupUI();
+}
+
+function setPlatformShortcut(el) {
+  if (!el) return;
+  const isMac = /Mac|iPhone|iPad|iPod/.test(navigator.platform || navigator.userAgent);
+  el.textContent = isMac ? "⌘+Shift+Y" : "Ctrl+Shift+Y";
+}
+
+function wireWizardSteps() {
+  document.querySelectorAll(".wizard-step").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const step = Number(btn.dataset.step) || 1;
+      goToWizardStep(step);
+    });
+  });
+}
+
+function goToWizardStep(step) {
+  markWizardStep(step);
+  document.querySelectorAll(".wizard-step").forEach((btn) => {
+    const n = Number(btn.dataset.step);
+    btn.classList.toggle("active", n === step);
+    btn.classList.toggle("done", n < step);
+  });
+  if (wizardHintEl) {
+    wizardHintEl.textContent = WIZARD_HINTS[step] || WIZARD_HINTS[1];
+  }
+  const target =
+    step === 1 ? sectionMarket : step === 2 ? sectionImport : sectionMarket;
+  if (target) {
+    target.classList.add("section-highlight");
+    target.scrollIntoView({ behavior: "smooth", block: "start" });
+    setTimeout(() => target.classList.remove("section-highlight"), 2000);
+  }
+  if (step === 3) {
+    completeSetup();
+  }
+  refreshSetupUI();
+}
+
+async function refreshSetupUI() {
+  const status = await getSetupStatus();
+
+  if (setupWelcomeEl) {
+    setupWelcomeEl.hidden = !(status.firstInstall || !status.complete);
+  }
+
+  setPill(statusApiEl, status.hasApiKey, "API key");
+  setPill(statusHoldingsEl, status.hasHoldings, `Holdings (${status.holdingsCount})`);
+  setPill(statusSyncEl, status.lastFetch > 0, `Sync ${formatLastSync(status.lastFetch)}`);
+  setPill(statusLiveEl, status.hasLiveData, "Live data");
+
+  if (rateLimitWarnEl) {
+    rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
+  }
+
+  const step = status.hasApiKey ? (status.hasHoldings ? 3 : 2) : 1;
+  document.querySelectorAll(".wizard-step").forEach((btn) => {
+    const n = Number(btn.dataset.step);
+    btn.classList.toggle("active", n === step);
+    btn.classList.toggle("done", (n === 1 && status.hasApiKey) || (n === 2 && status.hasHoldings) || (n === 3 && status.hasLiveData));
+  });
+  if (wizardHintEl && !status.complete) {
+    wizardHintEl.textContent = WIZARD_HINTS[step];
+  }
+
+  if (status.complete) {
+    await completeSetup();
+  }
+}
+
+function setPill(el, ok, label) {
+  if (!el) return;
+  el.className = `status-pill ${ok ? "ok" : "pending"}`;
+  el.textContent = `${ok ? "✓" : "○"} ${label}`;
 }
 
 function updateCryptoManualVisibility() {
@@ -134,17 +234,26 @@ function handleImportCsv() {
     try {
       const text = String(reader.result || "");
       const rows = parseCsv(text);
-      const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
-      if (!holdings.length) {
-        showToast("No holdings found in CSV.", "error");
+      const diag = diagnoseCsvImport(rows, preset);
+      if (diag) {
+        showToast(diag, "error");
         return;
       }
 
-      chrome.storage.local.set({ [STORAGE_KEYS.holdings]: holdings }, () => {
-        showToast(`Imported ${holdings.length} holdings (${preset.name})`, "success");
+      const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
+      const nsCount = holdings.filter((h) => h.symbol.endsWith(".NS")).length;
+
+      chrome.storage.local.set({ [STORAGE_KEYS.holdings]: holdings }, async () => {
+        const msg =
+          nsCount > 0
+            ? `Imported ${holdings.length} holdings (${nsCount} with .NS for NSE)`
+            : `Imported ${holdings.length} holdings (${preset.name})`;
+        showToast(msg, "success");
         csvStatusEl.textContent = `${holdings.length} holdings`;
+        await markWizardStep(3);
         handleRefreshPreview();
         requestImmediatePoll();
+        refreshSetupUI();
       });
     } catch (err) {
       console.error("Failed to parse CSV", err);
@@ -186,7 +295,9 @@ function handleSaveProvider() {
           });
         });
         showToast("Provider settings saved", "success");
+        markWizardStep(2);
         requestImmediatePoll();
+        refreshSetupUI();
       });
     });
   });
@@ -204,16 +315,18 @@ async function handleTestConnection() {
 
   try {
     const resp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`
+      `https://finnhub.io/api/v1/quote?symbol=TCS.NS&token=${encodeURIComponent(apiKey)}`
     );
     if (!resp.ok) {
       throw new Error(`HTTP ${resp.status}`);
     }
     const data = await resp.json();
     if (typeof data.c === "number" && data.c > 0) {
-      showToast(`✓ Connected — AAPL: $${data.c}`, "success");
+      showToast(`✓ Connected — TCS.NS: ₹${data.c.toFixed(2)}`, "success");
+      await markWizardStep(2);
+      refreshSetupUI();
     } else {
-      showToast("API key invalid or no data returned", "error");
+      showToast("API key invalid or no data for TCS.NS", "error");
     }
   } catch (err) {
     showToast(`Connection failed: ${err.message}`, "error");
@@ -265,9 +378,21 @@ function handleSaveCrypto() {
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
       showToast("Crypto settings saved", "success");
       requestImmediatePoll();
+      refreshSetupUI();
     });
   });
 }
+
+chrome.storage.onChanged.addListener((changes, areaName) => {
+  if (
+    areaName === "local" &&
+    (changes[STORAGE_KEYS.holdings] ||
+      changes[STORAGE_KEYS.positionsState] ||
+      changes["pts_price_api_key"])
+  ) {
+    refreshSetupUI();
+  }
+});
 
 function requestImmediatePoll() {
   chrome.runtime.sendMessage({ action: "poll-now" }, () => {

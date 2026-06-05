@@ -168,3 +168,40 @@ export function mapRowsToHoldings(rows, mapping, brokerId, defaults = {}) {
   return holdings;
 }
 
+/**
+ * Validate CSV headers against a broker preset. Returns null if OK, else user message.
+ */
+export function diagnoseCsvImport(rows, preset) {
+  if (!rows.length) {
+    return "CSV is empty. Export holdings from your broker and try again.";
+  }
+
+  const headers = Object.keys(rows[0]);
+  const expected = Object.entries(preset.columns).map(([key, col]) => ({
+    key,
+    col
+  }));
+  const missing = expected.filter(({ col }) => {
+    const lower = col.toLowerCase();
+    return !headers.some((h) => h.toLowerCase() === lower);
+  });
+
+  if (missing.length) {
+    const names = missing.map((m) => m.col).join(", ");
+    const found = headers.slice(0, 8).join(", ");
+    return `Missing columns for ${preset.name}: ${names}. Found: ${found}${headers.length > 8 ? "…" : ""}. See test_fixtures/sample_holdings_zerodha.csv for Zerodha format.`;
+  }
+
+  const mapped = mapRowsToHoldings(rows, preset.columns, "check", preset.defaults || {});
+  if (!mapped.length) {
+    return `No rows with quantity > 0. Check the "${preset.columns.quantity}" column in your CSV.`;
+  }
+
+  const normalized = mapped.filter((h) => h.symbol.includes(".NS") || h.symbol.includes(".BO")).length;
+  if (preset.defaults?.exchange === "NSE" && normalized < mapped.length * 0.5) {
+    return `${mapped.length} rows parsed, but few NSE symbols (.NS). Confirm broker preset is Zerodha and CSV is a holdings export.`;
+  }
+
+  return null;
+}
+

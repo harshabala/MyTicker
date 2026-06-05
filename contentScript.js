@@ -1,6 +1,6 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
 
-import { STORAGE_KEYS, formatSigned } from "./shared.js";
+import { STORAGE_KEYS, formatSigned, formatSignedCurrency } from "./shared.js";
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const TICKER_STYLE_ID = "pts-ticker-style";
@@ -107,18 +107,22 @@ function renderTicker(state) {
     const staleEl = document.createElement("div");
     staleEl.className = "pts-stale-indicator";
     staleEl.textContent = "⚠ Stale";
+    staleEl.setAttribute("role", "status");
     staleEl.title = "Price data may be outdated – check your API key or network";
     container.appendChild(staleEl);
   }
 
   const aggregate = document.createElement("div");
   aggregate.className = "pts-aggregate";
+  aggregate.setAttribute("role", "status");
+  aggregate.setAttribute("aria-label", "Portfolio day profit and loss");
   const aggPnl = Number(state?.aggregate?.dayPnl) || 0;
   const aggPct = Number(state?.aggregate?.dayPnlPct) || 0;
   const aggDirClass = aggPnl > 0 ? "pts-up" : aggPnl < 0 ? "pts-down" : "pts-flat";
+  const currency = state?.displayCurrency || "INR";
 
   aggregate.classList.add(aggDirClass);
-  aggregate.textContent = `Day: ${formatSigned(aggPnl)} (${aggPct.toFixed(2)}%)`;
+  aggregate.textContent = `Today ${formatSignedCurrency(aggPnl, currency)} (${aggPct.toFixed(2)}%)`;
   container.appendChild(aggregate);
 
   const scrollWrapper = document.createElement("div");
