@@ -46,7 +46,16 @@ async function savePollHealth() {
   });
 }
 
-loadPollHealth();
+let pollHealthLoaded = false;
+
+async function ensurePollHealthLoaded() {
+  if (!pollHealthLoaded) {
+    await loadPollHealth();
+    pollHealthLoaded = true;
+  }
+}
+
+ensurePollHealthLoaded();
 
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.action === "poll-now") {
@@ -108,6 +117,7 @@ async function handlePricePoll() {
   pollInFlight = true;
 
   try {
+    await ensurePollHealthLoaded();
     const [syncData, localData] = await Promise.all([
       chrome.storage.sync.get([STORAGE_KEYS.settings]),
       chrome.storage.local.get([
