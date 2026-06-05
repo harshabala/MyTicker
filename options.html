@@ -3,23 +3,8 @@
   <head>
     <meta charset="utf-8" />
     <title>MyTicker Settings</title>
+    <link rel="stylesheet" href="brand.css" />
     <style>
-      :root {
-        --bg: #0d0f14;
-        --bg-surface: rgba(20, 22, 30, 0.95);
-        --bg-hover: rgba(28, 31, 42, 0.95);
-        --border: rgba(255, 255, 255, 0.06);
-        --border-focus: rgba(34, 211, 238, 0.4);
-        --text-primary: #f1f3f5;
-        --text-secondary: #858b98;
-        --text-tertiary: #555a66;
-        --accent: #22d3ee;
-        --accent-hover: #06b6d4;
-        --green: #4ade80;
-        --red: #f87171;
-        --radius: 12px;
-        --radius-sm: 8px;
-      }
 
       * {
         margin: 0;
@@ -28,7 +13,7 @@
       }
 
       body {
-        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        font-family: var(--font-sans);
         background: var(--bg);
         color: var(--text-primary);
         -webkit-font-smoothing: antialiased;
@@ -211,7 +196,7 @@
       .toggle-slider {
         position: absolute;
         inset: 0;
-        background: #2a2d3a;
+        background: var(--bg-tertiary);
         border-radius: 11px;
         transition: background 0.2s ease;
       }

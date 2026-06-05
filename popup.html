@@ -3,19 +3,13 @@
   <head>
     <meta charset="utf-8" />
     <title>MyTicker</title>
+    <link rel="stylesheet" href="brand.css" />
     <style>
       :root {
-        --bg-primary: #0f1117;
-        --bg-card: rgba(23, 25, 35, 0.95);
-        --bg-card-hover: rgba(30, 33, 45, 0.95);
-        --border: rgba(255, 255, 255, 0.06);
-        --text-primary: #f1f3f5;
-        --text-secondary: #858b98;
-        --text-tertiary: #555a66;
-        --accent: #22d3ee;
-        --green: #4ade80;
-        --red: #f87171;
-        --radius: 10px;
+        --bg-primary: var(--bg);
+        --bg-card: var(--bg-surface);
+        --bg-card-hover: var(--bg-hover);
+        --radius: var(--radius-sm);
       }
 
       * {
@@ -28,7 +22,7 @@
         min-width: 320px;
         max-width: 320px;
         padding: 16px;
-        font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', system-ui, sans-serif;
+        font-family: var(--font-sans);
         background: var(--bg-primary);
         color: var(--text-primary);
         -webkit-font-smoothing: antialiased;
@@ -103,7 +97,7 @@
       .toggle-slider {
         position: absolute;
         inset: 0;
-        background: #2a2d3a;
+        background: var(--bg-tertiary);
         border-radius: 11px;
         transition: background 0.2s ease;
       }
@@ -204,7 +198,7 @@
       }
 
       .status-dot.stale {
-        background: #fbbf24;
+        background: var(--yellow);
       }
 
       .status-text {

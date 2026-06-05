@@ -1,0 +1,39 @@
+/**
+ * MyTicker brand tokens — Obsidian Gold (minimal Apple variant)
+ * Palette #4 refined: lower chroma, neutral surfaces, subtle gold accent.
+ */
+:root {
+  --bg: #000000;
+  --bg-surface: #1c1c1e;
+  --bg-hover: #2c2c2e;
+  --bg-tertiary: #3a3a3c;
+
+  --border: rgba(255, 255, 255, 0.08);
+  --border-focus: rgba(201, 176, 112, 0.5);
+
+  --text-primary: #f5f5f7;
+  --text-secondary: #98989d;
+  --text-tertiary: #636366;
+
+  --accent: #c9b070;
+  --accent-hover: #b39e5c;
+  --accent-muted: rgba(201, 176, 112, 0.14);
+
+  --green: #30d158;
+  --red: #ff453a;
+  --yellow: #ffd60a;
+
+  --radius: 12px;
+  --radius-sm: 8px;
+
+  --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
+    system-ui, sans-serif;
+  --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
+
+  /* Ticker strip (content script) */
+  --pts-bg: #000000;
+  --pts-fg: #f5f5f7;
+  --pts-border: rgba(255, 255, 255, 0.1);
+  --pts-icon-bg: #2c2c2e;
+  --pts-crypto-accent: #c9b070;
+}
