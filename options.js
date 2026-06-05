@@ -144,6 +144,7 @@ function handleImportCsv() {
         showToast(`Imported ${holdings.length} holdings (${preset.name})`, "success");
         csvStatusEl.textContent = `${holdings.length} holdings`;
         handleRefreshPreview();
+        requestImmediatePoll();
       });
     } catch (err) {
       console.error("Failed to parse CSV", err);
@@ -185,6 +186,7 @@ function handleSaveProvider() {
           });
         });
         showToast("Provider settings saved", "success");
+        requestImmediatePoll();
       });
     });
   });
@@ -262,7 +264,14 @@ function handleSaveCrypto() {
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
       showToast("Crypto settings saved", "success");
+      requestImmediatePoll();
     });
+  });
+}
+
+function requestImmediatePoll() {
+  chrome.runtime.sendMessage({ action: "poll-now" }, () => {
+    void chrome.runtime.lastError;
   });
 }
 
@@ -278,11 +287,19 @@ function parseCryptoHoldings(text) {
     const qty = Number((qtyRaw || "0").trim());
     if (!qty || Number.isNaN(qty)) continue;
     result.push({
-      symbol: symbolRaw.trim(),
+      symbol: normalizeCryptoSymbol(symbolRaw.trim()),
       quantity: qty
     });
   }
   return result;
+}
+
+/** Finnhub crypto quotes use BINANCE:PAIR format (e.g. BINANCE:BTCUSDT). */
+function normalizeCryptoSymbol(raw) {
+  const s = String(raw).trim();
+  if (!s) return s;
+  if (s.includes(":")) return s.toUpperCase();
+  return `BINANCE:${s.toUpperCase()}`;
 }
 
 function handleRefreshPreview() {

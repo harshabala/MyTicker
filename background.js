@@ -23,9 +23,40 @@ const DEFAULT_TOP5_CRYPTO = [
 // Issue #8: In-flight lock to prevent concurrent poll execution.
 let pollInFlight = false;
 
-// Issue #10: Track consecutive API failures for stale-data warning.
+// Issue #10: Track consecutive API failures for stale-data warning (persisted).
 let consecutiveFailures = 0;
 let lastSuccessfulFetch = 0;
+
+const STALE_FAILURE_THRESHOLD = 3;
+const STALE_TIME_THRESHOLD_MS = 5 * 60 * 1000;
+
+async function loadPollHealth() {
+  const data = await chrome.storage.local.get([STORAGE_KEYS.pollHealth]);
+  const health = data[STORAGE_KEYS.pollHealth] || {};
+  consecutiveFailures = Number(health.consecutiveFailures) || 0;
+  lastSuccessfulFetch = Number(health.lastSuccessfulFetch) || 0;
+}
+
+async function savePollHealth() {
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.pollHealth]: {
+      consecutiveFailures,
+      lastSuccessfulFetch
+    }
+  });
+}
+
+loadPollHealth();
+
+chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+  if (message?.action === "poll-now") {
+    handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
+      console.error("[MyTicker] poll-now failed", err);
+      sendResponse({ ok: false, error: String(err) });
+    });
+    return true;
+  }
+});
 
 chrome.runtime.onInstalled.addListener(() => {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -133,15 +164,18 @@ async function handlePricePoll() {
     } else {
       consecutiveFailures++;
     }
+    await savePollHealth();
 
     const newHistory = mergePriceSnapshots(priceHistory, quotes, now);
     const positionsState = computePositionsState(holdings, newHistory, now);
 
     positionsState.updatedAt = now;
 
-    // Issue #10: Add stale-data warning if no successful fetch in 5+ minutes.
-    const staleThreshold = 5 * 60 * 1000;
-    if (lastSuccessfulFetch > 0 && (now - lastSuccessfulFetch) > staleThreshold) {
+    // Issue #10: Stale if no successful fetch in 5+ minutes or repeated empty polls.
+    const timeStale =
+      lastSuccessfulFetch > 0 && now - lastSuccessfulFetch > STALE_TIME_THRESHOLD_MS;
+    const failureStale = consecutiveFailures >= STALE_FAILURE_THRESHOLD;
+    if (timeStale || failureStale) {
       positionsState.staleWarning = true;
     }
 
@@ -171,6 +205,7 @@ async function handlePricePoll() {
   } catch (err) {
     console.error("Error in handlePricePoll", err);
     consecutiveFailures++;
+    await savePollHealth();
   } finally {
     pollInFlight = false;
   }
