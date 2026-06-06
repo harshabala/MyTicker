@@ -218,7 +218,11 @@ async function refreshSetupUI() {
   }
 
   if (status.complete) {
-    await completeSetup();
+    const data = await chrome.storage.local.get([STORAGE_KEYS.onboarding]);
+    const onboarding = data[STORAGE_KEYS.onboarding] || {};
+    if (!onboarding.setupComplete) {
+      await completeSetup();
+    }
   }
 }
 

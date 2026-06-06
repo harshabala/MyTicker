@@ -146,7 +146,7 @@ node test_fixtures/test_shared.mjs
 ```
 
 ```
-36 passed, 0 failed
+40 passed, 0 failed
 ```
 
 Tests cover: price snapshot merging, P&L calculations, stale data pruning, edge cases (null values, empty holdings, NaN inputs).

@@ -4,7 +4,6 @@ import { STORAGE_KEYS, formatSigned, formatSignedCurrency } from "./shared.js";
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const TICKER_STYLE_ID = "pts-ticker-style";
-const MOTION_STYLE_ID = "pts-motion-style";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 const BODY_TRANSITION_ATTR = "data-pts-body-transition";
 
@@ -62,17 +61,6 @@ function init() {
 }
 
 function loadTickerStyles() {
-  if (!document.getElementById(MOTION_STYLE_ID)) {
-    const motionLink = document.createElement("link");
-    motionLink.id = MOTION_STYLE_ID;
-    motionLink.rel = "stylesheet";
-    motionLink.href = chrome.runtime.getURL("motion.css");
-    document.documentElement.insertBefore(
-      motionLink,
-      document.documentElement.firstChild
-    );
-  }
-
   if (!document.getElementById(TICKER_STYLE_ID)) {
     const link = document.createElement("link");
     link.id = TICKER_STYLE_ID;
@@ -171,7 +159,10 @@ function removeTickerContainer() {
     return;
   }
 
+  let finished = false;
   const finish = () => {
+    if (finished) return;
+    finished = true;
     if (existing.parentNode) {
       existing.parentNode.removeChild(existing);
     }
@@ -222,7 +213,10 @@ function getTickerParts(container) {
 }
 
 function positionKey(pos) {
-  return String(pos.symbol || pos.displayName || "").toUpperCase();
+  const sym = String(pos.symbol || pos.displayName || "").toUpperCase();
+  const broker = String(pos.brokerId || "").toUpperCase();
+  const exchange = String(pos.exchange || "").toUpperCase();
+  return `${sym}|${broker}|${exchange}`;
 }
 
 function updateStaleIndicator(container, parts, state) {
@@ -330,8 +324,6 @@ function updateScrollItems(parts, state) {
     if (!item) {
       item = buildItemElement(pos);
       scrollInner.appendChild(item);
-    } else if (item.dataset.ptsKey !== positionKey(pos)) {
-      updateItemElement(item, pos);
     } else {
       updateItemElement(item, pos);
     }
@@ -340,11 +332,35 @@ function updateScrollItems(parts, state) {
   parts.scrollInner.classList.toggle("pts-scroll-static", reduced);
 }
 
+function clearTickerContent(container) {
+  const parts = container._ptsParts;
+  if (parts?.stale) {
+    parts.stale.remove();
+    parts.stale = null;
+  }
+  if (parts?.aggregate) {
+    parts.aggregate.textContent = "No holdings — import CSV in Settings";
+    parts.aggregate.classList.remove("pts-up", "pts-down", "pts-flat");
+    parts.aggregate.classList.add("pts-flat");
+    delete parts.aggregate.dataset.ptsSign;
+  }
+  if (parts?.scrollInner) {
+    while (parts.scrollInner.firstChild) {
+      parts.scrollInner.removeChild(parts.scrollInner.firstChild);
+    }
+  }
+}
+
 function renderTicker(state) {
   const container = document.getElementById(TICKER_CONTAINER_ID);
   if (!container) return;
 
   container.classList.toggle("pts-reduced-motion", prefersReducedMotion());
+
+  if (!state?.positions?.length) {
+    clearTickerContent(container);
+    return;
+  }
 
   const parts = getTickerParts(container);
   updateStaleIndicator(container, parts, state);

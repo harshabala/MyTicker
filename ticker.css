@@ -1,4 +1,13 @@
-@import url("motion.css");
+/* Ticker-only tokens — no motion.css import (avoids global host-page overrides). */
+:root {
+  --motion-instant: 0ms;
+  --motion-fast: 150ms;
+  --motion-medium: 250ms;
+  --motion-slow: 350ms;
+  --motion-bar-enter: 300ms;
+  --ease-standard: ease;
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+}
 
 .pts-ticker-bar {
   position: fixed;
