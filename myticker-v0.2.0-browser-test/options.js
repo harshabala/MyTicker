@@ -50,7 +50,7 @@ const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height=
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Step 1: Indian stocks (NSE/BSE) work automatically — no key needed. Add a Finnhub key only if you hold US stocks.",
+  1: "Step 1: Get a free key at finnhub.io, paste below, then Save and Test connection (uses TCS.NS for India).",
   2: "Step 2: Export holdings CSV from Zerodha/Groww/Upstox, drop it below. NSE symbols get .NS automatically.",
   3: "Step 3: Visit any webpage — your ticker shows today's P&L at the top. Use the popup for a summary."
 };
@@ -107,7 +107,6 @@ function init() {
   importCsvButton.addEventListener("click", handleImportCsv);
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
-  document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
   document.getElementById("saveAppearanceButton").addEventListener("click", handleSaveAppearance);
   document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
   refreshPreviewButton.addEventListener("click", handleRefreshPreview);
@@ -123,22 +122,9 @@ function init() {
   });
 
   // Disable test connection whenever the key field is edited (force re-save)
-  const apiKeyLenHint = document.getElementById("apiKeyLenHint");
   finnhubApiKeyEl.addEventListener("input", () => {
     testConnectionButton.disabled = true;
     testConnectionButton.title = "Save your API key first";
-    const len = finnhubApiKeyEl.value.trim().length;
-    if (apiKeyLenHint) {
-      if (len === 0) {
-        apiKeyLenHint.textContent = "";
-      } else if (len <= 24) {
-        apiKeyLenHint.textContent = `${len} chars ✓`;
-        apiKeyLenHint.style.color = "var(--green)";
-      } else {
-        apiKeyLenHint.textContent = `${len} chars — looks doubled, re-copy from dashboard`;
-        apiKeyLenHint.style.color = "var(--red)";
-      }
-    }
   });
 
   // Crypto mode toggle
@@ -280,17 +266,6 @@ function updateCryptoManualVisibility() {
   }
 }
 
-function detectPresetFromRows(rows) {
-  if (!rows.length) return null;
-  const headers = Object.keys(rows[0]).map((h) => h.toLowerCase());
-  for (const [key, preset] of Object.entries(BROKER_PRESETS)) {
-    if (key === "generic") continue;
-    const required = Object.entries(preset.columns).filter(([k]) => !(preset.defaults && k in preset.defaults));
-    if (required.every(([, col]) => headers.includes(col.toLowerCase()))) return key;
-  }
-  return null;
-}
-
 function handleImportCsv() {
   const file = csvFileEl.files?.[0];
   if (!file) {
@@ -302,6 +277,9 @@ function handleImportCsv() {
     return;
   }
 
+  const presetKey = brokerPresetEl.value || "generic";
+  const preset = BROKER_PRESETS[presetKey] || BROKER_PRESETS.generic;
+
   importCsvButton.disabled = true;
   importCsvButton.textContent = "Importing…";
 
@@ -310,17 +288,6 @@ function handleImportCsv() {
     try {
       const text = String(reader.result || "");
       const rows = parseCsv(text);
-
-      // Auto-detect preset from headers; fall back to whatever is selected
-      const detected = detectPresetFromRows(rows);
-      let presetKey = brokerPresetEl.value || "generic";
-      if (detected && detected !== presetKey) {
-        presetKey = detected;
-        brokerPresetEl.value = detected;
-        showToast(`Auto-detected broker: ${BROKER_PRESETS[detected].name}`, "success");
-      }
-      const preset = BROKER_PRESETS[presetKey] || BROKER_PRESETS.generic;
-
       const diag = diagnoseCsvImport(rows, preset);
       if (diag) {
         showToast(diag, "error");
@@ -368,6 +335,10 @@ function handleClearHoldings() {
 
 function handleSaveProvider() {
   const apiKey = finnhubApiKeyEl.value.trim();
+  if (!apiKey) {
+    showToast("Enter a Finnhub API key before saving", "error");
+    return;
+  }
   const refreshMinutes = Math.min(60, Math.max(1, Number(refreshMinutesEl.value) || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes));
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -406,102 +377,27 @@ async function handleTestConnection() {
 
   testConnectionButton.textContent = "Testing…";
   testConnectionButton.disabled = true;
-  if (providerStatusEl) {
-    providerStatusEl.className = "status-badge";
-    providerStatusEl.innerHTML = `<span class="skeleton-inline-loader"></span>`;
-  }
 
   try {
-    // Step 1: verify key is valid with a US stock (always on free tier)
-    const usResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
+    const resp = await fetch(
+      `https://finnhub.io/api/v1/quote?symbol=TCS.NS&token=${encodeURIComponent(apiKey)}`
     );
-    if (usResp.status === 401 || usResp.status === 403) {
-      const body = await usResp.json().catch(() => ({}));
-      const hint = body.error || `HTTP ${usResp.status}`;
-      showToast(`Key rejected by Finnhub: ${hint}. Regenerate at finnhub.io/dashboard.`, "error");
-      return;
+    if (!resp.ok) {
+      throw new Error(`HTTP ${resp.status}`);
     }
-    if (!usResp.ok) throw new Error(`HTTP ${usResp.status}`);
-    const usData = await usResp.json();
-    if (typeof usData.c !== "number") {
-      showToast("Key accepted but returned unexpected data. Try again.", "error");
-      return;
+    const data = await resp.json();
+    if (typeof data.c === "number" && data.c > 0) {
+      showToast(`✓ Connected — TCS.NS: ₹${data.c.toFixed(2)}`, "success");
+      await markWizardStep(2);
+      refreshSetupUI();
+    } else {
+      showToast("API key invalid or no data for TCS.NS", "error");
     }
-
-    // Step 2: try an Indian stock — may require a paid Finnhub plan
-    const inResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=TCS.NS&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (inResp.status === 403) {
-      showToast(
-        `✓ Key valid (AAPL: $${usData.c.toFixed(2)}) but Indian stocks (NSE/BSE) need a Finnhub paid plan. Free tier is US-only.`,
-        "error"
-      );
-      return;
-    }
-    if (inResp.ok) {
-      const inData = await inResp.json();
-      if (typeof inData.c === "number" && inData.c > 0) {
-        showToast(`✓ Connected — TCS.NS: ₹${inData.c.toFixed(2)} · AAPL: $${usData.c.toFixed(2)}`, "success");
-        await markWizardStep(2);
-        refreshSetupUI();
-        return;
-      }
-    }
-
-    // Key works, Indian stock returned empty — still usable
-    showToast(`✓ Key valid (AAPL: $${usData.c.toFixed(2)}). NSE quotes will be fetched on next refresh.`, "success");
-    await markWizardStep(2);
-    refreshSetupUI();
   } catch (err) {
     showToast(`Connection failed: ${err.message}`, "error");
   } finally {
     testConnectionButton.textContent = "Test connection";
     testConnectionButton.disabled = false;
-    if (providerStatusEl && providerStatusEl.querySelector(".skeleton-inline-loader")) {
-      providerStatusEl.innerHTML = "";
-    }
-  }
-}
-
-async function handleTestIndia() {
-  const btn = document.getElementById("testIndiaButton");
-  const statusEl = document.getElementById("indiaStatus");
-  btn.textContent = "Testing…";
-  btn.disabled = true;
-  if (statusEl) {
-    statusEl.className = "status-badge";
-    statusEl.innerHTML = `<span class="skeleton-inline-loader"></span>`;
-  }
-
-  try {
-    const resp = await fetch(
-      "https://query1.finance.yahoo.com/v8/finance/chart/TCS.NS?interval=1d&range=1d&includePrePost=false",
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (!resp.ok) throw new Error(`HTTP ${resp.status}`);
-    const data = await resp.json();
-    const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
-    if (typeof price === "number" && price > 0) {
-      showToast(`✓ India connected — TCS.NS: ₹${price.toFixed(2)}`, "success");
-      if (statusEl) {
-        statusEl.textContent = "✓ Connected";
-        statusEl.className = "status-badge success";
-      }
-    } else {
-      showToast("Yahoo Finance returned no data. Try again shortly.", "error");
-    }
-  } catch (err) {
-    showToast(`India connection failed: ${err.message}`, "error");
-  } finally {
-    btn.textContent = "Test connection";
-    btn.disabled = false;
-    if (statusEl && statusEl.querySelector(".skeleton-inline-loader")) {
-      statusEl.innerHTML = "";
-    }
   }
 }
 

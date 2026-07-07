@@ -59,23 +59,13 @@
       }
 
       .section-title {
-        font-size: 13px;
-        font-weight: 500;
-        text-transform: none;
-        letter-spacing: normal;
-        color: rgba(201, 176, 112, 0.7);
-        margin-bottom: 12px;
-        padding-left: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
-      }
-
-      .section-title::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: linear-gradient(to right, rgba(255, 255, 255, 0.07) 0%, transparent 100%);
+        font-size: 11px;
+        font-weight: 600;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+        color: var(--text-tertiary);
+        margin-bottom: 8px;
+        padding-left: 4px;
       }
 
       .card {
@@ -83,7 +73,6 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
       }
 
       .card-item {
@@ -142,7 +131,7 @@
       select:focus,
       textarea:focus {
         border-color: var(--border-focus);
-        box-shadow: 0 0 0 3px rgba(201, 176, 112, 0.1);
+        box-shadow: 0 0 0 3px rgba(34, 211, 238, 0.1);
       }
 
       select {
@@ -191,7 +180,7 @@
 
       .setup-status {
         display: grid;
-        grid-template-columns: 1.2fr 0.8fr;
+        grid-template-columns: 1fr 1fr;
         gap: 8px;
         padding: 14px 16px;
       }
@@ -202,42 +191,11 @@
         border-radius: var(--radius-sm);
         background: var(--bg-hover);
         border: 1px solid var(--border);
-        transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-      }
-
-      .status-pill:nth-child(even) {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0%, var(--bg-hover) 100%);
-      }
-
-      .status-pill:nth-child(odd) {
-        background: linear-gradient(135deg, var(--bg-hover) 0%, rgba(255, 255, 255, 0.01) 100%);
-      }
-
-      .status-pill:nth-child(3),
-      .status-pill:nth-child(4) {
-        grid-column: span 2;
-      }
-
-      .skeleton-inline-loader {
-        display: inline-block;
-        width: 60px;
-        height: 12px;
-        background: linear-gradient(90deg, var(--bg-hover) 25%, var(--border) 50%, var(--bg-hover) 75%);
-        background-size: 200% 100%;
-        animation: skeleton-loading 1.5s infinite linear;
-        border-radius: 4px;
-        vertical-align: middle;
-      }
-
-      @keyframes skeleton-loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
       }
 
       .status-pill.ok {
         border-color: rgba(48, 209, 88, 0.35);
         color: var(--green);
-        background: linear-gradient(135deg, rgba(48, 209, 88, 0.08) 0%, rgba(48, 209, 88, 0.03) 100%);
       }
 
       .status-pill.pending {
@@ -676,59 +634,6 @@
         color: var(--red);
       }
 
-      /* Stacked cards within a section */
-      .section .card + .card {
-        margin-top: 8px;
-      }
-
-      /* Provider card header */
-      .provider-card-header {
-        display: flex;
-        align-items: flex-start;
-        justify-content: space-between;
-        gap: 12px;
-        margin-bottom: 14px;
-      }
-
-      /* Provider card accent styling */
-      .card.card-provider-india {
-        border-color: rgba(48, 209, 88, 0.25);
-        background: linear-gradient(135deg, rgba(48, 209, 88, 0.03) 0%, var(--bg-surface) 40%);
-      }
-
-      .card.card-provider-us {
-        border-color: var(--border);
-      }
-      .provider-name {
-        font-size: 13px;
-        font-weight: 600;
-        color: var(--text-primary);
-        letter-spacing: -0.01em;
-      }
-      .provider-sub {
-        font-size: 11px;
-        color: var(--text-tertiary);
-        margin-top: 2px;
-      }
-      .provider-badge {
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        padding: 2px 7px;
-        border-radius: 4px;
-        flex-shrink: 0;
-        margin-top: 1px;
-      }
-      .provider-badge.auto {
-        background: rgba(48, 209, 88, 0.12);
-        color: var(--green);
-      }
-      .provider-badge.optional {
-        background: rgba(255, 255, 255, 0.05);
-        color: var(--text-tertiary);
-      }
-
       /* API key eye-toggle */
       .input-with-icon {
         position: relative;
@@ -845,7 +750,6 @@
         padding-top: 16px;
         font-size: 11px;
         color: var(--text-tertiary);
-        line-height: 1.6;
       }
     </style>
   </head>
@@ -891,36 +795,7 @@
       <!-- Market Data (step 1) -->
       <div class="section" id="section-market">
         <div class="section-title">Market Data — Step 1</div>
-
-        <!-- India provider -->
-        <div class="card card-provider-india">
-          <div style="padding: 14px 16px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">India</div>
-                <div class="provider-sub">NSE &amp; BSE · Yahoo Finance</div>
-              </div>
-              <span class="provider-badge auto">Auto</span>
-            </div>
-            <div class="field-hint" style="margin-bottom: 14px;">No API key required. All .NS and .BO symbols from your broker CSV are fetched automatically.</div>
-          </div>
-          <div class="btn-row">
-            <button class="btn btn-secondary btn-pressable" id="testIndiaButton">Test connection</button>
-            <span class="status-badge" id="indiaStatus"></span>
-          </div>
-        </div>
-
-        <!-- United States provider -->
-        <div class="card card-provider-us">
-          <div style="padding: 14px 16px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">United States</div>
-                <div class="provider-sub">NYSE &amp; NASDAQ · Finnhub</div>
-              </div>
-              <span class="provider-badge optional">Optional</span>
-            </div>
-          </div>
+        <div class="card">
           <div class="field">
             <label class="field-label" for="finnhubApiKey">Finnhub API key</label>
             <div class="input-with-icon">
@@ -932,12 +807,12 @@
                 </svg>
               </button>
             </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">finnhub.io</a> (no card required)</div>
           </div>
           <div class="field">
             <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
-            <input type="number" id="refreshMinutes" placeholder="5" min="1" max="60" />
-            <div class="field-hint">Applies to both providers. Each symbol uses one call per refresh.</div>
+            <input type="number" id="refreshMinutes" placeholder="1" min="1" max="60" />
+            <div class="field-hint">Finnhub free tier: ~60 calls/min. Each holding uses one call per refresh.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveProviderButton">Save</button>
@@ -1091,7 +966,7 @@
         <div class="card">
           <ul class="tips-list">
             <li>Use the extension popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
-            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed — fetched via Yahoo Finance.</li>
+            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code> for Finnhub.</li>
             <li>Re-import CSV whenever your broker holdings change.</li>
             <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
             <li>Hover over the ticker strip to pause scrolling.</li>
@@ -1100,7 +975,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.2.0 · Data stays local · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.2.0 · Data stays local in your browser
       </div>
     </div>
 

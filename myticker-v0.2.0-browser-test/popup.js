@@ -48,38 +48,28 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "local" && (
-      changes[STORAGE_KEYS.positionsState] ||
-      changes[STORAGE_KEYS.holdings] ||
-      changes[STORAGE_KEYS.watchlist] ||
-      changes.pts_price_api_key
-    )) {
+    if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
+      refreshPopup(mainContent);
+    }
+    if (areaName === "local" && (changes[STORAGE_KEYS.holdings] || changes.pts_price_api_key)) {
       refreshPopup(mainContent);
     }
   });
 });
 
-async function setPlatformShortcut(el) {
+function setPlatformShortcut(el) {
   if (!el) return;
-  try {
-    const commands = await chrome.commands.getAll();
-    const cmd = commands.find((c) => c.name === "toggle-myticker");
-    if (cmd?.shortcut) {
-      el.textContent = "";
-      el.append("Toggle: ");
-      const parts = cmd.shortcut.split("+");
-      parts.forEach((part, i) => {
-        const kbd = document.createElement("kbd");
-        kbd.textContent = part === "Command" ? "⌘" : part === "MacCtrl" ? "⌃" : part === "Alt" ? "⌥" : part;
-        el.appendChild(kbd);
-        if (i < parts.length - 1) el.append("+");
-      });
-      return;
-    }
-  } catch (_) { /* ignore */ }
-  // Shortcut not assigned
-  el.style.cssText = "color: var(--text-tertiary); font-size: 10px;";
-  el.textContent = "Shortcut not set — visit chrome://extensions/shortcuts";
+  const platform = (navigator.userAgentData?.platform || navigator.platform || navigator.userAgent).toLowerCase();
+  const modKey = platform.includes("mac") ? "⌘" : "Ctrl";
+  el.textContent = "";
+  el.append("Toggle: ");
+  const mod = document.createElement("kbd");
+  mod.textContent = modKey;
+  const shift = document.createElement("kbd");
+  shift.textContent = "Shift";
+  const y = document.createElement("kbd");
+  y.textContent = "Y";
+  el.append(mod, "+", shift, "+", y);
 }
 
 function prefersReducedMotion() {
@@ -143,11 +133,10 @@ async function _refreshPopupInner(container) {
 
   const [status, local] = await Promise.all([
     getSetupStatus(),
-    chrome.storage.local.get([STORAGE_KEYS.positionsState, STORAGE_KEYS.watchlist])
+    chrome.storage.local.get([STORAGE_KEYS.positionsState])
   ]);
 
   const state = local[STORAGE_KEYS.positionsState];
-  const watchlistItems = local[STORAGE_KEYS.watchlist] || [];
   let nextView = VIEW_PNL;
   if (!status.complete) {
     nextView = VIEW_CHECKLIST;
@@ -159,7 +148,7 @@ async function _refreshPopupInner(container) {
     if (nextView === VIEW_CHECKLIST) {
       updateChecklistInPlace(outgoing, status);
     } else if (nextView === VIEW_PNL) {
-      updatePnlInPlace(outgoing, state, watchlistItems);
+      updatePnlInPlace(outgoing, state);
     }
     popupHasRendered = true;
     return;
@@ -184,9 +173,9 @@ async function _refreshPopupInner(container) {
       checklistStaggered = true;
     }
   } else if (nextView === VIEW_EMPTY) {
-    renderEmptyState(viewEl, status);
+    renderEmptyState(viewEl);
   } else {
-    renderPopupContent(viewEl, state, watchlistItems, status);
+    renderPopupContent(viewEl, state);
   }
 
   mountView(container, viewEl, nextView);
@@ -209,7 +198,7 @@ function updateChecklistInPlace(viewEl, status) {
   });
 }
 
-function updatePnlInPlace(viewEl, state, watchlistItems) {
+function updatePnlInPlace(viewEl, state) {
   if (!state?.positions?.length) return;
 
   const currency = state.displayCurrency || "INR";
@@ -251,21 +240,6 @@ function updatePnlInPlace(viewEl, state, watchlistItems) {
     summaryCard.classList.add("pnl-flash");
   }
   lastAggregateSign = newSign;
-
-  // Update watchlist prices in-place
-  for (const w of (state?.watchlist || [])) {
-    const priceEl = viewEl.querySelector(`[data-watch-sym="${CSS.escape(w.symbol)}"]`);
-    const changeEl = viewEl.querySelector(`[data-watch-chg="${CSS.escape(w.symbol)}"]`);
-    if (priceEl && w.lastPrice != null) {
-      const isInr = w.symbol.endsWith(".NS") || w.symbol.endsWith(".BO");
-      priceEl.textContent = isInr ? `₹${w.lastPrice.toFixed(2)}` : `$${w.lastPrice.toFixed(2)}`;
-    }
-    if (changeEl) {
-      const pct = Number(w.changePct) || 0;
-      changeEl.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
-      changeEl.className = `watch-change ${pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat"}`;
-    }
-  }
 }
 
 function renderSetupChecklist(container, status) {
@@ -279,19 +253,19 @@ function renderSetupChecklist(container, status) {
 
   const steps = [
     {
+      done: status.hasApiKey,
+      label: "Add Finnhub API key",
+      hint: "Free at finnhub.io — takes ~30 seconds"
+    },
+    {
       done: status.hasHoldings,
       label: "Import broker CSV",
       hint: "Zerodha, Groww, or Upstox holdings export"
     },
     {
-      done: status.hasApiKey,
-      label: "Price data connected",
-      hint: "Indian stocks auto-connect · US stocks need a Finnhub key"
-    },
-    {
       done: status.hasLiveData,
       label: "See live P&L on any tab",
-      hint: "Open any webpage — the ticker strip appears at the top"
+      hint: "Visit a webpage after steps 1 & 2"
     }
   ];
 
@@ -330,49 +304,20 @@ function renderSetupChecklist(container, status) {
   container.appendChild(card);
 }
 
-function renderEmptyState(container, status) {
+function renderEmptyState(container) {
   const card = document.createElement("div");
   card.className = "summary-card";
   const empty = document.createElement("div");
   empty.className = "empty-state";
-
-  const emoji = document.createElement("div");
-  emoji.className = "emoji";
-
   const title = document.createElement("div");
   title.className = "title";
-
+  title.textContent = "Waiting for prices…";
   const subtitle = document.createElement("div");
   subtitle.className = "subtitle";
-
-  const isHoldingsEmpty = !status || !status.hasHoldings;
-
-  if (isHoldingsEmpty) {
-    emoji.textContent = "📂";
-    title.textContent = "No holdings imported";
-    subtitle.textContent = "Drag-and-drop your Zerodha, Groww, or Upstox CSV holdings export in Settings to view your portfolio P&L here.";
-  } else {
-    emoji.textContent = "⏳";
-    title.textContent = "Waiting for market data…";
-    subtitle.textContent = "Your holdings are loaded. Click 'Test connection' in Settings or wait for the next automatic sync.";
-  }
-
-  empty.appendChild(emoji);
+  subtitle.textContent =
+    "Holdings loaded. Open Settings and click Test connection, or wait for the next refresh.";
   empty.appendChild(title);
   empty.appendChild(subtitle);
-
-  const btn = document.createElement("button");
-  btn.type = "button";
-  btn.className = "btn-setup btn-pressable";
-  btn.style.marginTop = "14px";
-  btn.textContent = isHoldingsEmpty ? "Import Holdings →" : "Configure Settings →";
-  btn.addEventListener("click", () => {
-    if (chrome.runtime.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    }
-  });
-  empty.appendChild(btn);
-
   card.appendChild(empty);
   container.appendChild(card);
 }
@@ -387,9 +332,9 @@ function formatTimeAgo(timestamp) {
   return `Updated ${hours}h ago`;
 }
 
-function renderPopupContent(container, state, watchlistItems = [], status = null) {
+function renderPopupContent(container, state) {
   if (!state || !state.positions || !state.positions.length) {
-    renderEmptyState(container, status);
+    renderEmptyState(container);
     return;
   }
 
@@ -483,154 +428,4 @@ function renderPopupContent(container, state, watchlistItems = [], status = null
 
     container.appendChild(moversSection);
   }
-
-  renderWatchlistSection(container, watchlistItems, state?.watchlist || []);
-}
-
-function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
-  const section = document.createElement("div");
-  section.className = "watchlist-section";
-
-  const header = document.createElement("div");
-  header.className = "watchlist-header";
-  header.textContent = "Watchlist";
-  section.appendChild(header);
-
-  const priceMap = Object.fromEntries((watchlistPrices || []).map((w) => [w.symbol, w]));
-
-  if (!watchlistItems.length) {
-    const empty = document.createElement("div");
-    empty.className = "watchlist-empty";
-    empty.style.textAlign = "center";
-    empty.style.padding = "20px 12px";
-
-    const emoji = document.createElement("div");
-    emoji.style.fontSize = "22px";
-    emoji.style.marginBottom = "6px";
-    emoji.textContent = "🔔";
-
-    const title = document.createElement("div");
-    title.style.fontSize = "12px";
-    title.style.fontWeight = "600";
-    title.style.marginBottom = "4px";
-    title.textContent = "Watchlist is empty";
-
-    const desc = document.createElement("div");
-    desc.style.fontSize = "11px";
-    desc.style.color = "var(--text-tertiary)";
-    desc.style.lineHeight = "1.4";
-    desc.style.marginBottom = "10px";
-    desc.textContent = "Add stock or crypto tickers in Settings to track their live prices here.";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn-setup btn-pressable";
-    btn.style.width = "auto";
-    btn.style.padding = "4px 10px";
-    btn.style.fontSize = "10px";
-    btn.style.marginTop = "4px";
-    btn.textContent = "Add Symbols";
-    btn.addEventListener("click", () => {
-      if (chrome.runtime.openOptionsPage) {
-        chrome.runtime.openOptionsPage();
-      }
-    });
-
-    empty.appendChild(emoji);
-    empty.appendChild(title);
-    empty.appendChild(desc);
-    empty.appendChild(btn);
-    section.appendChild(empty);
-  } else {
-    for (const item of watchlistItems) {
-      const row = document.createElement("div");
-      row.className = "watchlist-item";
-
-      const sym = document.createElement("span");
-      sym.className = "watch-symbol";
-      sym.textContent = item.displayName;
-
-      const priceEl = document.createElement("span");
-      priceEl.className = "watch-price";
-      priceEl.dataset.watchSym = item.symbol;
-
-      const changeEl = document.createElement("span");
-      changeEl.className = "watch-change";
-      changeEl.dataset.watchChg = item.symbol;
-
-      const pd = priceMap[item.symbol];
-      if (pd?.lastPrice != null) {
-        const isInr = item.symbol.endsWith(".NS") || item.symbol.endsWith(".BO");
-        priceEl.textContent = isInr ? `₹${pd.lastPrice.toFixed(2)}` : `$${pd.lastPrice.toFixed(2)}`;
-        const pct = Number(pd.changePct) || 0;
-        changeEl.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
-        changeEl.className = `watch-change ${pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat"}`;
-      } else {
-        priceEl.textContent = "–";
-      }
-
-      const removeBtn = document.createElement("button");
-      removeBtn.className = "watch-remove";
-      removeBtn.textContent = "×";
-      removeBtn.title = `Remove ${item.displayName}`;
-      removeBtn.addEventListener("click", async () => {
-        const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
-        const updated = (data[STORAGE_KEYS.watchlist] || []).filter((w) => w.symbol !== item.symbol);
-        await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: updated });
-        chrome.runtime.sendMessage({ action: "poll-now" }, () => void chrome.runtime.lastError);
-      });
-
-      row.append(sym, priceEl, changeEl, removeBtn);
-      section.appendChild(row);
-    }
-  }
-
-  // Add row
-  const addRow = document.createElement("div");
-  addRow.className = "watchlist-add";
-
-  const input = document.createElement("input");
-  input.type = "text";
-  input.className = "watchlist-input";
-  input.placeholder = "SYMBOL";
-  input.maxLength = 20;
-  input.setAttribute("aria-label", "Watchlist symbol");
-
-  const exchangeSelect = document.createElement("select");
-  exchangeSelect.className = "watchlist-exchange";
-  for (const [val, label] of [["NSE", "NSE"], ["BSE", "BSE"], ["US", "US"]]) {
-    const opt = document.createElement("option");
-    opt.value = val;
-    opt.textContent = label;
-    exchangeSelect.appendChild(opt);
-  }
-
-  const addBtn = document.createElement("button");
-  addBtn.className = "watchlist-add-btn";
-  addBtn.textContent = "+";
-  addBtn.title = "Add to watchlist";
-
-  const doAdd = async () => {
-    const raw = input.value.trim().toUpperCase().replace(/[^A-Z0-9&-]/g, "");
-    if (!raw) { input.focus(); return; }
-    const exchange = exchangeSelect.value;
-    const symbol = exchange === "NSE" ? `${raw}.NS` : exchange === "BSE" ? `${raw}.BO` : raw;
-    const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
-    const current = data[STORAGE_KEYS.watchlist] || [];
-    if (!current.some((w) => w.symbol === symbol)) {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.watchlist]: [...current, { symbol, displayName: raw }]
-      });
-      chrome.runtime.sendMessage({ action: "poll-now" }, () => void chrome.runtime.lastError);
-    }
-    input.value = "";
-    input.focus();
-  };
-
-  addBtn.addEventListener("click", doAdd);
-  input.addEventListener("keydown", (e) => { if (e.key === "Enter") doAdd(); });
-
-  addRow.append(input, exchangeSelect, addBtn);
-  section.appendChild(addRow);
-  container.appendChild(section);
 }
