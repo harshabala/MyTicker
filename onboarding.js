@@ -1,6 +1,6 @@
 // Setup progress helpers for first-time user onboarding.
 
-import { STORAGE_KEYS } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, isActivated } from "./shared.js";
 
 const RATE_LIMIT_HOLDINGS_THRESHOLD = 40;
 
@@ -21,12 +21,21 @@ export async function getSetupStatus() {
   const positionsState = local[STORAGE_KEYS.positionsState];
   const pollHealth = local[STORAGE_KEYS.pollHealth] || {};
   const onboarding = local[STORAGE_KEYS.onboarding] || {};
+  const settings = sync[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
   const hasApiKey = apiKey.length > 0;
   const hasHoldings = holdings.length > 0;
   const lastFetch = Number(pollHealth.lastSuccessfulFetch) || Number(positionsState?.updatedAt) || 0;
   const hasLiveData = !!(positionsState?.positions?.length);
   const complete = hasApiKey && hasHoldings && hasLiveData;
+  const tickerEnabled = settings.enabled !== false;
+  const hasSuccessfulRefresh = lastFetch > 0;
+  const activated = isActivated({
+    hasApiKey,
+    holdingsCount: holdings.length,
+    tickerEnabled,
+    hasSuccessfulRefresh
+  });
 
   return {
     hasApiKey,
@@ -34,11 +43,15 @@ export async function getSetupStatus() {
     hasLiveData,
     lastFetch,
     complete,
+    tickerEnabled,
+    hasSuccessfulRefresh,
+    activated,
     holdingsCount: holdings.length,
     rateLimitRisk: holdings.length > RATE_LIMIT_HOLDINGS_THRESHOLD,
     wizardStep: Number(onboarding.wizardStep) || 1,
     setupDismissed: !!onboarding.setupDismissed,
-    firstInstall: !!onboarding.firstInstall
+    firstInstall: !!onboarding.firstInstall,
+    firstValueSeen: !!onboarding.firstValueSeen
   };
 }
 

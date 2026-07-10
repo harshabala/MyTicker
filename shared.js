@@ -6,8 +6,41 @@ const STORAGE_KEYS = {
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
   pollHealth: "pts_poll_health",
-  onboarding: "pts_onboarding"
+  onboarding: "pts_onboarding",
+  watchlist: "pts_watchlist",
+  metrics: "pts_metrics"
 };
+
+/**
+ * MT-1: MyTicker's single activation event.
+ * activated = api_ok AND holdings_count >= 1 AND ticker_enabled
+ *             AND >= 1 successful price refresh
+ */
+const ACTIVATION_EVENT = "myticker_activated";
+
+/**
+ * Pure activation predicate — all four conjuncts required.
+ */
+function isActivated({ hasApiKey, holdingsCount, tickerEnabled, hasSuccessfulRefresh }) {
+  return !!(hasApiKey && holdingsCount >= 1 && tickerEnabled && hasSuccessfulRefresh);
+}
+
+/**
+ * Record today's local date in activeDays (dedupe, cap at 400 newest).
+ * Returns a new array; does not mutate input.
+ */
+function recordActiveDay(activeDays, now = Date.now()) {
+  const d = new Date(now);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const today = `${yyyy}-${mm}-${dd}`;
+  const prev = Array.isArray(activeDays) ? activeDays : [];
+  if (prev.includes(today)) return prev.slice();
+  const next = [...prev, today];
+  if (next.length > 400) return next.slice(next.length - 400);
+  return next;
+}
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -236,6 +269,9 @@ function getStartOfDayTimestamp(now) {
 export {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
+  ACTIVATION_EVENT,
+  isActivated,
+  recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
   formatSigned,
