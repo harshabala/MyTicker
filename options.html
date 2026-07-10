@@ -87,7 +87,7 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: var(--material-elevated-shadow);
       }
 
       .card-item {
@@ -146,7 +146,7 @@
       select:focus,
       textarea:focus {
         border-color: var(--border-focus);
-        box-shadow: 0 0 0 3px rgba(201, 176, 112, 0.1);
+        box-shadow: var(--focus-ring);
       }
 
       select {
@@ -533,7 +533,7 @@
         inset: 4px;
         background: var(--bg-tertiary);
         border-radius: 999px;
-        transition: background var(--motion-medium, 280ms) var(--ease-spring, ease);
+        transition: background var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-slider::before {
@@ -545,8 +545,8 @@
         height: 27px;
         background: white;
         border-radius: 50%;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.12);
-        transition: transform var(--motion-medium, 280ms) var(--ease-spring, ease);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        transition: transform var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-switch input:checked + .toggle-slider {
@@ -712,20 +712,22 @@
         color: var(--text-tertiary);
       }
 
-      /* Toast notification */
+      /* Toast: border OR tight elevation, not both soft+wide (PRODUCT + anti-slop) */
       .toast {
         position: fixed;
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%) translateY(80px);
-        background: var(--bg-surface);
+        background: var(--bg-hover);
         border: 1px solid var(--border);
         padding: 10px 20px;
         border-radius: 999px;
         font-size: 13px;
         font-weight: 500;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        box-shadow: none;
+        transition:
+          transform var(--motion-medium, 220ms) var(--ease-out),
+          opacity var(--motion-medium, 220ms) var(--ease-out);
         opacity: 0;
         z-index: 100;
         pointer-events: none;
@@ -734,16 +736,12 @@
       .toast.show {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
       }
 
       .toast.toast-enter {
-        filter: blur(6px);
         transition:
-          transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 0.3s ease,
-          filter var(--motion-medium, 250ms) var(--ease-out, ease);
+          transform var(--motion-medium, 220ms) var(--ease-out),
+          opacity var(--motion-medium, 220ms) var(--ease-out);
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -978,7 +976,7 @@
 
       <!-- Market Data (step 1) -->
       <div class="section" id="section-market">
-        <div class="section-title">Market Data — Step 1</div>
+        <div class="section-title">Market Data · Step 1</div>
 
         <!-- India provider -->
         <div class="card card-provider-india">
@@ -1037,12 +1035,12 @@
 
       <!-- Broker CSV Import (step 2) -->
       <div class="section" id="section-import">
-        <div class="section-title">Portfolio Import — Step 2</div>
+        <div class="section-title">Portfolio Import · Step 2</div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below — NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
             </div>
             <a class="golden-path-sample" href="test_fixtures/sample_holdings_zerodha.csv" download>
               Download a sample Zerodha CSV to try it first
@@ -1194,7 +1192,7 @@
         <div class="card">
           <ul class="tips-list">
             <li>Use the extension popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
-            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed — fetched via Yahoo Finance.</li>
+            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed for Yahoo-backed quotes where configured; Finnhub is the primary price provider for this extension.</li>
             <li>Re-import CSV whenever your broker holdings change.</li>
             <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
             <li>Hover over the ticker strip to pause scrolling.</li>
@@ -1203,7 +1201,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.2.0 · Holdings and keys stay in this browser. Prices come from Finnhub; we don't send your portfolio to our servers — we don't have servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.2.0 · Holdings and keys stay in this browser. Prices come from Finnhub; we don't send your portfolio to our servers (we don't have servers). · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 

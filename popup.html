@@ -135,7 +135,7 @@
         inset: 4px;
         background: var(--bg-tertiary);
         border-radius: 999px;
-        transition: background var(--motion-medium) var(--ease-spring);
+        transition: background var(--motion-medium) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-slider::before {
@@ -147,8 +147,8 @@
         height: 27px;
         background: white;
         border-radius: 50%;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 2px 6px rgba(0, 0, 0, 0.12);
-        transition: transform var(--motion-medium) var(--ease-spring);
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        transition: transform var(--motion-medium) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-switch input:checked + .toggle-slider {
@@ -272,8 +272,9 @@
       .movers-section .label {
         font-size: 12px;
         font-weight: 600;
-        color: #a8a8ad;
+        color: var(--text-secondary);
         margin-bottom: 8px;
+        letter-spacing: 0.01em;
       }
 
       .mover-item {
@@ -375,9 +376,9 @@
         font-size: 13px;
       }
 
-      /* View machine: opacity cross-fade only (interruptible, symmetric path) */
+      /* View machine: opacity cross-fade only (symmetric path) */
       .popup-view {
-        transition: opacity var(--motion-medium) var(--ease-spring);
+        transition: opacity var(--motion-medium) var(--ease-out);
       }
 
       .popup-view.view-enter {
@@ -402,8 +403,8 @@
       /* Checklist enter: short opacity stagger (no large travel) */
       .checklist-stagger .checklist-item {
         opacity: 0;
-        animation: checklist-stagger var(--motion-medium) var(--ease-spring) forwards;
-        animation-delay: calc(var(--stagger-index, 0) * 50ms + 30ms);
+        animation: checklist-stagger var(--motion-medium) var(--ease-out) forwards;
+        animation-delay: calc(var(--stagger-index, 0) * 40ms + 20ms);
       }
 
       @keyframes checklist-stagger {
@@ -547,23 +548,14 @@
         letter-spacing: -0.01em;
       }
 
-      /*
-       * First-value hero: materialize (scale + opacity), not confetti shimmer.
-       * Delight from craft — one quiet settle, critically damped.
-       */
+      /* First-value: opacity only (state feedback, not decorative scale) */
       .summary-card.first-value {
-        animation: first-value-materialize var(--motion-slow) var(--ease-spring) both;
+        animation: first-value-in var(--motion-medium) var(--ease-out) both;
       }
 
-      @keyframes first-value-materialize {
-        from {
-          opacity: 0.55;
-          transform: scale(0.98);
-        }
-        to {
-          opacity: 1;
-          transform: scale(1);
-        }
+      @keyframes first-value-in {
+        from { opacity: 0.4; }
+        to { opacity: 1; }
       }
 
       @media (prefers-reduced-motion: reduce) {

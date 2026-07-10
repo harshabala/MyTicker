@@ -79,7 +79,7 @@ async function setPlatformShortcut(el) {
   } catch (_) { /* ignore */ }
   // Shortcut not assigned
   el.style.cssText = "color: var(--text-tertiary); font-size: 10px;";
-  el.textContent = "Shortcut not set — visit chrome://extensions/shortcuts";
+  el.textContent = "Shortcut not set. Visit chrome://extensions/shortcuts";
 }
 
 function prefersReducedMotion() {
@@ -98,7 +98,7 @@ async function fadeOutView(viewEl) {
     new Promise((resolve) => {
       viewEl.addEventListener("transitionend", resolve, { once: true });
     }),
-    waitMs(320)
+    waitMs(260)
   ]);
 }
 
@@ -274,8 +274,8 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   }
   if (stripLine) {
     stripLine.textContent = settings.enabled !== false
-      ? "Strip is on — open any tab."
-      : "Strip is off — flip the toggle above.";
+      ? "Strip is on. Open any tab."
+      : "Strip is off. Flip the toggle above.";
   }
 
   // Refresh top-3 movers in place when possible
@@ -335,7 +335,7 @@ function renderSetupChecklist(container, status) {
       done: status.hasApiKey,
       wizardStep: 1,
       label: "Connect price data",
-      hint: "Free Finnhub key — paste it in Settings"
+      hint: "Free Finnhub key: paste it in Settings"
     },
     {
       done: status.hasHoldings,
@@ -595,8 +595,8 @@ async function renderPopupContent(
   const stripLine = document.createElement("p");
   stripLine.className = "strip-status-line";
   stripLine.textContent = settings.enabled !== false
-    ? "Strip is on — open any tab."
-    : "Strip is off — flip the toggle above.";
+    ? "Strip is on. Open any tab."
+    : "Strip is off. Flip the toggle above.";
   container.appendChild(stripLine);
 
   renderWatchlistSection(container, watchlistItems, state?.watchlist || []);
