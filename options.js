@@ -51,7 +51,7 @@ const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height=
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Next: Connect price data. Free Finnhub key at finnhub.io, then paste and Save.",
+  1: "Next: Connect price data. Free price data key at finnhub.io, then paste and Save.",
   2: "Next: Import your holdings. Drop a Zerodha CSV (or open More formats for Groww/Upstox).",
   3: "Next: Open any tab to go live. The ticker strip and today's P&L appear automatically."
 };
@@ -523,7 +523,7 @@ async function handleTestConnection() {
     if (inResp.ok) {
       const inData = await inResp.json();
       if (typeof inData.c === "number" && inData.c > 0) {
-        showToast(`✓ Connected — TCS.NS: ₹${inData.c.toFixed(2)} · AAPL: $${usData.c.toFixed(2)}`, "success");
+        showToast(`✓ Connected: TCS.NS: ₹${inData.c.toFixed(2)} · AAPL: $${usData.c.toFixed(2)}`, "success");
         await markWizardStep(2);
         refreshSetupUI();
         return;
@@ -564,7 +564,7 @@ async function handleTestIndia() {
     const data = await resp.json();
     const price = data?.chart?.result?.[0]?.meta?.regularMarketPrice;
     if (typeof price === "number" && price > 0) {
-      showToast(`✓ India connected — TCS.NS: ₹${price.toFixed(2)}`, "success");
+      showToast(`✓ India connected: TCS.NS: ₹${price.toFixed(2)}`, "success");
       if (statusEl) {
         statusEl.textContent = "✓ Connected";
         statusEl.className = "status-badge success";

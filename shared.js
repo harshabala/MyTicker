@@ -115,6 +115,8 @@ function computePositionsState(holdings, priceHistory, now) {
   const windowStart = now - 5 * 60 * 1000;
   let totalCostDayBase = 0;
   let totalValueNow = 0;
+  let totalCost5mBase = 0;
+  let totalValue5mNow = 0;
   let stockCostBase = 0;
   let stockValueNow = 0;
   let cryptoCostBase = 0;
@@ -145,6 +147,8 @@ function computePositionsState(holdings, priceHistory, now) {
 
     const window5mPnl = (lastPrice - baseline5m) * h.quantity;
     const window5mPnlPct = baseline5m ? ((lastPrice - baseline5m) / baseline5m) * 100 : 0;
+    totalCost5mBase += baseline5m * h.quantity;
+    totalValue5mNow += lastPrice * h.quantity;
 
     // Daily baseline: prefer prevClose from the API (exchange-aware),
     // which correctly handles timezone differences (e.g. an Indian user
@@ -194,6 +198,10 @@ function computePositionsState(holdings, priceHistory, now) {
   const aggregateDayPnlPct =
     totalCostDayBase > 0 ? (aggregateDayPnl / totalCostDayBase) * 100 : 0;
 
+  const aggregateWindow5mPnl = totalValue5mNow - totalCost5mBase;
+  const aggregateWindow5mPnlPct =
+    totalCost5mBase > 0 ? (aggregateWindow5mPnl / totalCost5mBase) * 100 : 0;
+
   const stockDayPnl = stockValueNow - stockCostBase;
   const stockDayPnlPct = stockCostBase > 0 ? (stockDayPnl / stockCostBase) * 100 : 0;
 
@@ -206,6 +214,8 @@ function computePositionsState(holdings, priceHistory, now) {
     aggregate: {
       dayPnl: aggregateDayPnl,
       dayPnlPct: aggregateDayPnlPct,
+      window5mPnl: aggregateWindow5mPnl,
+      window5mPnlPct: aggregateWindow5mPnlPct,
       stockDayPnl,
       stockDayPnlPct,
       cryptoDayPnl,

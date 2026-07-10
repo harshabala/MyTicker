@@ -241,22 +241,51 @@ function updateChecklistInPlace(viewEl, status) {
   }
 }
 
+function shortTimeAgo(timestamp) {
+  if (!timestamp) return "just now";
+  const seconds = Math.floor((Date.now() - timestamp) / 1000);
+  if (seconds < 60) return "just now";
+  const minutes = Math.floor(seconds / 60);
+  if (minutes < 60) return `${minutes}m ago`;
+  const hours = Math.floor(minutes / 60);
+  return `${hours}h ago`;
+}
+
+function buildMetaLine(state, settings) {
+  const statusLabel = state.staleWarning ? "Stale" : "Live";
+  const strip = settings.enabled !== false ? "Strip on" : "Strip off";
+  return `${statusLabel} · ${shortTimeAgo(state.updatedAt)} · ${strip}`;
+}
+
+function announcePnl(viewEl, dayPnl, dayPnlPct, currency, window5mPnl) {
+  const live = viewEl.querySelector("[data-pnl-live]");
+  if (!live) return;
+  const day = formatSignedCurrency(dayPnl, currency);
+  const pct = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+  const five = formatSignedCurrency(window5mPnl, currency);
+  live.textContent = `Today ${day} (${pct}). Five minute ${five}.`;
+}
+
 function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
   if (!state?.positions?.length) return;
 
   const currency = state.displayCurrency || "INR";
-  const agg = state.aggregate || { dayPnl: 0, dayPnlPct: 0 };
+  const agg = state.aggregate || { dayPnl: 0, dayPnlPct: 0, window5mPnl: 0, window5mPnlPct: 0 };
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
+  const window5mPnl = Number(agg.window5mPnl) || 0;
+  const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
   const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
+  const fiveClass = window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
   const newSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
 
   const pnlValue = viewEl.querySelector(".pnl-value");
   const pnlPct = viewEl.querySelector(".pnl-pct");
+  const fiveValue = viewEl.querySelector(".window5m-value");
+  const fivePct = viewEl.querySelector(".window5m-pct");
   const holdingsCount = viewEl.querySelector(".holdings-count");
-  const statusTime = viewEl.querySelector(".status-time");
+  const metaLine = viewEl.querySelector(".meta-line");
   const summaryCard = viewEl.querySelector(".summary-card");
-  const stripLine = viewEl.querySelector(".strip-status-line");
 
   if (pnlValue) {
     pnlValue.className = `pnl-value ${pnlClass}`;
@@ -266,19 +295,24 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
     pnlPct.className = `pnl-pct ${pnlClass}`;
     pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
   }
+  if (fiveValue) {
+    fiveValue.className = `window5m-value ${fiveClass}`;
+    fiveValue.textContent = formatSignedCurrency(window5mPnl, currency);
+  }
+  if (fivePct) {
+    fivePct.className = `window5m-pct ${fiveClass}`;
+    fivePct.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
+  }
   if (holdingsCount) {
-    holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""} tracked`;
+    holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""}`;
   }
-  if (statusTime) {
-    statusTime.textContent = formatTimeAgo(state.updatedAt);
-  }
-  if (stripLine) {
-    stripLine.textContent = settings.enabled !== false
-      ? "Strip is on. Open any tab."
-      : "Strip is off. Flip the toggle above.";
+  if (metaLine) {
+    metaLine.textContent = buildMetaLine(state, settings);
+    metaLine.classList.toggle("is-stale", !!state.staleWarning);
   }
 
-  // Refresh top-3 movers in place when possible
+  announcePnl(viewEl, dayPnl, dayPnlPct, currency, window5mPnl);
+
   const moversSection = viewEl.querySelector(".movers-section");
   if (moversSection) {
     const movers = [...state.positions]
@@ -288,7 +322,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
     const existing = moversSection.querySelectorAll(".mover-item");
     existing.forEach((el) => el.remove());
     for (const pos of movers) {
-      moversSection.appendChild(buildMoverItem(pos));
+      moversSection.appendChild(buildMoverItem(pos, currency));
     }
   }
 
@@ -304,7 +338,6 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   }
   lastAggregateSign = newSign;
 
-  // Update watchlist prices in-place
   for (const w of (state?.watchlist || [])) {
     const priceEl = viewEl.querySelector(`[data-watch-sym="${CSS.escape(w.symbol)}"]`);
     const changeEl = viewEl.querySelector(`[data-watch-chg="${CSS.escape(w.symbol)}"]`);
@@ -335,7 +368,7 @@ function renderSetupChecklist(container, status) {
       done: status.hasApiKey,
       wizardStep: 1,
       label: "Connect price data",
-      hint: "Free Finnhub key: paste it in Settings"
+      hint: "Paste your free price data key in Settings"
     },
     {
       done: status.hasHoldings,
@@ -399,22 +432,31 @@ function renderSetupChecklist(container, status) {
   container.appendChild(card);
 }
 
-function buildMoverItem(pos) {
+function buildMoverItem(pos, currency = "INR") {
   const pct = Number(pos.dayPnlPct) || 0;
+  const dayPnl = Number(pos.dayPnl) || 0;
   const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
   const item = document.createElement("div");
   item.className = "mover-item";
+  item.setAttribute("role", "listitem");
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "mover-name";
   nameSpan.textContent = pos.displayName || pos.symbol;
 
+  const right = document.createElement("span");
+  right.className = "mover-right";
+
+  const moneySpan = document.createElement("span");
+  moneySpan.className = `mover-money ${cls}`;
+  moneySpan.textContent = formatSignedCurrency(dayPnl, currency);
+
   const changeSpan = document.createElement("span");
   changeSpan.className = `mover-change ${cls}`;
   changeSpan.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
 
-  item.appendChild(nameSpan);
-  item.appendChild(changeSpan);
+  right.append(moneySpan, changeSpan);
+  item.append(nameSpan, right);
   return item;
 }
 
@@ -423,9 +465,6 @@ function renderEmptyState(container, status) {
   card.className = "summary-card";
   const empty = document.createElement("div");
   empty.className = "empty-state";
-
-  const emoji = document.createElement("div");
-  emoji.className = "emoji";
 
   const title = document.createElement("div");
   title.className = "title";
@@ -436,16 +475,15 @@ function renderEmptyState(container, status) {
   const isHoldingsEmpty = !status || !status.hasHoldings;
 
   if (isHoldingsEmpty) {
-    emoji.textContent = "📂";
-    title.textContent = "No holdings imported";
-    subtitle.textContent = "Drag-and-drop your Zerodha, Groww, or Upstox CSV holdings export in Settings to view your portfolio P&L here.";
+    title.textContent = "No holdings yet";
+    subtitle.textContent =
+      "Import a broker CSV in Settings (Zerodha recommended) to see today's P&L here.";
   } else {
-    emoji.textContent = "⏳";
-    title.textContent = "Waiting for market data…";
-    subtitle.textContent = "Your holdings are loaded. Click 'Test connection' in Settings or wait for the next automatic sync.";
+    title.textContent = "Waiting for prices";
+    subtitle.textContent =
+      "Holdings are saved. Confirm your price key in Settings, or wait for the next automatic refresh.";
   }
 
-  empty.appendChild(emoji);
   empty.appendChild(title);
   empty.appendChild(subtitle);
 
@@ -453,26 +491,14 @@ function renderEmptyState(container, status) {
   btn.type = "button";
   btn.className = "btn-setup btn-pressable";
   btn.style.marginTop = "14px";
-  btn.textContent = isHoldingsEmpty ? "Import Holdings →" : "Configure Settings →";
+  btn.textContent = isHoldingsEmpty ? "Import holdings →" : "Open Settings →";
   btn.addEventListener("click", () => {
-    if (chrome.runtime.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    }
+    openOptionsAtWizardStep(isHoldingsEmpty ? 2 : 1);
   });
   empty.appendChild(btn);
 
   card.appendChild(empty);
   container.appendChild(card);
-}
-
-function formatTimeAgo(timestamp) {
-  if (!timestamp) return "Updated just now";
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "Updated just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `Updated ${minutes}m ago`;
-  const hours = Math.floor(minutes / 60);
-  return `Updated ${hours}h ago`;
 }
 
 async function renderPopupContent(
@@ -488,19 +514,32 @@ async function renderPopupContent(
   }
 
   const currency = state.displayCurrency || "INR";
-  const agg = state.aggregate || { dayPnl: 0, dayPnlPct: 0 };
+  const agg = state.aggregate || { dayPnl: 0, dayPnlPct: 0, window5mPnl: 0, window5mPnlPct: 0 };
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
+  const window5mPnl = Number(agg.window5mPnl) || 0;
+  const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
   const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
+  const fiveClass = window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
   lastAggregateSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
 
   const firstValue = status && !status.firstValueSeen;
 
   const summaryCard = document.createElement("div");
   summaryCard.className = `summary-card${firstValue ? " first-value" : ""}`;
+  summaryCard.setAttribute("aria-labelledby", "pnl-heading");
+
+  // Screen-reader live region for dynamic P&L (visually hidden)
+  const live = document.createElement("div");
+  live.className = "sr-only";
+  live.dataset.pnlLive = "1";
+  live.setAttribute("aria-live", "polite");
+  live.setAttribute("aria-atomic", "true");
+  summaryCard.appendChild(live);
 
   const label = document.createElement("div");
   label.className = "label";
+  label.id = "pnl-heading";
   label.textContent = firstValue ? "Your day so far" : `Today's P&L (${currency})`;
 
   const pnlRow = document.createElement("div");
@@ -514,64 +553,62 @@ async function renderPopupContent(
   pnlPct.className = `pnl-pct ${pnlClass}`;
   pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
 
-  pnlRow.appendChild(pnlValue);
-  pnlRow.appendChild(pnlPct);
+  pnlRow.append(pnlValue, pnlPct);
+
+  // Secondary 5-min window (product promise)
+  const fiveRow = document.createElement("div");
+  fiveRow.className = "window5m-row";
+  const fiveLabel = document.createElement("span");
+  fiveLabel.className = "window5m-label";
+  fiveLabel.textContent = "5-min";
+  const fiveValue = document.createElement("span");
+  fiveValue.className = `window5m-value ${fiveClass}`;
+  fiveValue.textContent = formatSignedCurrency(window5mPnl, currency);
+  const fivePct = document.createElement("span");
+  fivePct.className = `window5m-pct ${fiveClass}`;
+  fivePct.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
+  fiveRow.append(fiveLabel, fiveValue, fivePct);
 
   const holdingsCount = document.createElement("div");
   holdingsCount.className = "holdings-count";
-  holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""} tracked`;
+  holdingsCount.textContent = `${state.positions.length} holding${state.positions.length !== 1 ? "s" : ""}`;
 
-  summaryCard.appendChild(label);
-  summaryCard.appendChild(pnlRow);
-  summaryCard.appendChild(holdingsCount);
+  // Single meta line replaces status-bar card + strip line
+  const metaLine = document.createElement("p");
+  metaLine.className = `meta-line${state.staleWarning ? " is-stale" : ""}`;
+  metaLine.textContent = buildMetaLine(state, settings);
 
-  const footnote = document.createElement("p");
-  footnote.className = "stats-footnote";
-  footnote.append(
-    document.createTextNode(
-      "P&L = your imported quantities × latest price. 5-min is the short-term move; Daily is measured from the previous close (provider rules). "
-    )
-  );
+  // Methodology collapsed into one quiet link (not always-on disclaimer wall)
+  const helpRow = document.createElement("p");
+  helpRow.className = "help-row";
   const helpLink = document.createElement("a");
-  helpLink.href = "https://github.com/harshabala/MyTicker#features";
+  helpLink.href = "https://github.com/harshabala/MyTicker#for-technical-users";
   helpLink.target = "_blank";
   helpLink.rel = "noopener noreferrer";
-  helpLink.textContent = "How it works";
-  footnote.appendChild(helpLink);
-  summaryCard.appendChild(footnote);
+  helpLink.textContent = "How P&L is calculated";
+  const privacy = document.createElement("span");
+  privacy.className = "privacy-inline";
+  privacy.textContent = " · Local only";
+  helpRow.append(helpLink, privacy);
 
-  const privacy = document.createElement("p");
-  privacy.className = "privacy-line";
-  privacy.textContent = "Stored only in this browser. Never uploaded.";
-  summaryCard.appendChild(privacy);
-
+  summaryCard.append(label, pnlRow, fiveRow, holdingsCount, metaLine, helpRow);
   container.appendChild(summaryCard);
+
+  announcePnl(summaryCard, dayPnl, dayPnlPct, currency, window5mPnl);
 
   if (firstValue) {
     setOnboarding({ firstValueSeen: true }).catch(() => {});
   }
 
-  const statusClass = state.staleWarning ? "stale" : "connected";
-  const statusLabel = state.staleWarning ? "Data may be stale" : "Live";
-  const statusBar = document.createElement("div");
-  statusBar.className = "status-bar";
+  if (state.staleWarning) {
+    const staleAction = document.createElement("button");
+    staleAction.type = "button";
+    staleAction.className = "stale-action btn-pressable";
+    staleAction.textContent = "Data may be stale. Check connection →";
+    staleAction.addEventListener("click", () => openOptionsAtWizardStep(1));
+    container.appendChild(staleAction);
+  }
 
-  const statusText = document.createElement("span");
-  statusText.className = "status-text";
-  const statusDot = document.createElement("span");
-  statusDot.className = `status-dot ${statusClass}`;
-  statusText.appendChild(statusDot);
-  statusText.appendChild(document.createTextNode(statusLabel));
-
-  const statusTime = document.createElement("span");
-  statusTime.className = "status-time";
-  statusTime.textContent = formatTimeAgo(state.updatedAt);
-
-  statusBar.appendChild(statusText);
-  statusBar.appendChild(statusTime);
-  container.appendChild(statusBar);
-
-  // Top movers by absolute day P&L % — up to 3
   const movers = [...state.positions]
     .filter((p) => p.lastPrice != null)
     .sort((a, b) => Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0))
@@ -580,24 +617,19 @@ async function renderPopupContent(
   if (movers.length > 0) {
     const moversSection = document.createElement("div");
     moversSection.className = "movers-section";
+    moversSection.setAttribute("role", "list");
+    moversSection.setAttribute("aria-label", "Top movers today");
     const moversLabel = document.createElement("div");
     moversLabel.className = "label";
     moversLabel.textContent = "Top movers (today)";
     moversSection.appendChild(moversLabel);
 
     for (const pos of movers) {
-      moversSection.appendChild(buildMoverItem(pos));
+      moversSection.appendChild(buildMoverItem(pos, currency));
     }
 
     container.appendChild(moversSection);
   }
-
-  const stripLine = document.createElement("p");
-  stripLine.className = "strip-status-line";
-  stripLine.textContent = settings.enabled !== false
-    ? "Strip is on. Open any tab."
-    : "Strip is off. Flip the toggle above.";
-  container.appendChild(stripLine);
 
   renderWatchlistSection(container, watchlistItems, state?.watchlist || []);
 }
@@ -605,9 +637,10 @@ async function renderPopupContent(
 function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
   const section = document.createElement("div");
   section.className = "watchlist-section";
+  section.setAttribute("aria-label", "Watchlist");
 
   const header = document.createElement("div");
-  header.className = "watchlist-header";
+  header.className = "label watchlist-header";
   header.textContent = "Watchlist";
   section.appendChild(header);
 
@@ -616,45 +649,7 @@ function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
   if (!watchlistItems.length) {
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
-    empty.style.textAlign = "center";
-    empty.style.padding = "20px 12px";
-
-    const emoji = document.createElement("div");
-    emoji.style.fontSize = "22px";
-    emoji.style.marginBottom = "6px";
-    emoji.textContent = "🔔";
-
-    const title = document.createElement("div");
-    title.style.fontSize = "12px";
-    title.style.fontWeight = "600";
-    title.style.marginBottom = "4px";
-    title.textContent = "Watchlist is empty";
-
-    const desc = document.createElement("div");
-    desc.style.fontSize = "11px";
-    desc.style.color = "var(--text-tertiary)";
-    desc.style.lineHeight = "1.4";
-    desc.style.marginBottom = "10px";
-    desc.textContent = "Add stock or crypto tickers in Settings to track their live prices here.";
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.className = "btn-setup btn-pressable";
-    btn.style.width = "auto";
-    btn.style.padding = "4px 10px";
-    btn.style.fontSize = "10px";
-    btn.style.marginTop = "4px";
-    btn.textContent = "Add Symbols";
-    btn.addEventListener("click", () => {
-      if (chrome.runtime.openOptionsPage) {
-        chrome.runtime.openOptionsPage();
-      }
-    });
-
-    empty.appendChild(emoji);
-    empty.appendChild(title);
-    empty.appendChild(desc);
-    empty.appendChild(btn);
+    empty.textContent = "No symbols yet. Add one below, or import holdings for full P&L.";
     section.appendChild(empty);
   } else {
     for (const item of watchlistItems) {
@@ -685,8 +680,10 @@ function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
       }
 
       const removeBtn = document.createElement("button");
+      removeBtn.type = "button";
       removeBtn.className = "watch-remove";
       removeBtn.textContent = "×";
+      removeBtn.setAttribute("aria-label", `Remove ${item.displayName} from watchlist`);
       removeBtn.title = `Remove ${item.displayName}`;
       removeBtn.addEventListener("click", async () => {
         const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
@@ -700,7 +697,6 @@ function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
     }
   }
 
-  // Add row
   const addRow = document.createElement("div");
   addRow.className = "watchlist-add";
 
@@ -710,9 +706,12 @@ function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
   input.placeholder = "SYMBOL";
   input.maxLength = 20;
   input.setAttribute("aria-label", "Watchlist symbol");
+  input.id = "watchlistSymbolInput";
 
   const exchangeSelect = document.createElement("select");
   exchangeSelect.className = "watchlist-exchange";
+  exchangeSelect.setAttribute("aria-label", "Exchange");
+  exchangeSelect.id = "watchlistExchange";
   for (const [val, label] of [["NSE", "NSE"], ["BSE", "BSE"], ["US", "US"]]) {
     const opt = document.createElement("option");
     opt.value = val;
@@ -721,8 +720,10 @@ function renderWatchlistSection(container, watchlistItems, watchlistPrices) {
   }
 
   const addBtn = document.createElement("button");
+  addBtn.type = "button";
   addBtn.className = "watchlist-add-btn";
   addBtn.textContent = "+";
+  addBtn.setAttribute("aria-label", "Add symbol to watchlist");
   addBtn.title = "Add to watchlist";
 
   const doAdd = async () => {

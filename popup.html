@@ -60,15 +60,6 @@
         font-optical-sizing: auto;
       }
 
-      .version-badge {
-        font-size: 10px;
-        color: var(--text-tertiary);
-        background: rgba(255, 255, 255, 0.04);
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: 500;
-      }
-
       /* Toggle switch */
       .toggle-row {
         display: flex;
@@ -213,58 +204,98 @@
       .pnl-negative { color: var(--red); }
       .pnl-flat { color: var(--text-secondary); }
 
-      /* Status bar */
-      .status-bar {
+      /* Visually hidden (a11y live region) */
+      .sr-only {
+        position: absolute;
+        width: 1px;
+        height: 1px;
+        padding: 0;
+        margin: -1px;
+        overflow: hidden;
+        clip: rect(0, 0, 0, 0);
+        white-space: nowrap;
+        border: 0;
+      }
+
+      .window5m-row {
         display: flex;
-        align-items: center;
-        justify-content: space-between;
-        padding: 8px 12px;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
+        align-items: baseline;
+        gap: 6px;
+        margin-top: 6px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .window5m-label {
+        font-size: 11px;
+        font-weight: 600;
+        color: var(--text-tertiary);
+        letter-spacing: 0.01em;
+        min-width: 2.5rem;
+      }
+
+      .window5m-value {
+        font-size: 13px;
+        font-weight: 600;
+        letter-spacing: -0.01em;
+      }
+
+      .window5m-pct {
+        font-size: 12px;
+        font-weight: 500;
+      }
+
+      .meta-line {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        margin-top: 8px;
+        line-height: 1.4;
+        letter-spacing: 0.01em;
+      }
+
+      .meta-line.is-stale {
+        color: var(--yellow);
+      }
+
+      .help-row {
+        font-size: 11px;
+        margin-top: 6px;
+        line-height: 1.4;
+      }
+
+      .help-row a {
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .help-row a:hover {
+        text-decoration: underline;
+      }
+
+      .privacy-inline {
+        color: var(--text-tertiary);
+      }
+
+      .stale-action {
+        width: 100%;
         margin-bottom: 12px;
-        box-shadow: var(--material-elevated-shadow);
+        padding: 8px 10px;
+        border: 1px solid rgba(255, 214, 10, 0.35);
+        border-radius: var(--radius-sm);
+        background: rgba(255, 214, 10, 0.08);
+        color: var(--text-primary);
+        font-size: 12px;
+        font-weight: 500;
+        font-family: inherit;
+        cursor: pointer;
+        text-align: left;
       }
 
-      .status-dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--green);
-        margin-right: 6px;
-        display: inline-block;
-        /* Soft status pulse — not a slow vestibular loop; ease brightness only */
-        animation: pulse-dot 2.4s var(--ease-out) infinite;
+      .stale-action:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
       }
 
-      .status-dot.disconnected {
-        background: var(--red);
-        animation: none;
-      }
-
-      .status-dot.stale {
-        background: var(--yellow);
-        animation: none;
-      }
-
-      .status-text {
-        font-size: 11px;
-        color: var(--text-tertiary);
-        display: flex;
-        align-items: center;
-      }
-
-      .status-time {
-        font-size: 11px;
-        color: var(--text-tertiary);
-      }
-
-      @keyframes pulse-dot {
-        0%, 100% { opacity: 1; }
-        50% { opacity: 0.3; }
-      }
-
-      /* Top movers */
+      /* Top movers: dense list, no hover theater (non-interactive) */
       .movers-section {
         margin-bottom: 12px;
       }
@@ -273,7 +304,7 @@
         font-size: 12px;
         font-weight: 600;
         color: var(--text-secondary);
-        margin-bottom: 8px;
+        margin-bottom: 4px;
         letter-spacing: 0.01em;
       }
 
@@ -281,19 +312,13 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        padding: 10px 12px;
-        background: var(--bg-card);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        margin-bottom: 4px;
-        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04);
-        transition:
-          background var(--motion-fast) var(--ease-out),
-          transform var(--motion-press) var(--ease-press);
+        padding: 7px 0;
+        border-bottom: 1px solid var(--border);
+        cursor: default;
       }
 
-      .mover-item:hover {
-        background: var(--bg-card-hover);
+      .mover-item:last-child {
+        border-bottom: none;
       }
 
       .mover-name {
@@ -302,11 +327,25 @@
         letter-spacing: -0.01em;
       }
 
+      .mover-right {
+        display: flex;
+        align-items: baseline;
+        gap: 8px;
+      }
+
+      .mover-money {
+        font-size: 12px;
+        font-weight: 500;
+        font-variant-numeric: tabular-nums;
+      }
+
       .mover-change {
-        font-size: 13px;
+        font-size: 12px;
         font-weight: 600;
         letter-spacing: -0.01em;
         font-variant-numeric: tabular-nums;
+        min-width: 3.5rem;
+        text-align: right;
       }
 
       /* Footer link */
@@ -329,27 +368,23 @@
         text-decoration: underline;
       }
 
-      /* Empty state */
+      /* Empty state (no emoji residue) */
       .empty-state {
-        text-align: center;
-        padding: 24px 12px;
-      }
-
-      .empty-state .emoji {
-        font-size: 28px;
-        margin-bottom: 8px;
+        text-align: left;
+        padding: 8px 2px 4px;
       }
 
       .empty-state .title {
         font-size: 14px;
         font-weight: 600;
-        margin-bottom: 4px;
+        margin-bottom: 6px;
+        letter-spacing: -0.01em;
       }
 
       .empty-state .subtitle {
         font-size: 12px;
-        color: var(--text-tertiary);
-        line-height: 1.5;
+        color: var(--text-secondary);
+        line-height: 1.45;
       }
 
       /* Keyboard shortcut hint */
@@ -414,10 +449,6 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .status-dot {
-          animation: none;
-        }
-
         .checklist-stagger .checklist-item {
           opacity: 1;
           animation: none;
@@ -428,7 +459,7 @@
         }
 
         .popup-view {
-          transition: opacity 200ms ease;
+          transition: none;
         }
       }
 
@@ -516,37 +547,7 @@
         letter-spacing: 0.01em;
       }
 
-      .stats-footnote,
-      .privacy-line {
-        font-size: 11px;
-        color: var(--text-tertiary);
-        line-height: 1.45;
-        margin-top: 10px;
-        letter-spacing: 0.01em;
-      }
 
-      .stats-footnote a {
-        color: var(--accent);
-        text-decoration: none;
-      }
-
-      .stats-footnote a:hover {
-        text-decoration: underline;
-      }
-
-      .privacy-line {
-        margin-top: 4px;
-      }
-
-      .strip-status-line {
-        font-size: 12px;
-        font-weight: 500;
-        color: var(--text-secondary);
-        line-height: 1.4;
-        margin: 0 0 12px;
-        padding: 0 2px;
-        letter-spacing: -0.01em;
-      }
 
       /* First-value: opacity only (state feedback, not decorative scale) */
       .summary-card.first-value {
@@ -615,12 +616,9 @@
         box-shadow: var(--material-elevated-shadow);
       }
       .watchlist-header {
-        font-size: 11px;
-        font-weight: 500;
-        text-transform: uppercase;
-        letter-spacing: 0.06em;
-        color: var(--text-tertiary);
-        padding: 9px 12px 5px;
+        /* Match movers .label — no uppercase tracked eyebrow */
+        padding: 10px 12px 4px;
+        margin: 0;
       }
       .watchlist-item {
         display: grid;
@@ -653,15 +651,24 @@
         cursor: pointer;
         font-size: 15px;
         line-height: 1;
-        padding: 0 0 0 4px;
-        opacity: 0.5;
-        transition: opacity 0.15s, color 0.15s;
+        min-width: 28px;
+        min-height: 28px;
+        padding: 4px;
+        opacity: 0.55;
+        transition: opacity var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
+        border-radius: 4px;
       }
       .watch-remove:hover { opacity: 1; color: var(--red); }
+      .watch-remove:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+        opacity: 1;
+      }
       .watchlist-empty {
-        padding: 7px 12px 9px;
-        font-size: 11px;
-        color: var(--text-tertiary);
+        padding: 8px 12px 10px;
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
         border-top: 1px solid var(--border);
       }
       .watchlist-add {
@@ -685,7 +692,10 @@
         outline: none;
       }
       .watchlist-input::placeholder { text-transform: none; color: var(--text-tertiary); }
-      .watchlist-input:focus { border-color: var(--border-focus); }
+      .watchlist-input:focus-visible {
+        border-color: var(--border-focus);
+        box-shadow: var(--focus-ring);
+      }
       .watchlist-exchange {
         background: var(--bg-hover);
         border: 1px solid var(--border);
@@ -696,6 +706,10 @@
         width: 50px;
         font-family: inherit;
       }
+      .watchlist-exchange:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 1px;
+      }
       .watchlist-add-btn {
         background: var(--accent);
         border: none;
@@ -703,40 +717,38 @@
         color: #000;
         font-size: 18px;
         font-weight: 500;
-        width: 26px;
-        height: 26px;
+        width: 28px;
+        height: 28px;
+        min-width: 28px;
+        min-height: 28px;
         cursor: pointer;
         display: flex;
         align-items: center;
         justify-content: center;
         flex-shrink: 0;
         line-height: 1;
+        transition:
+          background var(--motion-fast) var(--ease-out),
+          transform var(--motion-press) var(--ease-press);
       }
       .watchlist-add-btn:hover { background: var(--accent-hover); }
+      .watchlist-add-btn:focus-visible {
+        outline: 2px solid var(--accent);
+        outline-offset: 2px;
+      }
 
-      /* Tactile active feedback — press path is short and snappy */
       .btn-setup:active,
       .watchlist-add-btn:active,
       .watch-remove:active,
-      .mover-item:active,
-      .watchlist-item:active,
       .footer a:active {
         transform: scale(0.97);
         transition: transform var(--motion-press) var(--ease-press);
       }
 
-      .watchlist-add-btn {
-        transition:
-          background var(--motion-fast) var(--ease-out),
-          transform var(--motion-press) var(--ease-press);
-      }
-
       @media (prefers-reduced-transparency: reduce) {
         .summary-card,
         .toggle-row,
-        .status-bar,
-        .watchlist-section,
-        .mover-item {
+        .watchlist-section {
           box-shadow: none;
           background: #1c1c1e;
         }
@@ -749,7 +761,6 @@
         <img src="icons/icon32.png" alt="MyTicker" />
         <h1>MyTicker</h1>
       </div>
-      <span class="version-badge">v0.2</span>
     </div>
 
     <div class="toggle-row">

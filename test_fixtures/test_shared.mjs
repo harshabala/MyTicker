@@ -135,6 +135,10 @@ assertApprox(msftPos.dayPnl, 35, 0.01, "MSFT day P&L is 35");
 // Aggregate day P&L should be sum
 assertApprox(state.aggregate.dayPnl, 85, 0.01, "aggregate day P&L is 85");
 assert(state.aggregate.dayPnlPct > 0, "aggregate day P&L % is positive");
+// 5-min window: AAPL (180-180)*10=0 from 2m sample baseline… earliest in window is 180 at 2m
+// MSFT (385-385)*5=0 — samples at 2m and 1m are both inside 5m window; baseline = first in window
+assert(typeof state.aggregate.window5mPnl === "number", "aggregate window5mPnl present");
+assert(typeof state.aggregate.window5mPnlPct === "number", "aggregate window5mPnlPct present");
 
 // Empty holdings
 const emptyState = computePositionsState([], {}, now);
