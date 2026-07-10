@@ -93,11 +93,12 @@ function waitMs(ms) {
 async function fadeOutView(viewEl) {
   if (!viewEl || prefersReducedMotion()) return;
   viewEl.classList.add("view-exit");
+  // Match --motion-medium settle; never lock input beyond this race
   await Promise.race([
     new Promise((resolve) => {
       viewEl.addEventListener("transitionend", resolve, { once: true });
     }),
-    waitMs(180)
+    waitMs(320)
   ]);
 }
 

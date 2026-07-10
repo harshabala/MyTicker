@@ -28,6 +28,12 @@
   --radius: 12px;
   --radius-sm: 8px;
 
+  /* Materials — light edge + depth without stacking translucent layers */
+  --material-fill: rgba(28, 28, 30, 0.92);
+  --material-elevated-shadow: 0 1px 3px rgba(0, 0, 0, 0.45),
+    inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --material-blur: blur(20px) saturate(180%);
+
   --font-sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display",
     system-ui, sans-serif;
   --font-mono: ui-monospace, "SF Mono", Menlo, monospace;
@@ -38,4 +44,13 @@
   --pts-border: rgba(255, 255, 255, 0.1);
   --pts-icon-bg: #2c2c2e;
   --pts-crypto-accent: #c9b070;
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-fill: #1c1c1e;
+    --material-blur: none;
+    --material-elevated-shadow: 0 1px 2px rgba(0, 0, 0, 0.5),
+      inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  }
 }

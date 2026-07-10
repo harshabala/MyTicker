@@ -1,22 +1,33 @@
 /**
- * MyTicker motion tokens and accessibility overrides.
- * Linked from brand.css (popup/options) and ticker.css (content script).
+ * MyTicker motion tokens — Apple fluid-interface defaults.
+ * Critically damped settle (no bounce) for UI; bounce only if a gesture
+ * carries momentum (we rarely use bounce in extension chrome).
+ * Linked from brand.css (popup/options). Do not inject into host pages.
  */
 :root {
+  /* Response (settle time feel) — not fixed duration, but CSS approximations */
   --motion-instant: 0ms;
+  --motion-press: 100ms;
   --motion-fast: 150ms;
-  --motion-medium: 250ms;
-  --motion-slow: 350ms;
+  --motion-medium: 280ms;
+  --motion-slow: 400ms;
   --motion-bar-enter: 300ms;
 
-  --ease-standard: ease;
+  /* Apple-style curves: critically damped (damping ~1.0), no overshoot */
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-spring: cubic-bezier(0.32, 0.72, 0, 1); /* iOS sheet/toggle settle */
+  --ease-press: cubic-bezier(0.2, 0, 0, 1); /* snappy press-in */
+  --ease-reversible: cubic-bezier(0.4, 0, 0.2, 1); /* symmetric in/out */
+
+  /* Under-damped only for momentum handoff (flick) — avoid on menus/fades */
+  --ease-spring-bounce: cubic-bezier(0.34, 1.2, 0.64, 1);
 }
 
-/* Extension pages only (popup/options). Never inject into host pages — see ticker.css. */
+/* Extension pages only (popup/options). */
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --motion-press: 0ms;
     --motion-fast: 0ms;
     --motion-medium: 0ms;
     --motion-slow: 0ms;
@@ -33,17 +44,37 @@
   }
 }
 
-/* Shared press feedback (Emil: tactile, short) */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-blur: none;
+    --material-fill: #1c1c1e;
+  }
+}
+
+/* Shared press feedback — on pointer-down via :active, not only click */
+.btn-pressable,
+.btn-setup,
+.wizard-step,
+button.checklist-item {
+  transition:
+    transform var(--motion-press) var(--ease-press),
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+
 .btn-pressable:active:not(:disabled),
 .btn-setup:active,
-.wizard-step:active {
+.wizard-step:active,
+button.checklist-item:active {
   transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn-pressable:active:not(:disabled),
   .btn-setup:active,
-  .wizard-step:active {
+  .wizard-step:active,
+  button.checklist-item:active {
     transform: none;
   }
 }
