@@ -338,6 +338,14 @@
 
       .wizard-step.done {
         color: var(--green);
+        opacity: 0.55;
+      }
+
+      .wizard-step.is-next {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-muted);
+        font-weight: 600;
       }
 
       .wizard-hint {
@@ -345,6 +353,64 @@
         color: var(--text-secondary);
         margin-bottom: 10px;
         line-height: 1.45;
+      }
+
+      .golden-path-lead {
+        margin-bottom: 14px;
+      }
+
+      .golden-path-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .golden-path-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        margin-bottom: 8px;
+      }
+
+      .golden-path-sample {
+        font-size: 12px;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .golden-path-sample:hover {
+        text-decoration: underline;
+      }
+
+      .more-formats {
+        margin-bottom: 14px;
+      }
+
+      .more-formats summary {
+        font-size: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 6px 0;
+      }
+
+      .import-stats {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+      }
+
+      .import-stats-line {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      .import-stats-note {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        line-height: 1.4;
+        margin-top: 4px;
       }
 
       .warn-banner {
@@ -951,23 +1017,36 @@
       <div class="section" id="section-import">
         <div class="section-title">Portfolio Import — Step 2</div>
         <div class="card">
-          <div class="card-item">
-            <div class="item-left">
-              <div class="item-label">Broker preset</div>
-              <div class="item-desc">Match your CSV format</div>
+          <div class="golden-path-lead">
+            <div class="golden-path-title">Zerodha holdings export (recommended)</div>
+            <div class="golden-path-hint">
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below — NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
             </div>
-            <select id="brokerPreset" style="width: auto; min-width: 140px;">
-              <option value="generic">Generic CSV</option>
-              <option value="zerodha">Zerodha</option>
-              <option value="groww">Groww</option>
-              <option value="upstox">Upstox</option>
-            </select>
+            <a class="golden-path-sample" href="test_fixtures/sample_holdings_zerodha.csv" download>
+              Download a sample Zerodha CSV to try it first
+            </a>
           </div>
+
+          <details class="card more-formats" style="border: none; padding: 0; margin-bottom: 14px; background: transparent;">
+            <summary>More formats: Groww, Upstox, generic CSV</summary>
+            <div class="card-item" style="margin-top: 8px;">
+              <div class="item-left">
+                <div class="item-label">Broker preset</div>
+                <div class="item-desc">Match your CSV format if auto-detect misses</div>
+              </div>
+              <select id="brokerPreset" style="width: auto; min-width: 140px;">
+                <option value="zerodha" selected>Zerodha</option>
+                <option value="groww">Groww</option>
+                <option value="upstox">Upstox</option>
+                <option value="generic">Generic CSV</option>
+              </select>
+            </div>
+          </details>
 
           <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drop CSV file here or press Enter to browse">
             <div class="drop-icon" aria-hidden="true">📂</div>
             <div class="drop-text">Drop your CSV file here, or click to browse</div>
-            <div class="drop-hint">Supports Zerodha, Groww, Upstox, and generic CSV formats</div>
+            <div class="drop-hint">Recommended: Zerodha holdings export · also Groww, Upstox, generic</div>
             <input type="file" id="csvFile" accept=".csv,text/csv" />
           </div>
 
@@ -976,6 +1055,8 @@
             <button class="btn btn-secondary" id="clearHoldingsButton">Clear all</button>
             <span class="status-badge" id="csvStatus"></span>
           </div>
+
+          <div class="import-stats" id="importStats" hidden></div>
         </div>
       </div>
 
@@ -1100,7 +1181,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.2.0 · Data stays local · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.2.0 · Holdings and keys stay in this browser. Prices come from Finnhub; we don't send your portfolio to our servers — we don't have servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 

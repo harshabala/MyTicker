@@ -6,6 +6,7 @@ import {
   completeSetup,
   formatLastSync
 } from "./onboarding.js";
+import { getMetrics, recordImportResult } from "./metrics.js";
 
 const brokerPresetEl = document.getElementById("brokerPreset");
 const csvFileEl = document.getElementById("csvFile");
@@ -50,9 +51,15 @@ const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height=
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Step 1: Indian stocks (NSE/BSE) work automatically — no key needed. Add a Finnhub key only if you hold US stocks.",
-  2: "Step 2: Export holdings CSV from Zerodha/Groww/Upstox, drop it below. NSE symbols get .NS automatically.",
-  3: "Step 3: Visit any webpage — your ticker shows today's P&L at the top. Use the popup for a summary."
+  1: "Next: Connect price data — free Finnhub key at finnhub.io, then paste and Save.",
+  2: "Next: Import your holdings — drop a Zerodha CSV (or open More formats for Groww/Upstox).",
+  3: "Next: Open any tab to go live — the ticker strip and today's P&L appear automatically."
+};
+
+const WIZARD_NEXT_LABELS = {
+  1: "Next: Connect price data",
+  2: "Next: Import your holdings",
+  3: "Next: Open any tab to go live"
 };
 
 init();
@@ -180,6 +187,7 @@ function init() {
   // Populate preview on load.
   handleRefreshPreview();
   refreshSetupUI();
+  renderImportStats();
 }
 
 function setPlatformShortcut(el) {
@@ -235,7 +243,8 @@ async function refreshSetupUI() {
     rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
   }
 
-  if (status.complete && setupStatusEl) {
+  // Shimmer when fully activated (api + holdings + live + ticker enabled)
+  if ((status.activated || status.complete) && setupStatusEl) {
     chrome.storage.local.get(["pts_setup_shimmered"], (data) => {
       if (!data.pts_setup_shimmered) {
         setupStatusEl.classList.add("setup-complete-shimmer");
@@ -250,11 +259,22 @@ async function refreshSetupUI() {
   const step = status.hasApiKey ? (status.hasHoldings ? 3 : 2) : 1;
   document.querySelectorAll(".wizard-step").forEach((btn) => {
     const n = Number(btn.dataset.step);
-    btn.classList.toggle("active", n === step);
-    btn.classList.toggle("done", (n === 1 && status.hasApiKey) || (n === 2 && status.hasHoldings) || (n === 3 && status.hasLiveData));
+    const done =
+      (n === 1 && status.hasApiKey) ||
+      (n === 2 && status.hasHoldings) ||
+      (n === 3 && status.hasLiveData);
+    btn.classList.toggle("active", n === step && !status.complete);
+    btn.classList.toggle("done", done);
+    btn.classList.toggle("is-next", n === step && !done);
+    btn.setAttribute("aria-current", n === step && !status.complete ? "step" : "false");
   });
-  if (wizardHintEl && !status.complete) {
-    wizardHintEl.textContent = WIZARD_HINTS[step];
+  if (wizardHintEl) {
+    if (status.activated || status.complete) {
+      wizardHintEl.textContent =
+        "Setup complete — strip and today's P&L are live. Holdings and keys stay in this browser.";
+    } else {
+      wizardHintEl.textContent = WIZARD_HINTS[step] || WIZARD_NEXT_LABELS[step] || "";
+    }
   }
 
   if (status.complete) {
@@ -263,6 +283,48 @@ async function refreshSetupUI() {
     if (!onboarding.setupComplete) {
       await completeSetup();
     }
+  }
+}
+
+async function renderImportStats() {
+  const el = document.getElementById("importStats");
+  if (!el) return;
+  try {
+    const metrics = await getMetrics();
+    const imports = metrics.imports || {};
+    const entries = Object.entries(imports);
+    let success = 0;
+    let fail = 0;
+    const parts = [];
+    for (const [key, bucket] of entries) {
+      const s = Number(bucket?.success) || 0;
+      const f = Number(bucket?.fail) || 0;
+      success += s;
+      fail += f;
+      if (s + f > 0) {
+        const name = BROKER_PRESETS[key]?.name || key;
+        parts.push(`${name} ${s}/${s + f}`);
+      }
+    }
+    if (success + fail === 0) {
+      el.hidden = true;
+      el.textContent = "";
+      return;
+    }
+    el.hidden = false;
+    const byPreset = parts.length ? ` (${parts.join(", ")}).` : ".";
+    el.innerHTML = "";
+    const line = document.createElement("div");
+    line.className = "import-stats-line";
+    line.textContent = `Imports on this device: ${success} succeeded · ${fail} failed${byPreset}`;
+    const note = document.createElement("div");
+    note.className = "import-stats-note";
+    note.textContent =
+      "Counted locally whenever a CSV parses to at least one holding. Stored only in this browser. Never uploaded.";
+    el.appendChild(line);
+    el.appendChild(note);
+  } catch (_) {
+    el.hidden = true;
   }
 }
 
@@ -307,13 +369,18 @@ function handleImportCsv() {
 
   const reader = new FileReader();
   reader.onload = () => {
+    let presetKey = brokerPresetEl.value || "zerodha";
     try {
       const text = String(reader.result || "");
+      if (!text.trim()) {
+        showToast("That file looks empty.", "error");
+        recordImportResult(presetKey, false).then(renderImportStats);
+        return;
+      }
       const rows = parseCsv(text);
 
       // Auto-detect preset from headers; fall back to whatever is selected
       const detected = detectPresetFromRows(rows);
-      let presetKey = brokerPresetEl.value || "generic";
       if (detected && detected !== presetKey) {
         presetKey = detected;
         brokerPresetEl.value = detected;
@@ -324,10 +391,16 @@ function handleImportCsv() {
       const diag = diagnoseCsvImport(rows, preset);
       if (diag) {
         showToast(diag, "error");
+        recordImportResult(presetKey, false).then(renderImportStats);
         return;
       }
 
       const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
+      if (!holdings.length) {
+        showToast("No holdings found in that CSV.", "error");
+        recordImportResult(presetKey, false).then(renderImportStats);
+        return;
+      }
       const nsCount = holdings.filter((h) => h.symbol.endsWith(".NS")).length;
 
       chrome.storage.local.set({ [STORAGE_KEYS.holdings]: holdings }, async () => {
@@ -337,6 +410,8 @@ function handleImportCsv() {
             : `Imported ${holdings.length} holdings (${preset.name})`;
         showToast(msg, "success");
         csvStatusEl.textContent = `${holdings.length} holdings`;
+        await recordImportResult(presetKey, true);
+        await renderImportStats();
         await markWizardStep(3);
         handleRefreshPreview();
         requestImmediatePoll();
@@ -345,15 +420,18 @@ function handleImportCsv() {
     } catch (err) {
       console.error("Failed to parse CSV", err);
       showToast("Failed to parse CSV file.", "error");
+      recordImportResult(presetKey, false).then(renderImportStats);
     } finally {
       importCsvButton.disabled = false;
-      importCsvButton.textContent = "Import CSV";
+      importCsvButton.textContent = "Import holdings";
     }
   };
   reader.onerror = () => {
     showToast("Error reading file.", "error");
+    const presetKey = brokerPresetEl.value || "zerodha";
+    recordImportResult(presetKey, false).then(renderImportStats);
     importCsvButton.disabled = false;
-    importCsvButton.textContent = "Import CSV";
+    importCsvButton.textContent = "Import holdings";
   };
   reader.readAsText(file);
 }

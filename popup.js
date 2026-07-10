@@ -3,7 +3,7 @@ import {
   DEFAULT_SETTINGS,
   formatSignedCurrency
 } from "./shared.js";
-import { getSetupStatus } from "./onboarding.js";
+import { getSetupStatus, markWizardStep, setOnboarding } from "./onboarding.js";
 
 const VIEW_CHECKLIST = "checklist";
 const VIEW_LOADING = "loading";
@@ -141,13 +141,19 @@ async function _refreshPopupInner(container) {
     currentView = VIEW_LOADING;
   }
 
-  const [status, local] = await Promise.all([
+  const [status, local, sync] = await Promise.all([
     getSetupStatus(),
-    chrome.storage.local.get([STORAGE_KEYS.positionsState, STORAGE_KEYS.watchlist])
+    chrome.storage.local.get([
+      STORAGE_KEYS.positionsState,
+      STORAGE_KEYS.watchlist,
+      STORAGE_KEYS.onboarding
+    ]),
+    chrome.storage.sync.get([STORAGE_KEYS.settings])
   ]);
 
   const state = local[STORAGE_KEYS.positionsState];
   const watchlistItems = local[STORAGE_KEYS.watchlist] || [];
+  const settings = sync[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
   let nextView = VIEW_PNL;
   if (!status.complete) {
     nextView = VIEW_CHECKLIST;
@@ -159,7 +165,7 @@ async function _refreshPopupInner(container) {
     if (nextView === VIEW_CHECKLIST) {
       updateChecklistInPlace(outgoing, status);
     } else if (nextView === VIEW_PNL) {
-      updatePnlInPlace(outgoing, state, watchlistItems);
+      updatePnlInPlace(outgoing, state, watchlistItems, settings);
     }
     popupHasRendered = true;
     return;
@@ -186,30 +192,55 @@ async function _refreshPopupInner(container) {
   } else if (nextView === VIEW_EMPTY) {
     renderEmptyState(viewEl, status);
   } else {
-    renderPopupContent(viewEl, state, watchlistItems, status);
+    await renderPopupContent(viewEl, state, watchlistItems, status, settings);
   }
 
   mountView(container, viewEl, nextView);
   popupHasRendered = true;
 }
 
-function updateChecklistInPlace(viewEl, status) {
-  const items = viewEl.querySelectorAll(".checklist-item");
-  const steps = [
-    status.hasApiKey,
-    status.hasHoldings,
-    status.hasLiveData
-  ];
-  items.forEach((row, i) => {
-    row.classList.toggle("done", !!steps[i]);
-    const icon = row.querySelector(".check-icon");
-    if (icon) {
-      icon.textContent = steps[i] ? "✓" : String(i + 1);
+function openOptionsAtWizardStep(step) {
+  markWizardStep(step).then(() => {
+    if (chrome.runtime.openOptionsPage) {
+      chrome.runtime.openOptionsPage();
+    } else {
+      window.open(chrome.runtime.getURL("options.html"));
     }
   });
 }
 
-function updatePnlInPlace(viewEl, state, watchlistItems) {
+function updateChecklistInPlace(viewEl, status) {
+  const steps = [
+    { done: status.hasApiKey, wizardStep: 1 },
+    { done: status.hasHoldings, wizardStep: 2 },
+    { done: status.hasLiveData, wizardStep: 3 }
+  ];
+  const items = viewEl.querySelectorAll(".checklist-item");
+  items.forEach((row, i) => {
+    const done = !!steps[i]?.done;
+    row.classList.toggle("done", done);
+    const icon = row.querySelector(".check-icon");
+    if (icon) {
+      icon.textContent = done ? "✓" : String(i + 1);
+    }
+  });
+
+  const cta = viewEl.querySelector(".btn-setup");
+  if (cta) {
+    const next = steps.find((s) => !s.done);
+    if (next) {
+      const labels = {
+        1: "Next: Connect price data →",
+        2: "Next: Import your holdings →",
+        3: "Next: Open any tab to go live →"
+      };
+      cta.textContent = labels[next.wizardStep] || "Continue setup →";
+      cta.dataset.wizardStep = String(next.wizardStep);
+    }
+  }
+}
+
+function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
   if (!state?.positions?.length) return;
 
   const currency = state.displayCurrency || "INR";
@@ -224,6 +255,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems) {
   const holdingsCount = viewEl.querySelector(".holdings-count");
   const statusTime = viewEl.querySelector(".status-time");
   const summaryCard = viewEl.querySelector(".summary-card");
+  const stripLine = viewEl.querySelector(".strip-status-line");
 
   if (pnlValue) {
     pnlValue.className = `pnl-value ${pnlClass}`;
@@ -238,6 +270,25 @@ function updatePnlInPlace(viewEl, state, watchlistItems) {
   }
   if (statusTime) {
     statusTime.textContent = formatTimeAgo(state.updatedAt);
+  }
+  if (stripLine) {
+    stripLine.textContent = settings.enabled !== false
+      ? "Strip is on — open any tab."
+      : "Strip is off — flip the toggle above.";
+  }
+
+  // Refresh top-3 movers in place when possible
+  const moversSection = viewEl.querySelector(".movers-section");
+  if (moversSection) {
+    const movers = [...state.positions]
+      .filter((p) => p.lastPrice != null)
+      .sort((a, b) => Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0))
+      .slice(0, 3);
+    const existing = moversSection.querySelectorAll(".mover-item");
+    existing.forEach((el) => el.remove());
+    for (const pos of movers) {
+      moversSection.appendChild(buildMoverItem(pos));
+    }
   }
 
   if (
@@ -277,28 +328,40 @@ function renderSetupChecklist(container, status) {
   title.textContent = "Get started (3 steps)";
   card.appendChild(title);
 
+  // Unified order with options wizard: API → holdings → live
   const steps = [
     {
-      done: status.hasHoldings,
-      label: "Import broker CSV",
-      hint: "Zerodha, Groww, or Upstox holdings export"
+      done: status.hasApiKey,
+      wizardStep: 1,
+      label: "Connect price data",
+      hint: "Free Finnhub key — paste it in Settings"
     },
     {
-      done: status.hasApiKey,
-      label: "Price data connected",
-      hint: "Indian stocks auto-connect · US stocks need a Finnhub key"
+      done: status.hasHoldings,
+      wizardStep: 2,
+      label: "Import your holdings",
+      hint: "Drop your Zerodha CSV (more formats supported)"
     },
     {
       done: status.hasLiveData,
-      label: "See live P&L on any tab",
-      hint: "Open any webpage — the ticker strip appears at the top"
+      wizardStep: 3,
+      label: "See it live on any tab",
+      hint: "Ticker strip + today's P&L appear automatically"
     }
   ];
 
   steps.forEach((step, i) => {
-    const row = document.createElement("div");
+    const row = step.done
+      ? document.createElement("div")
+      : document.createElement("button");
+    if (!step.done) {
+      row.type = "button";
+    }
     row.className = `checklist-item${step.done ? " done" : ""}`;
     row.style.setProperty("--stagger-index", String(i));
+    if (!step.done) {
+      row.addEventListener("click", () => openOptionsAtWizardStep(step.wizardStep));
+    }
     const icon = document.createElement("span");
     icon.className = "check-icon";
     icon.textContent = step.done ? "✓" : String(i + 1);
@@ -316,18 +379,42 @@ function renderSetupChecklist(container, status) {
     card.appendChild(row);
   });
 
+  const next = steps.find((s) => !s.done);
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn-setup btn-pressable";
-  btn.textContent = status.hasApiKey ? "Continue setup in Settings →" : "Start setup →";
+  const ctaLabels = {
+    1: "Next: Connect price data →",
+    2: "Next: Import your holdings →",
+    3: "Next: Open any tab to go live →"
+  };
+  btn.textContent = next ? ctaLabels[next.wizardStep] : "Open Settings →";
+  if (next) btn.dataset.wizardStep = String(next.wizardStep);
   btn.addEventListener("click", () => {
-    if (chrome.runtime.openOptionsPage) {
-      chrome.runtime.openOptionsPage();
-    }
+    openOptionsAtWizardStep(next?.wizardStep || 1);
   });
   card.appendChild(btn);
 
   container.appendChild(card);
+}
+
+function buildMoverItem(pos) {
+  const pct = Number(pos.dayPnlPct) || 0;
+  const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
+  const item = document.createElement("div");
+  item.className = "mover-item";
+
+  const nameSpan = document.createElement("span");
+  nameSpan.className = "mover-name";
+  nameSpan.textContent = pos.displayName || pos.symbol;
+
+  const changeSpan = document.createElement("span");
+  changeSpan.className = `mover-change ${cls}`;
+  changeSpan.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
+
+  item.appendChild(nameSpan);
+  item.appendChild(changeSpan);
+  return item;
 }
 
 function renderEmptyState(container, status) {
@@ -387,7 +474,13 @@ function formatTimeAgo(timestamp) {
   return `Updated ${hours}h ago`;
 }
 
-function renderPopupContent(container, state, watchlistItems = [], status = null) {
+async function renderPopupContent(
+  container,
+  state,
+  watchlistItems = [],
+  status = null,
+  settings = DEFAULT_SETTINGS
+) {
   if (!state || !state.positions || !state.positions.length) {
     renderEmptyState(container, status);
     return;
@@ -400,12 +493,14 @@ function renderPopupContent(container, state, watchlistItems = [], status = null
   const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
   lastAggregateSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
 
+  const firstValue = status && !status.firstValueSeen;
+
   const summaryCard = document.createElement("div");
-  summaryCard.className = "summary-card";
+  summaryCard.className = `summary-card${firstValue ? " first-value" : ""}`;
 
   const label = document.createElement("div");
   label.className = "label";
-  label.textContent = `Today's P&L (${currency})`;
+  label.textContent = firstValue ? "Your day so far" : `Today's P&L (${currency})`;
 
   const pnlRow = document.createElement("div");
   pnlRow.className = "pnl-row";
@@ -428,7 +523,32 @@ function renderPopupContent(container, state, watchlistItems = [], status = null
   summaryCard.appendChild(label);
   summaryCard.appendChild(pnlRow);
   summaryCard.appendChild(holdingsCount);
+
+  const footnote = document.createElement("p");
+  footnote.className = "stats-footnote";
+  footnote.append(
+    document.createTextNode(
+      "P&L = your imported quantities × latest price. 5-min is the short-term move; Daily is measured from the previous close (provider rules). "
+    )
+  );
+  const helpLink = document.createElement("a");
+  helpLink.href = "https://github.com/harshabala/MyTicker#features";
+  helpLink.target = "_blank";
+  helpLink.rel = "noopener noreferrer";
+  helpLink.textContent = "How it works";
+  footnote.appendChild(helpLink);
+  summaryCard.appendChild(footnote);
+
+  const privacy = document.createElement("p");
+  privacy.className = "privacy-line";
+  privacy.textContent = "Stored only in this browser. Never uploaded.";
+  summaryCard.appendChild(privacy);
+
   container.appendChild(summaryCard);
+
+  if (firstValue) {
+    setOnboarding({ firstValueSeen: true }).catch(() => {});
+  }
 
   const statusClass = state.staleWarning ? "stale" : "connected";
   const statusLabel = state.staleWarning ? "Data may be stale" : "Live";
@@ -450,39 +570,33 @@ function renderPopupContent(container, state, watchlistItems = [], status = null
   statusBar.appendChild(statusTime);
   container.appendChild(statusBar);
 
-  const sorted = [...state.positions]
+  // Top movers by absolute day P&L % — up to 3
+  const movers = [...state.positions]
     .filter((p) => p.lastPrice != null)
-    .sort((a, b) => (Number(b.dayPnlPct) || 0) - (Number(a.dayPnlPct) || 0));
+    .sort((a, b) => Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0))
+    .slice(0, 3);
 
-  if (sorted.length >= 2) {
+  if (movers.length > 0) {
     const moversSection = document.createElement("div");
     moversSection.className = "movers-section";
     const moversLabel = document.createElement("div");
     moversLabel.className = "label";
-    moversLabel.textContent = "Top Movers (today)";
+    moversLabel.textContent = "Top movers (today)";
     moversSection.appendChild(moversLabel);
 
-    for (const pos of [sorted[0], sorted[sorted.length - 1]]) {
-      const pct = Number(pos.dayPnlPct) || 0;
-      const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
-      const item = document.createElement("div");
-      item.className = "mover-item";
-
-      const nameSpan = document.createElement("span");
-      nameSpan.className = "mover-name";
-      nameSpan.textContent = pos.displayName || pos.symbol;
-
-      const changeSpan = document.createElement("span");
-      changeSpan.className = `mover-change ${cls}`;
-      changeSpan.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
-
-      item.appendChild(nameSpan);
-      item.appendChild(changeSpan);
-      moversSection.appendChild(item);
+    for (const pos of movers) {
+      moversSection.appendChild(buildMoverItem(pos));
     }
 
     container.appendChild(moversSection);
   }
+
+  const stripLine = document.createElement("p");
+  stripLine.className = "strip-status-line";
+  stripLine.textContent = settings.enabled !== false
+    ? "Strip is on — open any tab."
+    : "Strip is off — flip the toggle above.";
+  container.appendChild(stripLine);
 
   renderWatchlistSection(container, watchlistItems, state?.watchlist || []);
 }
