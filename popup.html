@@ -129,7 +129,7 @@
       .toggle-slider {
         position: absolute;
         inset: 0;
-        background: var(--bg-tertiary);
+        background: var(--toggle-track, var(--bg-tertiary));
         border-radius: 999px;
         transition: background var(--motion-medium) var(--ease-out);
       }
@@ -142,9 +142,9 @@
         width: 22px;
         height: 22px;
         margin-top: -11px;
-        background: #fff;
+        background: var(--toggle-thumb, #fff);
         border-radius: 50%;
-        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        box-shadow: var(--toggle-thumb-shadow, 0 1px 2px rgba(0, 0, 0, 0.35));
         transition: transform var(--motion-medium) var(--ease-out);
       }
 
@@ -584,7 +584,7 @@
         border: none;
         border-radius: var(--radius-sm);
         background: var(--accent);
-        color: #0a0a0a;
+        color: var(--accent-ink, #0a0a0a);
         font-size: var(--text-body, 13px);
         font-weight: 600;
         letter-spacing: -0.01em;
@@ -727,7 +727,7 @@
         background: var(--accent);
         border: none;
         border-radius: var(--radius-sm);
-        color: #0a0a0a;
+        color: var(--accent-ink, #0a0a0a);
         font-size: 16px;
         font-weight: 600;
         width: 36px;
@@ -763,7 +763,7 @@
         .toggle-row,
         .watchlist-section {
           box-shadow: none;
-          background: #1c1c1e;
+          background: var(--bg-surface);
         }
       }
     </style>
