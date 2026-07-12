@@ -17,7 +17,8 @@ export class FinnhubPriceProvider {
    */
   async getQuotes(symbols, config) {
     const apiKey = config.apiKey;
-    const baseUrl = config.baseUrl || "https://finnhub.io/api/v1";
+    // Security: never allow config to redirect the API key to a non-Finnhub host
+    const baseUrl = sanitizeFinnhubBaseUrl(config.baseUrl);
     const now = Date.now();
 
     const results = [];
@@ -58,7 +59,17 @@ export class FinnhubPriceProvider {
 
   async _fetchSingle(symbol, baseUrl, apiKey) {
     const url = `${baseUrl}/quote?symbol=${encodeURIComponent(symbol)}&token=${encodeURIComponent(apiKey)}`;
-    const resp = await fetch(url);
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 12_000);
+    let resp;
+    try {
+      resp = await fetch(url, { signal: controller.signal });
+    } catch (err) {
+      console.warn(`[MyTicker] Finnhub fetch failed for ${symbol}`, err?.name || err);
+      return null;
+    } finally {
+      clearTimeout(timer);
+    }
     if (!resp.ok) {
       console.warn(`[MyTicker] Finnhub returned ${resp.status} for ${symbol}`);
       return null;
@@ -75,5 +86,21 @@ export class FinnhubPriceProvider {
       lastPrice: data.c,
       prevClose: typeof data.pc === "number" ? data.pc : null
     };
+  }
+}
+
+/** Only Finnhub HTTPS API bases are allowed (prevents key exfil via tampered config). */
+export function sanitizeFinnhubBaseUrl(baseUrl) {
+  const fallback = "https://finnhub.io/api/v1";
+  if (!baseUrl || typeof baseUrl !== "string") return fallback;
+  const trimmed = baseUrl.trim().replace(/\/+$/, "");
+  try {
+    const u = new URL(trimmed);
+    if (u.protocol !== "https:") return fallback;
+    if (u.hostname !== "finnhub.io" && u.hostname !== "www.finnhub.io") return fallback;
+    if (!u.pathname.startsWith("/api")) return fallback;
+    return `${u.origin}${u.pathname}`.replace(/\/+$/, "") || fallback;
+  } catch {
+    return fallback;
   }
 }
