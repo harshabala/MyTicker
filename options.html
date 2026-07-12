@@ -1055,13 +1055,16 @@
               Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
-              <button type="button" class="btn btn-primary btn-pressable" id="importSampleButton">
-                Import sample CSV (try first)
+              <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
+                Import my holdings (IRFC / OLAELEC / SML100CASE)
               </button>
-              <a class="golden-path-sample" id="downloadSampleLink" href="test_fixtures/sample_holdings_zerodha.csv" download="sample_holdings_zerodha.csv">
-                Or download the sample file
-              </a>
+              <button type="button" class="btn btn-secondary btn-pressable" id="importSampleButton">
+                Import demo sample instead
+              </button>
             </div>
+            <p class="golden-path-hint" style="margin-top: 8px;">
+              Packaged imports avoid Chrome “could not read file” permission errors. Browse/drop still works for new broker exports once the file is fully local (not cloud-only).
+            </p>
           </div>
 
           <details class="card more-formats" style="border: none; padding: 0; margin-bottom: 14px; background: transparent;">

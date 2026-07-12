@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MyTicker",
   "description": "MyTicker shows a live running strip of your stock holdings across brokers with 5-minute and daily P&L.",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -32,8 +32,12 @@
   ],
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["contentScript.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "contentScript.js"
+      ],
       "type": "module",
       "run_at": "document_start"
     }
@@ -53,7 +57,9 @@
       "resources": [
         "ticker.css"
       ],
-      "matches": ["<all_urls>"]
+      "matches": [
+        "<all_urls>"
+      ]
     }
   ]
 }

@@ -191,7 +191,14 @@ function init() {
   if (importSampleBtn) {
     importSampleBtn.addEventListener("click", (e) => {
       e.preventDefault();
-      handleImportSampleCsv();
+      handleImportPackagedCsv("test_fixtures/sample_holdings_zerodha.csv", "zerodha");
+    });
+  }
+  const importUserBtn = document.getElementById("importUserHoldingsButton");
+  if (importUserBtn) {
+    importUserBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleImportPackagedCsv("test_fixtures/user_holdings.csv", "zerodha");
     });
   }
 
@@ -433,25 +440,29 @@ async function handleImportCsv(fileOverride = null) {
   }
 }
 
-/** One-click golden path: load packaged sample (no FileReader / Downloads needed). */
-async function handleImportSampleCsv() {
+/**
+ * Load a CSV packaged inside the extension (no FileReader / OS permission issues).
+ * @param {string} relativePath e.g. test_fixtures/user_holdings.csv
+ * @param {string} presetHint
+ */
+async function handleImportPackagedCsv(relativePath, presetHint = "zerodha") {
   if (importInFlight) return;
   importInFlight = true;
   importCsvButton.disabled = true;
   importCsvButton.textContent = "Importing…";
   try {
-    const url = chrome.runtime.getURL("test_fixtures/sample_holdings_zerodha.csv");
+    const url = chrome.runtime.getURL(relativePath);
     const resp = await fetch(url);
     if (!resp.ok) {
-      throw new Error(`Could not load sample (${resp.status})`);
+      throw new Error(`Could not load ${relativePath} (${resp.status})`);
     }
     const text = await resp.text();
-    if (brokerPresetEl) brokerPresetEl.value = "zerodha";
-    await processCsvText(text, "zerodha");
+    if (brokerPresetEl) brokerPresetEl.value = presetHint;
+    await processCsvText(text, presetHint);
   } catch (err) {
-    console.error("Sample CSV import failed", err);
-    showToast(err?.message || "Could not load the packaged sample CSV.", "error");
-    await recordImportResult("zerodha", false);
+    console.error("Packaged CSV import failed", err);
+    showToast(err?.message || "Could not load packaged CSV.", "error");
+    await recordImportResult(presetHint, false);
     await renderImportStats();
   } finally {
     importInFlight = false;
