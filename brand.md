@@ -10,17 +10,15 @@ Live stock & crypto ticker strip with portfolio P&L on every browser tab.
 
 ## Palette — Obsidian Gold
 
-| Role | Hex | Use |
-|------|-----|-----|
-| bg | `#000000` | Canvas |
-| surface | `#1C1C1E` | Grouped lists |
-| hover | `#2C2C2E` | Hover |
-| text | `#F5F5F7` | Primary |
-| text-2 | `#98989D` | Secondary |
-| text-3 | `#636366` | Meta |
-| gold | `#D4C08A` | **Rare:** primary CTA + focus only |
-| gold-pressed | `#9A8550` | Pressed |
-| up / down | `#30D158` / `#FF453A` | P&L deltas only |
+Auto: `@media (prefers-color-scheme: light|dark)` in `brand.css` and `ticker.css`.
+
+| Role | Dark | Light |
+|------|------|-------|
+| bg | `#000000` | `#F5F5F7` |
+| surface | `#1C1C1E` | `#FFFFFF` |
+| text | `#F5F5F7` | `#1D1D1F` |
+| gold | `#D4C08A` | `#9A8550` |
+| up / down | `#30D158` / `#FF453A` | `#248A3D` / `#D70015` |
 
 **Do not** paint section titles gold. **Do not** use multi-stop gradients on chrome.
 
