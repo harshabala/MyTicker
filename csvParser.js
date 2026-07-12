@@ -177,10 +177,15 @@ export function diagnoseCsvImport(rows, preset) {
   }
 
   const headers = Object.keys(rows[0]);
-  const expected = Object.entries(preset.columns).map(([key, col]) => ({
-    key,
-    col
-  }));
+  const defaults = preset.defaults || {};
+  // Columns covered by a preset default are optional (e.g. Zerodha always means NSE/INR).
+  // Must match detectPresetFromRows / mapRowsToHoldings behavior.
+  const expected = Object.entries(preset.columns)
+    .filter(([key]) => !(key in defaults))
+    .map(([key, col]) => ({
+      key,
+      col
+    }));
   const missing = expected.filter(({ col }) => {
     const lower = col.toLowerCase();
     return !headers.some((h) => h.toLowerCase() === lower);
@@ -192,13 +197,13 @@ export function diagnoseCsvImport(rows, preset) {
     return `Missing columns for ${preset.name}: ${names}. Found: ${found}${headers.length > 8 ? "…" : ""}. See test_fixtures/sample_holdings_zerodha.csv for Zerodha format.`;
   }
 
-  const mapped = mapRowsToHoldings(rows, preset.columns, "check", preset.defaults || {});
+  const mapped = mapRowsToHoldings(rows, preset.columns, "check", defaults);
   if (!mapped.length) {
     return `No rows with quantity > 0. Check the "${preset.columns.quantity}" column in your CSV.`;
   }
 
   const normalized = mapped.filter((h) => h.symbol.includes(".NS") || h.symbol.includes(".BO")).length;
-  if (preset.defaults?.exchange === "NSE" && normalized < mapped.length * 0.5) {
+  if (defaults.exchange === "NSE" && normalized < mapped.length * 0.5) {
     return `${mapped.length} rows parsed, but few NSE symbols (.NS). Confirm broker preset is Zerodha and CSV is a holdings export.`;
   }
 
