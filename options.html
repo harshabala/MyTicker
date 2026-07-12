@@ -45,12 +45,16 @@
         font-size: 22px;
         font-weight: 700;
         letter-spacing: -0.03em;
+        line-height: 1.1;
+        font-optical-sizing: auto;
       }
 
       .page-header-text p {
         font-size: 13px;
-        color: var(--text-tertiary);
-        margin-top: 2px;
+        color: var(--text-secondary);
+        margin-top: 4px;
+        line-height: 1.4;
+        letter-spacing: 0;
       }
 
       /* Sections */
@@ -83,7 +87,7 @@
         border: 1px solid var(--border);
         border-radius: var(--radius);
         overflow: hidden;
-        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+        box-shadow: var(--material-elevated-shadow);
       }
 
       .card-item {
@@ -142,7 +146,7 @@
       select:focus,
       textarea:focus {
         border-color: var(--border-focus);
-        box-shadow: 0 0 0 3px rgba(201, 176, 112, 0.1);
+        box-shadow: var(--focus-ring);
       }
 
       select {
@@ -320,14 +324,23 @@
       }
 
       .wizard-step {
-        font-size: 11px;
-        padding: 6px 10px;
+        font-size: 12px;
+        font-weight: 500;
+        letter-spacing: -0.01em;
+        padding: 8px 12px;
+        min-height: 32px;
         border-radius: 999px;
         border: 1px solid var(--border);
         color: var(--text-tertiary);
         cursor: pointer;
         background: transparent;
         font-family: inherit;
+        transition:
+          transform var(--motion-press, 100ms) var(--ease-press, ease),
+          background-color var(--motion-fast, 150ms) var(--ease-out, ease),
+          border-color var(--motion-fast, 150ms) var(--ease-out, ease),
+          color var(--motion-fast, 150ms) var(--ease-out, ease),
+          opacity var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .wizard-step.active {
@@ -338,6 +351,15 @@
 
       .wizard-step.done {
         color: var(--green);
+        opacity: 0.55;
+      }
+
+      .wizard-step.is-next {
+        border-color: var(--accent);
+        color: var(--accent);
+        background: var(--accent-muted);
+        font-weight: 600;
+        box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       }
 
       .wizard-hint {
@@ -345,6 +367,64 @@
         color: var(--text-secondary);
         margin-bottom: 10px;
         line-height: 1.45;
+      }
+
+      .golden-path-lead {
+        margin-bottom: 14px;
+      }
+
+      .golden-path-title {
+        font-size: 13px;
+        font-weight: 600;
+        color: var(--text-primary);
+        margin-bottom: 4px;
+      }
+
+      .golden-path-hint {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.45;
+        margin-bottom: 8px;
+      }
+
+      .golden-path-sample {
+        font-size: 12px;
+        color: var(--accent);
+        text-decoration: none;
+      }
+
+      .golden-path-sample:hover {
+        text-decoration: underline;
+      }
+
+      .more-formats {
+        margin-bottom: 14px;
+      }
+
+      .more-formats summary {
+        font-size: 12px;
+        color: var(--text-secondary);
+        cursor: pointer;
+        padding: 6px 0;
+      }
+
+      .import-stats {
+        margin-top: 12px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+      }
+
+      .import-stats-line {
+        font-size: 12px;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+
+      .import-stats-note {
+        font-size: 11px;
+        color: var(--text-tertiary);
+        line-height: 1.4;
+        margin-top: 4px;
       }
 
       .warn-banner {
@@ -431,13 +511,15 @@
         min-height: 0;
       }
 
-      /* Toggle switch */
+      /* Toggle switch — iOS-scale thumb, critically damped settle */
       .toggle-switch {
         position: relative;
-        width: 38px;
-        height: 22px;
+        width: 51px;
+        height: 31px;
         cursor: pointer;
         flex-shrink: 0;
+        margin: -4px;
+        padding: 4px;
       }
 
       .toggle-switch input {
@@ -448,22 +530,23 @@
 
       .toggle-slider {
         position: absolute;
-        inset: 0;
+        inset: 4px;
         background: var(--bg-tertiary);
-        border-radius: 11px;
-        transition: background 0.2s ease;
+        border-radius: 999px;
+        transition: background var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-slider::before {
         content: "";
         position: absolute;
-        left: 3px;
-        top: 3px;
-        width: 16px;
-        height: 16px;
+        left: 2px;
+        top: 2px;
+        width: 27px;
+        height: 27px;
         background: white;
         border-radius: 50%;
-        transition: transform 0.2s ease;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
+        transition: transform var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
       }
 
       .toggle-switch input:checked + .toggle-slider {
@@ -471,22 +554,28 @@
       }
 
       .toggle-switch input:checked + .toggle-slider::before {
-        transform: translateX(16px);
+        transform: translateX(20px);
       }
 
-      /* Buttons */
+      /* Buttons — press feedback, no float-on-hover (avoids layout jank) */
       .btn {
-        padding: 9px 16px;
+        padding: 10px 16px;
+        min-height: 36px;
         font-size: 13px;
-        font-weight: 500;
+        font-weight: 600;
+        letter-spacing: -0.01em;
         font-family: inherit;
         border-radius: var(--radius-sm);
         border: none;
         cursor: pointer;
-        transition: all 0.15s ease;
         display: inline-flex;
         align-items: center;
         gap: 6px;
+        transition:
+          background var(--motion-fast, 150ms) var(--ease-out, ease),
+          color var(--motion-fast, 150ms) var(--ease-out, ease),
+          transform var(--motion-press, 100ms) var(--ease-press, ease),
+          border-color var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .btn-primary {
@@ -496,18 +585,10 @@
 
       .btn-primary:hover {
         background: var(--accent-hover);
-        transform: translateY(-1px);
       }
 
       .btn-primary:active {
-        transform: translateY(0) scale(0.97);
-      }
-
-      .btn {
-        transition:
-          background var(--motion-fast, 150ms) ease,
-          color var(--motion-fast, 150ms) ease,
-          transform var(--motion-fast, 150ms) var(--ease-out, ease);
+        transform: scale(0.97);
       }
 
       .btn-secondary {
@@ -534,14 +615,21 @@
         padding: 24px 16px;
         text-align: center;
         cursor: pointer;
-        transition: all 0.2s ease;
         margin: 12px 16px;
+        transition:
+          border-color var(--motion-fast, 150ms) var(--ease-out, ease),
+          background var(--motion-fast, 150ms) var(--ease-out, ease),
+          transform var(--motion-press, 100ms) var(--ease-press, ease);
       }
 
       .drop-zone:hover,
       .drop-zone.dragover {
         border-color: var(--accent);
-        background: rgba(34, 211, 238, 0.04);
+        background: var(--accent-muted);
+      }
+
+      .drop-zone:active {
+        transform: scale(0.99);
       }
 
       .drop-zone .drop-icon {
@@ -624,20 +712,22 @@
         color: var(--text-tertiary);
       }
 
-      /* Toast notification */
+      /* Toast: border OR tight elevation, not both soft+wide (PRODUCT + anti-slop) */
       .toast {
         position: fixed;
         bottom: 24px;
         left: 50%;
         transform: translateX(-50%) translateY(80px);
-        background: var(--bg-surface);
+        background: var(--bg-hover);
         border: 1px solid var(--border);
         padding: 10px 20px;
         border-radius: 999px;
         font-size: 13px;
         font-weight: 500;
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.4);
-        transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1), opacity 0.3s ease;
+        box-shadow: none;
+        transition:
+          transform var(--motion-medium, 220ms) var(--ease-out),
+          opacity var(--motion-medium, 220ms) var(--ease-out);
         opacity: 0;
         z-index: 100;
         pointer-events: none;
@@ -646,16 +736,12 @@
       .toast.show {
         transform: translateX(-50%) translateY(0);
         opacity: 1;
-        backdrop-filter: blur(12px);
-        -webkit-backdrop-filter: blur(12px);
       }
 
       .toast.toast-enter {
-        filter: blur(6px);
         transition:
-          transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
-          opacity 0.3s ease,
-          filter var(--motion-medium, 250ms) var(--ease-out, ease);
+          transform var(--motion-medium, 220ms) var(--ease-out),
+          opacity var(--motion-medium, 220ms) var(--ease-out);
       }
 
       @media (prefers-reduced-motion: reduce) {
@@ -890,7 +976,7 @@
 
       <!-- Market Data (step 1) -->
       <div class="section" id="section-market">
-        <div class="section-title">Market Data — Step 1</div>
+        <div class="section-title">Market Data · Step 1</div>
 
         <!-- India provider -->
         <div class="card card-provider-india">
@@ -949,33 +1035,48 @@
 
       <!-- Broker CSV Import (step 2) -->
       <div class="section" id="section-import">
-        <div class="section-title">Portfolio Import — Step 2</div>
+        <div class="section-title">Portfolio Import · Step 2</div>
         <div class="card">
-          <div class="card-item">
-            <div class="item-left">
-              <div class="item-label">Broker preset</div>
-              <div class="item-desc">Match your CSV format</div>
+          <div class="golden-path-lead">
+            <div class="golden-path-title">Zerodha holdings export (recommended)</div>
+            <div class="golden-path-hint">
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
             </div>
-            <select id="brokerPreset" style="width: auto; min-width: 140px;">
-              <option value="generic">Generic CSV</option>
-              <option value="zerodha">Zerodha</option>
-              <option value="groww">Groww</option>
-              <option value="upstox">Upstox</option>
-            </select>
+            <a class="golden-path-sample" href="test_fixtures/sample_holdings_zerodha.csv" download>
+              Download a sample Zerodha CSV to try it first
+            </a>
           </div>
+
+          <details class="card more-formats" style="border: none; padding: 0; margin-bottom: 14px; background: transparent;">
+            <summary>More formats: Groww, Upstox, generic CSV</summary>
+            <div class="card-item" style="margin-top: 8px;">
+              <div class="item-left">
+                <div class="item-label">Broker preset</div>
+                <div class="item-desc">Match your CSV format if auto-detect misses</div>
+              </div>
+              <select id="brokerPreset" style="width: auto; min-width: 140px;">
+                <option value="zerodha" selected>Zerodha</option>
+                <option value="groww">Groww</option>
+                <option value="upstox">Upstox</option>
+                <option value="generic">Generic CSV</option>
+              </select>
+            </div>
+          </details>
 
           <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drop CSV file here or press Enter to browse">
             <div class="drop-icon" aria-hidden="true">📂</div>
             <div class="drop-text">Drop your CSV file here, or click to browse</div>
-            <div class="drop-hint">Supports Zerodha, Groww, Upstox, and generic CSV formats</div>
+            <div class="drop-hint">Recommended: Zerodha holdings export · also Groww, Upstox, generic</div>
             <input type="file" id="csvFile" accept=".csv,text/csv" />
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary" id="importCsvButton">Import holdings</button>
-            <button class="btn btn-secondary" id="clearHoldingsButton">Clear all</button>
+            <button class="btn btn-primary btn-pressable" id="importCsvButton">Import holdings</button>
+            <button class="btn btn-secondary btn-pressable" id="clearHoldingsButton">Clear all</button>
             <span class="status-badge" id="csvStatus"></span>
           </div>
+
+          <div class="import-stats" id="importStats" hidden></div>
         </div>
       </div>
 
@@ -1091,7 +1192,7 @@
         <div class="card">
           <ul class="tips-list">
             <li>Use the extension popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
-            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed — fetched via Yahoo Finance.</li>
+            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed for Yahoo-backed quotes where configured; Finnhub is the primary price provider for this extension.</li>
             <li>Re-import CSV whenever your broker holdings change.</li>
             <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
             <li>Hover over the ticker strip to pause scrolling.</li>
@@ -1100,7 +1201,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.2.0 · Data stays local · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.2.0 · Holdings and keys stay in this browser. Prices come from Finnhub; we don't send your portfolio to our servers (we don't have servers). · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 

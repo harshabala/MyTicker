@@ -1,22 +1,30 @@
 /**
- * MyTicker motion tokens and accessibility overrides.
- * Linked from brand.css (popup/options) and ticker.css (content script).
+ * MyTicker motion tokens (product register).
+ * Ease-out only — no bounce/elastic. 150–250ms for most UI state changes.
+ * Linked from brand.css (popup/options). Do not inject into host pages.
  */
 :root {
   --motion-instant: 0ms;
+  --motion-press: 100ms;
   --motion-fast: 150ms;
-  --motion-medium: 250ms;
-  --motion-slow: 350ms;
-  --motion-bar-enter: 300ms;
+  --motion-medium: 220ms;
+  --motion-slow: 280ms;
+  --motion-bar-enter: 250ms;
 
-  --ease-standard: ease;
+  /* Exponential ease-out (no overshoot: control points keep y ≤ 1) */
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --ease-spring: cubic-bezier(0.16, 1, 0.3, 1);
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-press: cubic-bezier(0.2, 0, 0, 1);
+  --ease-reversible: cubic-bezier(0.4, 0, 0.2, 1);
+
+  /* Alias: historical --ease-spring name → ease-out-quint (not a bounce spring) */
+  --ease-spring: var(--ease-out-quint);
 }
 
-/* Extension pages only (popup/options). Never inject into host pages — see ticker.css. */
 @media (prefers-reduced-motion: reduce) {
   :root {
+    --motion-press: 0ms;
     --motion-fast: 0ms;
     --motion-medium: 0ms;
     --motion-slow: 0ms;
@@ -33,17 +41,37 @@
   }
 }
 
-/* Shared press feedback (Emil: tactile, short) */
+@media (prefers-reduced-transparency: reduce) {
+  :root {
+    --material-blur: none;
+    --material-fill: #1c1c1e;
+  }
+}
+
+/* Press feedback on pointer-down via :active */
+.btn-pressable,
+.btn-setup,
+.wizard-step,
+button.checklist-item {
+  transition:
+    transform var(--motion-press) var(--ease-press),
+    background-color var(--motion-fast) var(--ease-out),
+    border-color var(--motion-fast) var(--ease-out),
+    opacity var(--motion-fast) var(--ease-out);
+}
+
 .btn-pressable:active:not(:disabled),
 .btn-setup:active,
-.wizard-step:active {
+.wizard-step:active,
+button.checklist-item:active {
   transform: scale(0.97);
 }
 
 @media (prefers-reduced-motion: reduce) {
   .btn-pressable:active:not(:disabled),
   .btn-setup:active,
-  .wizard-step:active {
+  .wizard-step:active,
+  button.checklist-item:active {
     transform: none;
   }
 }

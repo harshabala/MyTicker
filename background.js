@@ -6,10 +6,12 @@ import {
   DEFAULT_SETTINGS,
   computePositionsState,
   mergePriceSnapshots,
-  inferDisplayCurrency
+  inferDisplayCurrency,
+  isActivated
 } from "./shared.js";
 
 import { FinnhubPriceProvider } from "./priceProviders.js";
+import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
 
 const priceProvider = new FinnhubPriceProvider();
 
@@ -183,6 +185,19 @@ async function handlePricePoll() {
     if (quotes.length > 0) {
       consecutiveFailures = 0;
       lastSuccessfulFetch = now;
+      // Local-first metrics: successful refresh while ticker enabled (this path).
+      await recordSuccessfulRefresh(now);
+      const apiKeyPresent = !!(apiConfig.apiKey && String(apiConfig.apiKey).trim());
+      if (
+        isActivated({
+          hasApiKey: apiKeyPresent,
+          holdingsCount: baseHoldings.length,
+          tickerEnabled: !!settings.enabled,
+          hasSuccessfulRefresh: true
+        })
+      ) {
+        await markActivated(now);
+      }
     } else {
       consecutiveFailures++;
     }

@@ -5,6 +5,9 @@
 import {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
+  ACTIVATION_EVENT,
+  isActivated,
+  recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
   formatSigned,
@@ -39,6 +42,8 @@ assert(STORAGE_KEYS.settings === "pts_settings", "settings key correct");
 assert(STORAGE_KEYS.holdings === "pts_holdings", "holdings key correct");
 assert(STORAGE_KEYS.priceHistory === "pts_price_history", "priceHistory key correct");
 assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState key correct");
+assert(STORAGE_KEYS.watchlist === "pts_watchlist", "watchlist key correct");
+assert(STORAGE_KEYS.metrics === "pts_metrics", "metrics key correct");
 
 // ── Test Suite: DEFAULT_SETTINGS ──
 console.log("\n⚙️  DEFAULT_SETTINGS");
@@ -130,6 +135,10 @@ assertApprox(msftPos.dayPnl, 35, 0.01, "MSFT day P&L is 35");
 // Aggregate day P&L should be sum
 assertApprox(state.aggregate.dayPnl, 85, 0.01, "aggregate day P&L is 85");
 assert(state.aggregate.dayPnlPct > 0, "aggregate day P&L % is positive");
+// 5-min window: AAPL (180-180)*10=0 from 2m sample baseline… earliest in window is 180 at 2m
+// MSFT (385-385)*5=0 — samples at 2m and 1m are both inside 5m window; baseline = first in window
+assert(typeof state.aggregate.window5mPnl === "number", "aggregate window5mPnl present");
+assert(typeof state.aggregate.window5mPnlPct === "number", "aggregate window5mPnlPct present");
 
 // Empty holdings
 const emptyState = computePositionsState([], {}, now);
@@ -150,6 +159,45 @@ assert(formatSignedCurrency(1000, "INR").includes("1"), "INR signed format inclu
 assert(formatSignedCurrency(-50, "USD").startsWith("-"), "USD negative has minus");
 assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "INR" }]) === "INR", "infer INR majority");
 assert(inferDisplayCurrency([{ currency: "USD" }]) === "USD", "infer USD");
+
+// ── Test Suite: isActivated (MT-1 activation event) ──
+console.log("\n🎯 isActivated / ACTIVATION_EVENT");
+assert(ACTIVATION_EVENT === "myticker_activated", "activation event name");
+const baseAct = {
+  hasApiKey: true,
+  holdingsCount: 1,
+  tickerEnabled: true,
+  hasSuccessfulRefresh: true
+};
+assert(isActivated(baseAct) === true, "all four conjuncts → activated");
+assert(isActivated({ ...baseAct, hasApiKey: false }) === false, "missing API key → not activated");
+assert(isActivated({ ...baseAct, holdingsCount: 0 }) === false, "zero holdings → not activated");
+assert(isActivated({ ...baseAct, tickerEnabled: false }) === false, "ticker off → not activated");
+assert(
+  isActivated({ ...baseAct, hasSuccessfulRefresh: false }) === false,
+  "no successful refresh → not activated"
+);
+
+// ── Test Suite: recordActiveDay ──
+console.log("\n📅 recordActiveDay");
+const fixedNow = new Date(2026, 6, 10, 15, 0, 0).getTime(); // local 2026-07-10
+const day1 = recordActiveDay([], fixedNow);
+assert(day1.length === 1, "first day recorded");
+assert(day1[0] === "2026-07-10", "local YYYY-MM-DD format");
+const day1Again = recordActiveDay(day1, fixedNow + 3600_000);
+assert(day1Again.length === 1, "same day deduped");
+assert(day1Again !== day1, "returns new array on dedupe");
+const nextDay = recordActiveDay(day1, fixedNow + 24 * 3600_000);
+assert(nextDay.length === 2, "next day appended");
+assert(nextDay[1] === "2026-07-11", "next day is 2026-07-11");
+const many = Array.from({ length: 400 }, (_, i) => {
+  const d = new Date(2025, 0, 1 + i);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+});
+const capped = recordActiveDay(many, fixedNow);
+assert(capped.length === 400, "cap stays at 400");
+assert(capped[capped.length - 1] === "2026-07-10", "newest day is last after cap");
+assert(!capped.includes(many[0]), "oldest day dropped when over cap");
 
 // ── Summary ──
 console.log(`\n${"═".repeat(40)}`);

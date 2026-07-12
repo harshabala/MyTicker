@@ -1,6 +1,6 @@
 # Privacy Policy for MyTicker
 
-**Last updated:** March 15, 2026
+**Last updated:** July 10, 2026
 
 ## Overview
 
@@ -20,6 +20,7 @@ The following data is stored **exclusively in your browser** using Chrome's `chr
 | Finnhub API key | `chrome.storage.local` | Authenticate with the price data provider |
 | Price history (last 15 min) | `chrome.storage.local` | Calculate 5-minute P&L changes |
 | User preferences | `chrome.storage.sync` | Sync settings across your Chrome instances |
+| Usage counters (`pts_metrics`) | `chrome.storage.local` | Setup progress, active-day dates, import success counts — never transmitted |
 
 ### Network requests
 

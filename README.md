@@ -5,8 +5,7 @@
 <h1 align="center">MyTicker</h1>
 
 <p align="center">
-  <strong>A live stock & crypto ticker strip for your browser.</strong><br/>
-  See your portfolio's 5-minute and daily P&L on every tab, powered by real-time market data.
+  <strong>Your stocks and crypto on every page — a live ticker strip with real portfolio P&amp;L.</strong>
 </p>
 
 <p align="center">
@@ -17,156 +16,160 @@
 
 ---
 
-## ✨ Features
+## Start here
 
-| Feature | Description |
-|---------|-------------|
-| **Live Ticker Strip** | A sleek dark bar at the top of every page with scrolling stock & crypto prices |
-| **5-min & Daily P&L** | See both short-window and full-day profit/loss for each holding |
-| **Multi-Broker CSV Import** | Drag-and-drop CSV files from Zerodha, Groww, Upstox, or any generic format |
-| **Crypto Support** | Finnhub/Binance symbols — Top 5 watchlist or manual holdings (`BINANCE:BTCUSDT`) |
-| **One-Click Toggle** | Enable/disable via popup or `Ctrl+Shift+Y` keyboard shortcut |
-| **Premium Dark UI** | Apple-minimal Obsidian Gold theme, guided 3-step setup |
-| **First-run onboarding** | Setup wizard, status dashboard, popup checklist for new users |
-| **100% Local Data** | Your holdings and API keys never leave your browser |
-| **Test Connection** | Validate your API key with one click before going live |
+### What it is
 
-## 📸 Screenshots
+MyTicker is a small Chrome extension. After you connect a free price key and drop in your broker holdings file, a thin strip at the top of every tab shows your stocks and crypto with **today’s P&amp;L**. The popup shows the same numbers in a bigger “scoreboard” view.
 
-### Ticker Strip
-A minimal, always-visible bar showing your portfolio performance on every page.
+Nothing about your portfolio is sent to MyTicker servers — **there are no MyTicker servers**. Holdings and keys stay in this browser. Prices come from Finnhub (and related market endpoints you already configure).
 
-<img src="assets/screenshot-ticker.png" width="700" alt="Ticker strip on a webpage" />
+### What problems it solves
 
-### Popup
-At-a-glance P&L summary, top movers, and live status — one click away.
+- You want a **quick glance** at how your portfolio is doing without opening a broker app on every tab switch.
+- Setup should feel like a **short checklist**, not a maze of settings.
+- You care that **money data stays local**.
 
-<img src="assets/screenshot-popup.png" width="320" alt="MyTicker popup" />
+### Install and first use (about 2 minutes)
 
-### Settings
-Apple-style configuration with drag-and-drop CSV import and connection testing.
+1. Clone or download this repo:
+   ```bash
+   git clone https://github.com/harshabala/MyTicker.git
+   ```
+2. Open Chrome → `chrome://extensions`
+3. Turn on **Developer mode** (top right)
+4. Click **Load unpacked** → choose the MyTicker folder
+5. The **Settings** page opens on first install
 
-<img src="assets/screenshot-settings.png" width="500" alt="MyTicker settings page" />
+Then complete the three steps (same order in popup and Settings):
 
-## 🏗 Architecture
+1. **Connect price data** — get a free key at [finnhub.io](https://finnhub.io/register), paste it, **Save**, optionally **Test connection**
+2. **Import your holdings** — export holdings CSV from **Zerodha** (recommended). Or try first with **Download a sample Zerodha CSV** in Settings. Drop the file on the drop zone. Groww / Upstox / generic CSV are under **More formats**
+3. **See it live** — open any website. The strip appears at the top. Click the extension icon for **Your day so far** / today’s P&amp;L
+
+You can also toggle the strip with the keyboard shortcut shown in the popup (often `Ctrl+Shift+Y` / `⌘+Shift+Y`).
+
+### When something goes wrong
+
+| Situation | What to do |
+|-----------|------------|
+| Popup stuck on checklist | Finish the incomplete step (it always names the next one) |
+| “Waiting for market data” | Confirm the API key, wait for a refresh, or use **Test connection** |
+| CSV import fails | Use the sample Zerodha file first; open **More formats** if your broker isn’t Zerodha |
+| Strip not visible | Flip **Show ticker** on in the popup; reload the tab |
+| Indian symbols look wrong | Zerodha imports append `.NS` for NSE automatically — re-import if needed |
+
+**Privacy on every stats surface:** *Stored only in this browser. Never uploaded.*
+
+---
+
+## For technical users
+
+### Architecture
 
 ```mermaid
 graph TB
-    subgraph "Chrome Extension"
+    subgraph "Chrome Extension MV3"
         M[manifest.json] --> BG[background.js<br/>Service Worker]
         M --> CS[contentScript.js<br/>Ticker UI]
-        M --> POP[popup.html/js<br/>Quick Controls]
-        M --> OPT[options.html/js<br/>Settings Page]
+        M --> POP[popup.html/js<br/>Scoreboard]
+        M --> OPT[options.html/js<br/>Setup + import]
 
-        BG -->|polls every N min| FH[Finnhub API]
-        BG -->|reads| SH[shared.js<br/>P&L Engine]
-        BG -->|writes| STORE[(chrome.storage)]
+        BG -->|polls| FH[Finnhub API]
+        BG --> SH[shared.js<br/>P&amp;L + isActivated]
+        BG --> MET[metrics.js<br/>pts_metrics local]
+        BG --> STORE[(chrome.storage local/sync)]
 
-        CS -->|reads| STORE
-        CS -->|renders| TICKER[Ticker Strip]
-        CS -->|uses| CSS[ticker.css]
-
-        POP -->|reads/writes| STORE
-        OPT -->|reads/writes| STORE
-        OPT -->|imports| CSV[csvParser.js<br/>Broker Presets]
-
-        BG -->|uses| PP[priceProviders.js<br/>Batched Fetch + Cache]
+        CS --> STORE
+        CS --> TICKER[Ticker Strip]
+        POP --> STORE
+        OPT --> STORE
+        OPT --> CSV[csvParser.js]
+        OPT --> MET
+        POP --> ONB[onboarding.js]
     end
 
-    USER[User] -->|uploads CSV| OPT
-    USER -->|toggles| POP
+    USER[User] -->|CSV| OPT
+    USER -->|toggle| POP
     USER -->|views| TICKER
-
-    style BG fill:#1e293b,stroke:#22d3ee,color:#f1f3f5
-    style CS fill:#1e293b,stroke:#4ade80,color:#f1f3f5
-    style STORE fill:#0f172a,stroke:#f59e0b,color:#fbbf24
-    style FH fill:#0f172a,stroke:#6366f1,color:#a5b4fc
 ```
 
-### Data Flow
+### How it works
 
+1. **Holdings** land in `chrome.storage.local` (`pts_holdings`) via `csvParser.js` presets (Zerodha golden path + Groww/Upstox/generic).
+2. **background.js** polls Finnhub on alarm `price-poll`, merges snapshots in `shared.js`, writes `pts_positions_state`.
+3. **contentScript.js** renders the strip from positions state.
+4. **popup.js** is a small view machine: checklist → P&amp;L scoreboard (or empty). First success shows **Your day so far**, then normal **Today’s P&amp;L**.
+
+### Metrics and activation (local-first)
+
+Single activation constant in `shared.js`:
+
+```js
+ACTIVATION_EVENT = "myticker_activated"
+// activated = api_ok AND holdings_count >= 1 AND ticker_enabled
+//             AND >= 1 successful price refresh
 ```
-CSV Upload → csvParser.js → chrome.storage.local (holdings)
-                                       ↓
-           background.js (alarm poll) → priceProviders.js → Finnhub API
-                                       ↓
-           shared.js (P&L engine) → chrome.storage.local (positionsState)
-                                       ↓
-           contentScript.js → Renders ticker strip on every page
+
+Stored only in `pts_metrics` (never uploaded):
+
+| Field | Meaning |
+|-------|---------|
+| `activatedAt` | First time `isActivated(...)` became true |
+| `firstRefreshAt` | First successful quote fetch |
+| `activeDays` | Local `YYYY-MM-DD` stamps with ≥1 successful refresh while enabled (cap 400) |
+| `imports[preset]` | `{ success, fail }` for import success rate by broker |
+
+Writer: **background.js** for refresh/activation; **options.js** for import outcomes. Popup/options only read.
+
+### Features (deep)
+
+| Feature | Detail |
+|---------|--------|
+| Live ticker strip | Dark bar, 5-min + day P&amp;L per symbol |
+| Scoreboard popup | Aggregate day P&amp;L, top 3 movers by \|day %\|, strip status, method + privacy copy |
+| Setup spine | API → holdings → live; incomplete rows are CTAs |
+| Zerodha golden path | Sample CSV + auto `.NS`; other brokers under details |
+| Crypto (optional) | Finnhub/Binance symbols; core loop works without it |
+| Local privacy | Keys/holdings local; footer names Finnhub honesty |
+
+### Dev install and tests
+
+```bash
+# Unit tests (pure P&amp;L + activation helpers)
+node test_fixtures/test_shared.mjs
+
+# Syntax check ES modules
+for f in background.js contentScript.js shared.js popup.js options.js onboarding.js csvParser.js priceProviders.js metrics.js; do
+  node --input-type=module --check < "$f" && echo "OK $f"
+done
 ```
 
-## 🚀 Installation
+Load unpacked from the repo root. Manual E2E: save key → import `test_fixtures/sample_holdings_zerodha.csv` → keep popup open until first poll.
 
-### From Source (Developer Mode)
+Task checklist: [docs/TASKS.md](docs/TASKS.md) · Privacy: [PRIVACY.md](PRIVACY.md)
 
-1. Clone the repo:
-   ```bash
-   git clone https://github.com/harshabala/myticker-extension.git
-   ```
-2. Open Chrome → `chrome://extensions`
-3. Enable **Developer Mode** (top right toggle)
-4. Click **Load unpacked** → select the cloned folder
-5. Click the MyTicker icon in your toolbar
+### Storage / privacy notes
 
-### Setup (~2 minutes)
+- Canonical API key: `pts_price_api_key` in **local** storage (not sync).
+- Metrics are counts and dates only — no symbols, quantities, or prices.
+- Network: Finnhub quotes (and any existing connection-test calls). No product telemetry.
 
-On first install, **Settings opens automatically** with a 3-step wizard:
-
-1. **API key** — free at [finnhub.io](https://finnhub.io/register) → Save → Test connection (validates `TCS.NS`)
-2. **Import CSV** — drag-and-drop Zerodha/Groww/Upstox holdings export (NSE symbols auto-get `.NS`)
-3. **Go live** — visit any tab; today's P&L appears in the ticker strip and popup
-
-The extension popup shows a checklist until setup is complete.
-
-## 📁 Project Structure
+### Project structure
 
 ```
 MyTicker/
-├── manifest.json          # Extension manifest (MV3)
-├── background.js          # Service worker: polling, P&L orchestration
-├── contentScript.js       # Injected ticker strip UI
-├── shared.js              # Core P&L engine + shared utilities
-├── priceProviders.js      # Finnhub API client (batched + cached)
-├── csvParser.js           # CSV parser with broker presets
-
-├── popup.html / popup.js  # Extension popup UI
-├── options.html / options.js  # Settings page UI
-├── ticker.css             # Ticker strip styles + animations
-├── icons/                 # Extension icons (16/32/48/128px)
-├── assets/                # README screenshots
-└── test_fixtures/         # Test CSVs + unit tests
+├── manifest.json
+├── background.js / contentScript.js / shared.js / metrics.js
+├── onboarding.js / csvParser.js / priceProviders.js
+├── popup.html / popup.js
+├── options.html / options.js
+├── ticker.css / brand.css / motion.css
+├── docs/TASKS.md
+├── PRIVACY.md
+└── test_fixtures/
 ```
 
-## 🧪 Testing
-
-Run the unit test suite for the core P&L engine:
-
-```bash
-node test_fixtures/test_shared.mjs
-```
-
-```
-40 passed, 0 failed
-```
-
-Tests cover: price snapshot merging, P&L calculations, stale data pruning, edge cases (null values, empty holdings, NaN inputs).
-
-## 🔒 Privacy
-
-- **All data stays local** in `chrome.storage` — nothing is sent to any server except Finnhub for price quotes.
-- Your API key is stored in `chrome.storage.local` (never synced across devices).
-- No analytics, no tracking, no telemetry.
-- See [PRIVACY.md](PRIVACY.md) for the full privacy policy.
-
-## 🗺 Roadmap
-
-- [ ] Live broker API integrations (Zerodha Kite, Groww, Upstox)
-- [ ] Light theme for the ticker strip
-- [ ] Multiple watchlists
-- [ ] Intraday sparkline charts in the popup
-- [ ] Alerts & notifications for price targets
-- [ ] Firefox / Edge support
-
-## 📄 License
+## License
 
 [MIT](LICENSE) © 2026 MyTicker Contributors

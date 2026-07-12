@@ -6,8 +6,41 @@ const STORAGE_KEYS = {
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
   pollHealth: "pts_poll_health",
-  onboarding: "pts_onboarding"
+  onboarding: "pts_onboarding",
+  watchlist: "pts_watchlist",
+  metrics: "pts_metrics"
 };
+
+/**
+ * MT-1: MyTicker's single activation event.
+ * activated = api_ok AND holdings_count >= 1 AND ticker_enabled
+ *             AND >= 1 successful price refresh
+ */
+const ACTIVATION_EVENT = "myticker_activated";
+
+/**
+ * Pure activation predicate — all four conjuncts required.
+ */
+function isActivated({ hasApiKey, holdingsCount, tickerEnabled, hasSuccessfulRefresh }) {
+  return !!(hasApiKey && holdingsCount >= 1 && tickerEnabled && hasSuccessfulRefresh);
+}
+
+/**
+ * Record today's local date in activeDays (dedupe, cap at 400 newest).
+ * Returns a new array; does not mutate input.
+ */
+function recordActiveDay(activeDays, now = Date.now()) {
+  const d = new Date(now);
+  const yyyy = d.getFullYear();
+  const mm = String(d.getMonth() + 1).padStart(2, "0");
+  const dd = String(d.getDate()).padStart(2, "0");
+  const today = `${yyyy}-${mm}-${dd}`;
+  const prev = Array.isArray(activeDays) ? activeDays : [];
+  if (prev.includes(today)) return prev.slice();
+  const next = [...prev, today];
+  if (next.length > 400) return next.slice(next.length - 400);
+  return next;
+}
 
 const DEFAULT_SETTINGS = {
   enabled: true,
@@ -82,6 +115,8 @@ function computePositionsState(holdings, priceHistory, now) {
   const windowStart = now - 5 * 60 * 1000;
   let totalCostDayBase = 0;
   let totalValueNow = 0;
+  let totalCost5mBase = 0;
+  let totalValue5mNow = 0;
   let stockCostBase = 0;
   let stockValueNow = 0;
   let cryptoCostBase = 0;
@@ -112,6 +147,8 @@ function computePositionsState(holdings, priceHistory, now) {
 
     const window5mPnl = (lastPrice - baseline5m) * h.quantity;
     const window5mPnlPct = baseline5m ? ((lastPrice - baseline5m) / baseline5m) * 100 : 0;
+    totalCost5mBase += baseline5m * h.quantity;
+    totalValue5mNow += lastPrice * h.quantity;
 
     // Daily baseline: prefer prevClose from the API (exchange-aware),
     // which correctly handles timezone differences (e.g. an Indian user
@@ -161,6 +198,10 @@ function computePositionsState(holdings, priceHistory, now) {
   const aggregateDayPnlPct =
     totalCostDayBase > 0 ? (aggregateDayPnl / totalCostDayBase) * 100 : 0;
 
+  const aggregateWindow5mPnl = totalValue5mNow - totalCost5mBase;
+  const aggregateWindow5mPnlPct =
+    totalCost5mBase > 0 ? (aggregateWindow5mPnl / totalCost5mBase) * 100 : 0;
+
   const stockDayPnl = stockValueNow - stockCostBase;
   const stockDayPnlPct = stockCostBase > 0 ? (stockDayPnl / stockCostBase) * 100 : 0;
 
@@ -173,6 +214,8 @@ function computePositionsState(holdings, priceHistory, now) {
     aggregate: {
       dayPnl: aggregateDayPnl,
       dayPnlPct: aggregateDayPnlPct,
+      window5mPnl: aggregateWindow5mPnl,
+      window5mPnlPct: aggregateWindow5mPnlPct,
       stockDayPnl,
       stockDayPnlPct,
       cryptoDayPnl,
@@ -236,6 +279,9 @@ function getStartOfDayTimestamp(now) {
 export {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
+  ACTIVATION_EVENT,
+  isActivated,
+  recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
   formatSigned,
