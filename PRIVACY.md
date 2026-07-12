@@ -24,9 +24,10 @@ The following data is stored **exclusively in your browser** using Chrome's `chr
 
 ### Network requests
 
-MyTicker makes **one type of network request**:
+MyTicker network use:
 
-- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — to fetch real-time stock and crypto prices. Only the stock symbol and your API key are sent. No personal information is transmitted.
+- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — real-time stock/crypto quotes for the ticker strip. Only symbol + your API key are sent. Portfolio holdings are never uploaded.
+- **Optional connection test (Settings only):** a Yahoo Finance quote probe may be used when you click “Test India” to validate connectivity. This is user-initiated, not background telemetry.
 
 ### Data NOT collected
 

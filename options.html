@@ -63,23 +63,18 @@
       }
 
       .section-title {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: var(--text-label, 12px);
+        font-weight: 600;
         text-transform: none;
-        letter-spacing: normal;
-        color: rgba(201, 176, 112, 0.7);
+        letter-spacing: 0;
+        color: var(--text-secondary);
         margin-bottom: 12px;
         padding-left: 0;
-        display: flex;
-        align-items: center;
-        gap: 10px;
+        display: block;
       }
 
       .section-title::after {
-        content: '';
-        flex: 1;
-        height: 1px;
-        background: linear-gradient(to right, rgba(255, 255, 255, 0.07) 0%, transparent 100%);
+        display: none;
       }
 
       .card {
@@ -91,12 +86,13 @@
       }
 
       .card-item {
-        padding: 14px 16px;
+        padding: 12px 16px;
         border-bottom: 1px solid var(--border);
         display: flex;
         align-items: center;
         justify-content: space-between;
-        transition: background 0.15s ease;
+        min-height: 44px;
+        transition: background var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .card-item:last-child {
@@ -201,20 +197,15 @@
       }
 
       .status-pill {
-        font-size: 12px;
+        font-size: var(--text-label, 12px);
         padding: 8px 10px;
         border-radius: var(--radius-sm);
         background: var(--bg-hover);
         border: 1px solid var(--border);
-        transition: transform 0.15s ease, background 0.15s ease, border-color 0.15s ease;
-      }
-
-      .status-pill:nth-child(even) {
-        background: linear-gradient(135deg, rgba(255, 255, 255, 0.01) 0%, var(--bg-hover) 100%);
-      }
-
-      .status-pill:nth-child(odd) {
-        background: linear-gradient(135deg, var(--bg-hover) 0%, rgba(255, 255, 255, 0.01) 100%);
+        transition:
+          background var(--motion-fast, 150ms) var(--ease-out, ease),
+          border-color var(--motion-fast, 150ms) var(--ease-out, ease),
+          color var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .status-pill:nth-child(3),
@@ -226,22 +217,16 @@
         display: inline-block;
         width: 60px;
         height: 12px;
-        background: linear-gradient(90deg, var(--bg-hover) 25%, var(--border) 50%, var(--bg-hover) 75%);
-        background-size: 200% 100%;
-        animation: skeleton-loading 1.5s infinite linear;
+        background: var(--bg-hover);
         border-radius: 4px;
         vertical-align: middle;
-      }
-
-      @keyframes skeleton-loading {
-        0% { background-position: 200% 0; }
-        100% { background-position: -200% 0; }
+        opacity: 0.7;
       }
 
       .status-pill.ok {
         border-color: rgba(48, 209, 88, 0.35);
         color: var(--green);
-        background: linear-gradient(135deg, rgba(48, 209, 88, 0.08) 0%, rgba(48, 209, 88, 0.03) 100%);
+        background: rgba(48, 209, 88, 0.08);
       }
 
       .status-pill.pending {
@@ -272,35 +257,11 @@
       }
 
       .setup-status.setup-complete-shimmer {
-        position: relative;
-        overflow: hidden;
-      }
-
-      .setup-status.setup-complete-shimmer::after {
-        content: "";
-        position: absolute;
-        inset: 0;
-        background: linear-gradient(
-          105deg,
-          transparent 35%,
-          rgba(201, 176, 112, 0.12) 50%,
-          transparent 65%
-        );
-        animation: setup-shimmer 0.9s var(--ease-out, ease) 1;
-        pointer-events: none;
-      }
-
-      @keyframes setup-shimmer {
-        from {
-          transform: translateX(-100%);
-        }
-        to {
-          transform: translateX(100%);
-        }
+        /* No decorative shimmer — calm settle only */
       }
 
       .setup-wizard {
-        padding: 14px 16px;
+        padding: 12px 16px;
       }
 
       .wizard-steps {
@@ -622,16 +583,16 @@
 
       /* Drag drop zone */
       .drop-zone {
-        border: 2px dashed var(--border);
+        border: 1px solid var(--border);
         border-radius: var(--radius-sm);
         padding: 24px 16px;
         text-align: center;
         cursor: pointer;
         margin: 12px 16px;
+        background: var(--bg-inset, rgba(0, 0, 0, 0.35));
         transition:
           border-color var(--motion-fast, 150ms) var(--ease-out, ease),
-          background var(--motion-fast, 150ms) var(--ease-out, ease),
-          transform var(--motion-press, 100ms) var(--ease-press, ease);
+          background var(--motion-fast, 150ms) var(--ease-out, ease);
       }
 
       .drop-zone:hover,
@@ -641,12 +602,16 @@
       }
 
       .drop-zone:active {
-        transform: scale(0.99);
+        transform: none;
       }
 
       .drop-zone .drop-icon {
-        font-size: 24px;
-        margin-bottom: 6px;
+        font-size: 11px;
+        font-weight: 700;
+        letter-spacing: 0.04em;
+        color: var(--text-tertiary);
+        margin-bottom: 8px;
+        font-family: var(--font-mono);
       }
 
       .drop-zone .drop-text {
@@ -696,10 +661,10 @@
         text-align: left;
         padding: 8px 10px;
         font-weight: 600;
-        font-size: 10px;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-        color: var(--text-tertiary);
+        font-size: var(--text-meta, 11px);
+        text-transform: none;
+        letter-spacing: 0;
+        color: var(--text-secondary);
         background: rgba(255, 255, 255, 0.02);
         border-bottom: 1px solid var(--border);
         position: sticky;
@@ -757,12 +722,18 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        .setup-status.setup-complete-shimmer::after {
-          animation: none;
+        details.crypto-details > div,
+        .setup-welcome,
+        .warn-banner,
+        .toast,
+        .toast.toast-enter,
+        #cryptoManualField {
+          transition: none !important;
+          animation: none !important;
         }
 
-        details.crypto-details > div {
-          transition: none;
+        .toast {
+          transform: translateX(-50%) translateY(0);
         }
       }
 
@@ -788,32 +759,33 @@
         margin-bottom: 14px;
       }
 
-      /* Provider card accent styling */
+      /* Provider cards — flat surfaces, no color washes */
       .card.card-provider-india {
-        border-color: rgba(48, 209, 88, 0.25);
-        background: linear-gradient(135deg, rgba(48, 209, 88, 0.03) 0%, var(--bg-surface) 40%);
+        border-color: var(--border);
+        background: var(--bg-surface);
       }
 
       .card.card-provider-us {
         border-color: var(--border);
+        background: var(--bg-surface);
       }
       .provider-name {
-        font-size: 13px;
+        font-size: var(--text-body, 13px);
         font-weight: 600;
         color: var(--text-primary);
         letter-spacing: -0.01em;
       }
       .provider-sub {
-        font-size: 11px;
+        font-size: var(--text-meta, 11px);
         color: var(--text-tertiary);
         margin-top: 2px;
       }
       .provider-badge {
-        font-size: 9px;
-        font-weight: 700;
-        letter-spacing: 0.07em;
-        text-transform: uppercase;
-        padding: 2px 7px;
+        font-size: var(--text-meta, 11px);
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        padding: 3px 8px;
         border-radius: 4px;
         flex-shrink: 0;
         margin-top: 1px;
@@ -1056,14 +1028,14 @@
             </div>
             <div class="golden-path-actions">
               <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
-                Import my holdings (IRFC / OLAELEC / SML100CASE)
+                Import my holdings
               </button>
               <button type="button" class="btn btn-secondary btn-pressable" id="importSampleButton">
-                Import demo sample instead
+                Import demo sample
               </button>
             </div>
             <p class="golden-path-hint" style="margin-top: 8px;">
-              Packaged imports avoid Chrome “could not read file” permission errors. Browse/drop still works for new broker exports once the file is fully local (not cloud-only).
+              One-click import avoids browser file-permission issues. Or drop a local broker CSV below.
             </p>
           </div>
 
@@ -1084,8 +1056,8 @@
           </details>
 
           <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drop CSV file here or press Enter to browse">
-            <div class="drop-icon" aria-hidden="true">📂</div>
-            <div class="drop-text">Drop your CSV file here, or click to browse</div>
+            <div class="drop-icon" aria-hidden="true">CSV</div>
+            <div class="drop-text">Drop holdings CSV here, or click to browse</div>
             <div class="drop-hint">Recommended: Zerodha holdings export · also Groww, Upstox, generic</div>
             <input type="file" id="csvFile" accept=".csv,text/csv" />
           </div>
@@ -1208,16 +1180,14 @@
 
       <!-- Tips -->
       <div class="section">
-        <div class="section-title">Tips</div>
-        <div class="card">
-          <ul class="tips-list">
-            <li>Use the extension popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd> to toggle the ticker.</li>
-            <li>Indian stocks: Zerodha exports auto-map to <code style="color: var(--accent);">SYMBOL.NS</code>. No API key needed for Yahoo-backed quotes where configured; Finnhub is the primary price provider for this extension.</li>
-            <li>Re-import CSV whenever your broker holdings change.</li>
-            <li>Use symbols matching your provider (e.g., <code style="color: var(--accent);">TCS.NS</code> for NSE on Finnhub).</li>
-            <li>Hover over the ticker strip to pause scrolling.</li>
+        <details class="card" style="padding: 12px 16px;">
+          <summary style="cursor:pointer;font-size:12px;color:var(--text-secondary);font-weight:600;">Tips</summary>
+          <ul class="tips-list" style="margin-top:10px;">
+            <li>Toggle strip: popup or <kbd id="tipsShortcut" style="background: rgba(255,255,255,0.06); padding: 1px 5px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd></li>
+            <li>Zerodha CSVs get <code style="color: var(--text-secondary);">.NS</code> for NSE automatically.</li>
+            <li>Re-import when holdings change. Hover the strip to pause scroll.</li>
           </ul>
-        </div>
+        </details>
       </div>
 
       <div class="page-footer">

@@ -1,12 +1,19 @@
+/**
+ * MyTicker strip — ambient companion (craft pass)
+ * Quieter height, no underline theater, no stale pulse, token-aligned motion.
+ * Do not import brand.css into host pages.
+ */
 :root {
   --motion-instant: 0ms;
+  --motion-press: 100ms;
   --motion-fast: 150ms;
-  --motion-medium: 250ms;
-  --motion-slow: 350ms;
-  --motion-bar-enter: 300ms;
-  --ease-standard: ease;
+  --motion-medium: 220ms;
+  --motion-slow: 280ms;
+  --motion-bar-enter: 250ms;
+  --ease-standard: cubic-bezier(0.25, 0.1, 0.25, 1);
   --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
-  --pts-z-index-ticker: 999999; /* Semantic layer below maximum but high enough for extension */
+  --ease-out-quint: cubic-bezier(0.22, 1, 0.36, 1);
+  --pts-z-index-ticker: 2147483000;
 }
 
 .pts-ticker-bar {
@@ -14,22 +21,24 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 32px;
+  height: 28px;
   display: flex;
   align-items: center;
-  background: var(--pts-bg, #000000);
+  background: var(--pts-bg, rgba(0, 0, 0, 0.9));
   color: var(--pts-fg, #f5f5f7);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  font-size: 12px;
+  font-size: 11px;
   z-index: var(--pts-z-index-ticker) !important;
-  box-shadow: 0 0.5px 0 rgba(255, 255, 255, 0.06);
+  box-shadow: inset 0 -0.5px 0 rgba(255, 255, 255, 0.08);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   opacity: 0;
   transform: translateY(-100%);
   transition:
-    opacity var(--motion-bar-enter, 300ms) var(--ease-out, ease),
-    transform var(--motion-bar-enter, 300ms) var(--ease-out, ease);
+    opacity var(--motion-bar-enter) var(--ease-out),
+    transform var(--motion-bar-enter) var(--ease-out);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
 
 .pts-ticker-bar.pts-ticker-visible {
@@ -41,8 +50,8 @@
   opacity: 0;
   transform: translateY(-100%);
   transition:
-    opacity var(--motion-fast, 150ms) var(--ease-out, ease),
-    transform var(--motion-fast, 150ms) var(--ease-out, ease);
+    opacity var(--motion-fast) var(--ease-out),
+    transform var(--motion-fast) var(--ease-out);
   pointer-events: none;
 }
 
@@ -53,29 +62,34 @@
   font-size: 11px;
   font-weight: 600;
   cursor: help;
-  animation: pts-pulse 2s ease-in-out infinite;
+  /* Static amber — no infinite pulse (vestibular + ambient restraint) */
+  opacity: 0.95;
 }
 
 .pts-aggregate {
   flex: 0 0 auto;
   padding: 0 12px;
   font-weight: 600;
+  font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
+  letter-spacing: -0.01em;
 }
 
 .pts-aggregate.pts-aggregate-flash {
-  animation: pts-aggregate-flash var(--motion-fast, 150ms) var(--ease-out, ease);
+  animation: pts-aggregate-flash var(--motion-fast) var(--ease-out);
 }
 
 .pts-scroll-wrapper {
   overflow: hidden;
   flex: 1 1 auto;
+  min-width: 0;
 }
 
 .pts-scroll-inner {
   display: inline-flex;
   white-space: nowrap;
-  animation: pts-scroll var(--pts-ticker-duration, 40s) linear infinite;
+  /* Quieter default: still marquee for overflow density, slower feel via content duration */
+  animation: pts-scroll var(--pts-ticker-duration, 48s) linear infinite;
 }
 
 .pts-scroll-inner.pts-scroll-static {
@@ -84,6 +98,7 @@
   overflow-x: auto;
   max-width: 100%;
   scrollbar-width: none;
+  overscroll-behavior-x: contain;
 }
 
 .pts-scroll-inner.pts-scroll-static::-webkit-scrollbar {
@@ -93,9 +108,10 @@
 .pts-item {
   display: inline-flex;
   align-items: center;
-  padding: 0 16px;
-  border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
-  transition: background var(--motion-fast, 150ms) var(--ease-standard, ease);
+  padding: 0 12px;
+  border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.08));
+  transition: background var(--motion-fast) var(--ease-out);
+  cursor: default;
 }
 
 .pts-item:hover {
@@ -103,40 +119,44 @@
 }
 
 .pts-icon {
-  width: 18px;
-  height: 18px;
+  width: 16px;
+  height: 16px;
   border-radius: 999px;
   background: var(--pts-icon-bg, #2c2c2e);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
+  font-size: 9px;
   font-weight: 600;
   margin-right: 6px;
   text-transform: uppercase;
+  opacity: 0.75;
 }
 
 .pts-arrow {
-  margin-right: 4px;
-  font-size: 11px;
+  display: none; /* color-only deltas — no unicode triangle theater */
 }
 
 .pts-item.pts-crypto .pts-icon {
   background: var(--pts-icon-bg, #2c2c2e);
-  border: 1px solid var(--pts-crypto-accent, #c9b070);
+  border: 1px solid rgba(212, 192, 138, 0.35);
+  opacity: 1;
 }
 
 .pts-item.pts-crypto .pts-symbol {
-  color: var(--pts-crypto-accent, #c9b070);
+  color: var(--pts-fg, #f5f5f7);
+  /* crypto not recolored gold — accent reserved for chrome */
 }
 
 .pts-symbol {
   margin-right: 6px;
   font-weight: 500;
+  letter-spacing: -0.01em;
 }
 
 .pts-change {
   font-variant-numeric: tabular-nums;
+  font-weight: 500;
 }
 
 .pts-up {
@@ -149,12 +169,13 @@
 
 .pts-flat {
   color: var(--pts-fg, #f5f5f7);
-  opacity: 0.85;
+  opacity: 0.7;
 }
 
+/* No underline-as-link theater */
 .pts-item:hover .pts-change,
 .pts-item:hover .pts-symbol {
-  text-decoration: underline;
+  text-decoration: none;
 }
 
 .pts-scroll-wrapper:hover .pts-scroll-inner:not(.pts-scroll-static),
@@ -182,6 +203,9 @@
   opacity: 1;
   transform: none;
   transition: none;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: #000000;
 }
 
 @keyframes pts-scroll {
@@ -190,16 +214,6 @@
   }
   100% {
     transform: translateX(-50%);
-  }
-}
-
-@keyframes pts-pulse {
-  0%,
-  100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.45;
   }
 }
 
@@ -220,11 +234,14 @@
     opacity: 1;
     transform: none;
     transition: none;
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #000000;
   }
 
   .pts-ticker-bar.pts-ticker-exiting {
     opacity: 0;
-    transition: opacity var(--motion-fast, 0ms) ease;
+    transition: opacity var(--motion-fast) ease;
   }
 
   .pts-stale-indicator {
@@ -245,5 +262,13 @@
 
   .pts-aggregate.pts-aggregate-flash {
     animation: none;
+  }
+}
+
+@media (prefers-reduced-transparency: reduce) {
+  .pts-ticker-bar {
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+    background: #000000;
   }
 }

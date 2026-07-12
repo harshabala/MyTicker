@@ -3,9 +3,13 @@
 import { STORAGE_KEYS, formatSigned, formatSignedCurrency } from "./shared.js";
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
-const TICKER_STYLE_ID = "pts-ticker-style";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 const BODY_TRANSITION_ATTR = "data-pts-body-transition";
+
+/** Closed shadow root kept in-module so host pages cannot scrape holdings DOM. */
+let tickerHost = null;
+let tickerShadow = null;
+let tickerBar = null;
 
 const reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -14,9 +18,8 @@ function prefersReducedMotion() {
 }
 
 reducedMotionMq.addEventListener("change", () => {
-  const container = document.getElementById(TICKER_CONTAINER_ID);
-  if (container) {
-    container.classList.toggle("pts-reduced-motion", prefersReducedMotion());
+  if (tickerBar) {
+    tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
     chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
       const state = data[STORAGE_KEYS.positionsState];
       if (state) renderTicker(state);
@@ -60,16 +63,6 @@ function init() {
   });
 }
 
-function loadTickerStyles() {
-  if (!document.getElementById(TICKER_STYLE_ID)) {
-    const link = document.createElement("link");
-    link.id = TICKER_STYLE_ID;
-    link.rel = "stylesheet";
-    link.href = chrome.runtime.getURL("ticker.css");
-    document.documentElement.insertBefore(link, document.documentElement.firstChild);
-  }
-}
-
 function setBodyMarginTop(px, animate, isExit = false) {
   if (!document.body) return;
   const reduced = prefersReducedMotion();
@@ -90,7 +83,7 @@ function setBodyMarginTop(px, animate, isExit = false) {
 }
 
 function ensureTickerContainer(animate = false) {
-  if (document.getElementById(TICKER_CONTAINER_ID)) return;
+  if (tickerHost && document.documentElement.contains(tickerHost) && tickerBar) return;
 
   if (!document.body) {
     document.addEventListener(
@@ -103,16 +96,28 @@ function ensureTickerContainer(animate = false) {
     return;
   }
 
-  loadTickerStyles();
+  // Host is a zero-size mount; UI lives in closed shadow (pages cannot scrape P&L DOM).
+  tickerHost = document.createElement("div");
+  tickerHost.id = TICKER_CONTAINER_ID;
+  tickerHost.setAttribute("data-myticker", "1");
+  tickerHost.style.cssText = "all:initial;position:fixed;top:0;left:0;width:0;height:0;overflow:visible;z-index:2147483000;pointer-events:none;";
 
-  const bar = document.createElement("div");
-  bar.id = TICKER_CONTAINER_ID;
-  bar.className = "pts-ticker-bar";
+  tickerShadow = tickerHost.attachShadow({ mode: "closed" });
+
+  const link = document.createElement("link");
+  link.rel = "stylesheet";
+  link.href = chrome.runtime.getURL("ticker.css");
+  tickerShadow.appendChild(link);
+
+  tickerBar = document.createElement("div");
+  tickerBar.className = "pts-ticker-bar";
+  tickerBar.style.pointerEvents = "auto";
   if (prefersReducedMotion() || !animate) {
-    bar.classList.add("pts-reduced-motion", "pts-ticker-visible");
+    tickerBar.classList.add("pts-reduced-motion", "pts-ticker-visible");
   }
+  tickerShadow.appendChild(tickerBar);
 
-  document.documentElement.insertBefore(bar, document.body);
+  document.documentElement.insertBefore(tickerHost, document.body);
 
   if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
     const rect = document.body.getBoundingClientRect();
@@ -120,11 +125,11 @@ function ensureTickerContainer(animate = false) {
     document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-  setBodyMarginTop(originalPx + 32, animate, false);
+  setBodyMarginTop(originalPx + 28, animate, false);
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {
-      bar.classList.add("pts-ticker-visible");
+      tickerBar.classList.add("pts-ticker-visible");
     });
   }
 }
@@ -152,20 +157,26 @@ function restoreBodyMargin(animate) {
 }
 
 function removeTickerContainer() {
-  const existing = document.getElementById(TICKER_CONTAINER_ID);
-  if (!existing) {
+  if (!tickerHost || !tickerBar) {
     restoreBodyMargin(false);
+    tickerHost = null;
+    tickerShadow = null;
+    tickerBar = null;
     return;
   }
+
+  const host = tickerHost;
+  const bar = tickerBar;
 
   let finished = false;
   const finish = () => {
     if (finished) return;
     finished = true;
-    if (existing.parentNode) {
-      existing.parentNode.removeChild(existing);
-    }
-    delete existing._ptsParts;
+    if (host.parentNode) host.parentNode.removeChild(host);
+    delete bar._ptsParts;
+    tickerHost = null;
+    tickerShadow = null;
+    tickerBar = null;
   };
 
   if (prefersReducedMotion()) {
@@ -174,17 +185,15 @@ function removeTickerContainer() {
     return;
   }
 
-  existing.classList.remove("pts-ticker-visible");
-  existing.classList.add("pts-ticker-exiting");
-
-  // Synchronize margin exit transition in sync with bar exit
+  bar.classList.remove("pts-ticker-visible");
+  bar.classList.add("pts-ticker-exiting");
   restoreBodyMargin(true);
 
   const onEnd = (e) => {
     if (e.propertyName !== "opacity") return;
     finish();
   };
-  existing.addEventListener("transitionend", onEnd, { once: true });
+  bar.addEventListener("transitionend", onEnd, { once: true });
   setTimeout(finish, 200);
 }
 
@@ -299,12 +308,13 @@ function updateItemElement(item, pos) {
   }
 
   item.dataset.ptsKey = positionKey(pos);
-  item.title = `Last: ${pos.lastPrice ?? "—"} | Qty: ${pos.quantity ?? 0} | Day: ${formatSigned(dPnl)} (${dPct.toFixed(2)}%)`;
+  // Privacy: never expose quantity in title attributes (page-scrape surface)
+  item.title = `${pos.displayName || pos.symbol || ""} · Day ${formatSigned(dPnl)} (${dPct.toFixed(2)}%)`;
 
   const [iconSpan, nameSpan, arrowSpan, changeSpan] = item.children;
   iconSpan.textContent = getInitials(pos.displayName);
   nameSpan.textContent = pos.displayName || pos.symbol || "—";
-  arrowSpan.textContent = w5pnl > 0 ? "▲" : w5pnl < 0 ? "▼" : "●";
+  arrowSpan.textContent = ""; // color-only deltas (arrows hidden in CSS)
   changeSpan.textContent = `${formatSigned(w5pnl)} (${w5pct.toFixed(2)}%)`;
 }
 
@@ -354,18 +364,17 @@ function clearTickerContent(container) {
 }
 
 function renderTicker(state) {
-  const container = document.getElementById(TICKER_CONTAINER_ID);
-  if (!container) return;
+  if (!tickerBar) return;
 
-  container.classList.toggle("pts-reduced-motion", prefersReducedMotion());
+  tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
 
   if (!state?.positions?.length) {
-    clearTickerContent(container);
+    clearTickerContent(tickerBar);
     return;
   }
 
-  const parts = getTickerParts(container);
-  updateStaleIndicator(container, parts, state);
+  const parts = getTickerParts(tickerBar);
+  updateStaleIndicator(tickerBar, parts, state);
   updateAggregate(parts, state);
   updateScrollItems(parts, state);
 }
@@ -386,8 +395,10 @@ function applyTickerSpeed(settings) {
   const duration =
     settings?.tickerStyleConfig?.tickerSpeed ||
     40;
-  document.documentElement.style.setProperty(
-    "--pts-ticker-duration",
-    `${Number(duration)}s`
-  );
+  const value = `${Number(duration)}s`;
+  // Set on host document (inherited) and bar if present
+  document.documentElement.style.setProperty("--pts-ticker-duration", value);
+  if (tickerBar) {
+    tickerBar.style.setProperty("--pts-ticker-duration", value);
+  }
 }

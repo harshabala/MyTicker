@@ -158,10 +158,12 @@ async function handlePricePoll() {
 
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
+    // Canonical API key is local-only — never fall back to sync settings.
     const apiKeyOverride = localData["pts_price_api_key"];
     const apiConfig = {
       ...(settings.priceProviderConfig || {}),
-      apiKey: apiKeyOverride || settings.priceProviderConfig?.apiKey
+      apiKey: apiKeyOverride || "",
+      baseUrl: "https://finnhub.io/api/v1"
     };
     if (!apiConfig.apiKey) {
       // No API key configured; clear state so UI doesn't show stale data.
