@@ -7,6 +7,7 @@ import {
   DEFAULT_SETTINGS,
   ACTIVATION_EVENT,
   isActivated,
+  needsFinnhubKey,
   recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
@@ -160,23 +161,25 @@ assert(formatSignedCurrency(-50, "USD").startsWith("-"), "USD negative has minus
 assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "INR" }]) === "INR", "infer INR majority");
 assert(inferDisplayCurrency([{ currency: "USD" }]) === "USD", "infer USD");
 
-// ── Test Suite: isActivated (MT-1 activation event) ──
+// ── Test Suite: isActivated (India-first — no Finnhub key required) ──
 console.log("\n🎯 isActivated / ACTIVATION_EVENT");
 assert(ACTIVATION_EVENT === "myticker_activated", "activation event name");
 const baseAct = {
-  hasApiKey: true,
   holdingsCount: 1,
   tickerEnabled: true,
   hasSuccessfulRefresh: true
 };
-assert(isActivated(baseAct) === true, "all four conjuncts → activated");
-assert(isActivated({ ...baseAct, hasApiKey: false }) === false, "missing API key → not activated");
+assert(isActivated(baseAct) === true, "holdings + enabled + refresh → activated");
+assert(isActivated({ ...baseAct, hasApiKey: false }) === true, "API key not required for India path");
 assert(isActivated({ ...baseAct, holdingsCount: 0 }) === false, "zero holdings → not activated");
 assert(isActivated({ ...baseAct, tickerEnabled: false }) === false, "ticker off → not activated");
 assert(
   isActivated({ ...baseAct, hasSuccessfulRefresh: false }) === false,
   "no successful refresh → not activated"
 );
+assert(needsFinnhubKey([{ symbol: "TCS.NS" }]) === false, "NSE symbol does not need Finnhub");
+assert(needsFinnhubKey([{ symbol: "AAPL" }]) === true, "US symbol needs Finnhub");
+assert(needsFinnhubKey([{ symbol: "TCS.NS" }, { symbol: "AAPL" }]) === true, "mixed portfolio needs Finnhub");
 
 // ── Test Suite: recordActiveDay ──
 console.log("\n📅 recordActiveDay");

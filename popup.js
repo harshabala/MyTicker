@@ -210,12 +210,38 @@ function openOptionsAtWizardStep(step) {
   });
 }
 
-function updateChecklistInPlace(viewEl, status) {
+function getSetupSteps(status) {
+  // India-first: import holdings is the only required setup step.
+  // US Finnhub key is optional (shown only when portfolio has non-.NS/.BO symbols).
   const steps = [
-    { done: status.hasApiKey, wizardStep: 1 },
-    { done: status.hasHoldings, wizardStep: 2 },
-    { done: status.hasLiveData, wizardStep: 3 }
+    {
+      done: status.hasHoldings,
+      wizardStep: 2,
+      label: "Import your holdings",
+      hint: "Zerodha CSV works immediately for Indian stocks (no API key)"
+    },
+    {
+      done: status.hasLiveData,
+      wizardStep: 2,
+      label: "Prices loading",
+      hint: status.hasHoldings
+        ? "Fetching live prices… open any tab in a moment"
+        : "Import holdings first"
+    }
   ];
+  if (status.needsUsKey) {
+    steps.push({
+      done: status.hasApiKey,
+      wizardStep: 1,
+      label: "Optional: US price key",
+      hint: "Only needed for US stocks or crypto (Finnhub free key)"
+    });
+  }
+  return steps;
+}
+
+function updateChecklistInPlace(viewEl, status) {
+  const steps = getSetupSteps(status);
   const items = viewEl.querySelectorAll(".checklist-item");
   items.forEach((row, i) => {
     const done = !!steps[i]?.done;
@@ -229,14 +255,18 @@ function updateChecklistInPlace(viewEl, status) {
   const cta = viewEl.querySelector(".btn-setup");
   if (cta) {
     const next = steps.find((s) => !s.done);
-    if (next) {
-      const labels = {
-        1: "Next: Connect price data →",
-        2: "Next: Import your holdings →",
-        3: "Next: Open any tab to go live →"
-      };
-      cta.textContent = labels[next.wizardStep] || "Continue setup →";
-      cta.dataset.wizardStep = String(next.wizardStep);
+    if (!next) {
+      cta.textContent = "Open any tab to see your strip →";
+      cta.dataset.wizardStep = "2";
+    } else if (next.label.startsWith("Optional")) {
+      cta.textContent = "Optional: add US key in Settings →";
+      cta.dataset.wizardStep = "1";
+    } else if (!status.hasHoldings) {
+      cta.textContent = "Import holdings →";
+      cta.dataset.wizardStep = "2";
+    } else {
+      cta.textContent = "Open Settings →";
+      cta.dataset.wizardStep = "2";
     }
   }
 }
@@ -359,30 +389,10 @@ function renderSetupChecklist(container, status) {
 
   const title = document.createElement("div");
   title.className = "label";
-  title.textContent = "Get started (3 steps)";
+  title.textContent = status.hasHoldings ? "Almost there" : "Get started";
   card.appendChild(title);
 
-  // Unified order with options wizard: API → holdings → live
-  const steps = [
-    {
-      done: status.hasApiKey,
-      wizardStep: 1,
-      label: "Connect price data",
-      hint: "Paste your free price data key in Settings"
-    },
-    {
-      done: status.hasHoldings,
-      wizardStep: 2,
-      label: "Import your holdings",
-      hint: "Drop your Zerodha CSV (more formats supported)"
-    },
-    {
-      done: status.hasLiveData,
-      wizardStep: 3,
-      label: "See it live on any tab",
-      hint: "Ticker strip + today's P&L appear automatically"
-    }
-  ];
+  const steps = getSetupSteps(status);
 
   steps.forEach((step, i) => {
     const row = step.done
@@ -417,16 +427,19 @@ function renderSetupChecklist(container, status) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn-setup btn-pressable";
-  const ctaLabels = {
-    1: "Next: Connect price data →",
-    2: "Next: Import your holdings →",
-    3: "Next: Open any tab to go live →"
-  };
-  btn.textContent = next ? ctaLabels[next.wizardStep] : "Open Settings →";
-  if (next) btn.dataset.wizardStep = String(next.wizardStep);
-  btn.addEventListener("click", () => {
-    openOptionsAtWizardStep(next?.wizardStep || 1);
-  });
+  if (!next) {
+    btn.textContent = "Open any tab to see your strip →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(2));
+  } else if (next.label.startsWith("Optional")) {
+    btn.textContent = "Optional: add US key →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(1));
+  } else if (!status.hasHoldings) {
+    btn.textContent = "Import holdings →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(2));
+  } else {
+    btn.textContent = "Open Settings →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(2));
+  }
   card.appendChild(btn);
 
   container.appendChild(card);

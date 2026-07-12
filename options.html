@@ -484,42 +484,46 @@
         min-height: 0;
       }
 
-      /* Toggle switch — iOS-scale thumb, critically damped settle */
+      /* Classic iOS switch — thumb vertically centered */
       .toggle-switch {
         position: relative;
-        width: 51px;
-        height: 31px;
-        cursor: pointer;
+        display: inline-block;
+        width: 42px;
+        height: 26px;
         flex-shrink: 0;
-        margin: -4px;
-        padding: 4px;
+        cursor: pointer;
+        margin: 0;
+        padding: 0;
+        vertical-align: middle;
       }
 
       .toggle-switch input {
         opacity: 0;
         width: 0;
         height: 0;
+        position: absolute;
       }
 
       .toggle-slider {
         position: absolute;
-        inset: 4px;
+        inset: 0;
         background: var(--bg-tertiary);
         border-radius: 999px;
-        transition: background var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
+        transition: background var(--motion-medium, 220ms) var(--ease-out, ease);
       }
 
       .toggle-slider::before {
         content: "";
         position: absolute;
         left: 2px;
-        top: 2px;
-        width: 27px;
-        height: 27px;
-        background: white;
+        top: 50%;
+        width: 22px;
+        height: 22px;
+        margin-top: -11px;
+        background: #fff;
         border-radius: 50%;
         box-shadow: 0 1px 2px rgba(0, 0, 0, 0.35);
-        transition: transform var(--motion-medium, 220ms) var(--ease-out-quint, var(--ease-out));
+        transition: transform var(--motion-medium, 220ms) var(--ease-out, ease);
       }
 
       .toggle-switch input:checked + .toggle-slider {
@@ -527,7 +531,7 @@
       }
 
       .toggle-switch input:checked + .toggle-slider::before {
-        transform: translateX(20px);
+        transform: translateX(16px);
       }
 
       /* Buttons — press feedback, no float-on-hover (avoids layout jank) */
@@ -643,39 +647,64 @@
 
       /* Holdings preview */
       .preview-container {
-        margin: 0 16px 12px;
-        max-height: 200px;
-        overflow-y: auto;
+        margin: 0 16px 16px;
         border-radius: var(--radius-sm);
         background: rgba(0, 0, 0, 0.4);
         border: 1px solid var(--border);
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+        max-height: 240px;
+      }
+
+      .preview-head {
+        flex: 0 0 auto;
+        background: #141416;
+        border-bottom: 1px solid var(--border);
+        z-index: 2;
+      }
+
+      .preview-body {
+        flex: 1 1 auto;
+        overflow-y: auto;
+        min-height: 0;
       }
 
       .preview-table {
         width: 100%;
         border-collapse: collapse;
         font-size: 12px;
+        table-layout: fixed;
+      }
+
+      .preview-table th,
+      .preview-table td {
+        text-align: left;
+        padding: 10px 12px;
+        font-variant-numeric: tabular-nums;
       }
 
       .preview-table th {
-        text-align: left;
-        padding: 8px 10px;
         font-weight: 600;
         font-size: var(--text-meta, 11px);
         text-transform: none;
         letter-spacing: 0;
         color: var(--text-secondary);
-        background: rgba(255, 255, 255, 0.02);
-        border-bottom: 1px solid var(--border);
-        position: sticky;
-        top: 0;
+        background: #141416;
       }
 
+      .preview-table th:nth-child(1),
+      .preview-table td:nth-child(1) { width: 36%; }
+      .preview-table th:nth-child(2),
+      .preview-table td:nth-child(2) { width: 16%; }
+      .preview-table th:nth-child(3),
+      .preview-table td:nth-child(3) { width: 24%; }
+      .preview-table th:nth-child(4),
+      .preview-table td:nth-child(4) { width: 24%; }
+
       .preview-table td {
-        padding: 6px 10px;
         color: var(--text-secondary);
         border-bottom: 1px solid rgba(255, 255, 255, 0.03);
-        font-variant-numeric: tabular-nums;
       }
 
       .preview-table tr:last-child td {
@@ -934,33 +963,34 @@
         <div class="section-title">Setup Status</div>
         <div class="card">
           <div class="setup-welcome" id="setupWelcome" hidden>
-            Welcome to MyTicker. Complete the steps below to see your portfolio P&amp;L on every tab.
+            Import your broker holdings to go live. Indian stocks price automatically — no API key.
           </div>
           <div class="setup-status" id="setupStatus">
-            <div class="status-pill pending" id="statusApi">○ API key</div>
             <div class="status-pill pending" id="statusHoldings">○ Holdings</div>
+            <div class="status-pill pending" id="statusLive">○ Live prices</div>
             <div class="status-pill pending" id="statusSync">○ Last sync</div>
-            <div class="status-pill pending" id="statusLive">○ Live data</div>
+            <div class="status-pill pending" id="statusApi">○ India prices (auto)</div>
           </div>
           <div class="warn-banner" id="rateLimitWarn">
-            Large portfolio: Finnhub free tier allows ~60 calls/min. Use a 2+ minute refresh interval or fewer holdings.
+            Large portfolio with a Finnhub key: free tier is ~60 calls/min. Prefer a 2+ minute refresh.
           </div>
           <div class="setup-wizard" id="setupWizard">
             <div class="wizard-steps">
-              <button type="button" class="wizard-step active" data-step="1" id="wizStep1" aria-current="step">1. API key</button>
-              <button type="button" class="wizard-step" data-step="2" id="wizStep2">2. Import CSV</button>
-              <button type="button" class="wizard-step" data-step="3" id="wizStep3">3. Go live</button>
+              <button type="button" class="wizard-step active" data-step="2" id="wizStep2" aria-current="step">1. Import holdings</button>
+              <button type="button" class="wizard-step" data-step="3" id="wizStep3">2. Go live</button>
+              <button type="button" class="wizard-step" data-step="1" id="wizStep1">US key (optional)</button>
             </div>
             <p class="wizard-hint" id="wizardHint">
-              Step 1: Get a free key at finnhub.io, paste below, then Save and Test connection.
+              Start by importing a Zerodha / Groww / Upstox holdings CSV. NSE/BSE prices load without Finnhub.
             </p>
           </div>
         </div>
       </div>
 
-      <!-- Market Data (step 1) -->
+      <!-- Portfolio Import first (primary path) -->
+      <!-- Market Data (US optional) -->
       <div class="section" id="section-market">
-        <div class="section-title">Market Data · Step 1</div>
+        <div class="section-title">Market Data · US optional</div>
 
         <!-- India provider -->
         <div class="card card-provider-india">
@@ -1019,7 +1049,7 @@
 
       <!-- Broker CSV Import (step 2) -->
       <div class="section" id="section-import">
-        <div class="section-title">Portfolio Import · Step 2</div>
+        <div class="section-title">Portfolio Import</div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
@@ -1076,10 +1106,10 @@
       <div class="section">
         <div class="section-title">Holdings Preview</div>
         <div class="card">
-          <div class="card-item">
+          <div class="card-item" style="padding: 14px 16px;">
             <div class="item-left">
               <div class="item-label">Current portfolio</div>
-              <div class="item-desc">Read-only view of loaded holdings</div>
+              <div class="item-desc">Loaded holdings (header stays fixed while you scroll)</div>
             </div>
             <button class="btn btn-secondary" id="refreshPreviewButton">Refresh</button>
           </div>

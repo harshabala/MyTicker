@@ -10,10 +10,8 @@ import {
   isActivated
 } from "./shared.js";
 
-import { FinnhubPriceProvider } from "./priceProviders.js";
+import { getAllQuotes } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
-
-const priceProvider = new FinnhubPriceProvider();
 
 const DEFAULT_TOP5_CRYPTO = [
   "BINANCE:BTCUSDT",
@@ -158,20 +156,12 @@ async function handlePricePoll() {
 
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
-    // Canonical API key is local-only — never fall back to sync settings.
-    const apiKeyOverride = localData["pts_price_api_key"];
+    // India (.NS/.BO) quotes via Yahoo without a key. Finnhub only for US/crypto when key present.
+    const apiKeyOverride = (localData["pts_price_api_key"] || "").trim();
     const apiConfig = {
-      ...(settings.priceProviderConfig || {}),
-      apiKey: apiKeyOverride || "",
+      apiKey: apiKeyOverride,
       baseUrl: "https://finnhub.io/api/v1"
     };
-    if (!apiConfig.apiKey) {
-      // No API key configured; clear state so UI doesn't show stale data.
-      chrome.storage.local.set({
-        [STORAGE_KEYS.positionsState]: null
-      });
-      return;
-    }
 
     const symbols = [...new Set(holdings.map((h) => h.symbol))];
     if (!symbols.length) {
@@ -181,18 +171,15 @@ async function handlePricePoll() {
       return;
     }
 
-    const quotes = await priceProvider.getQuotes(symbols, apiConfig);
+    const quotes = await getAllQuotes(symbols, apiConfig);
     const now = Date.now();
 
     if (quotes.length > 0) {
       consecutiveFailures = 0;
       lastSuccessfulFetch = now;
-      // Local-first metrics: successful refresh while ticker enabled (this path).
       await recordSuccessfulRefresh(now);
-      const apiKeyPresent = !!(apiConfig.apiKey && String(apiConfig.apiKey).trim());
       if (
         isActivated({
-          hasApiKey: apiKeyPresent,
           holdingsCount: baseHoldings.length,
           tickerEnabled: !!settings.enabled,
           hasSuccessfulRefresh: true

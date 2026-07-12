@@ -26,8 +26,9 @@ The following data is stored **exclusively in your browser** using Chrome's `chr
 
 MyTicker network use:
 
-- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — real-time stock/crypto quotes for the ticker strip. Only symbol + your API key are sent. Portfolio holdings are never uploaded.
-- **Optional connection test (Settings only):** a Yahoo Finance quote probe may be used when you click “Test India” to validate connectivity. This is user-initiated, not background telemetry.
+- **Yahoo Finance chart API** (`query1.finance.yahoo.com`) — automatic prices for Indian NSE/BSE symbols (`.NS` / `.BO`) after you import holdings. No API key. Only the ticker symbol is requested.
+- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — optional, for US stocks and crypto when you add a free Finnhub key. Only symbol + your API key are sent.
+- Portfolio holdings, quantities, and keys are never uploaded to MyTicker servers (there are none).
 
 ### Data NOT collected
 

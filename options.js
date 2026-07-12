@@ -51,15 +51,15 @@ const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height=
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Next: Connect price data. Free price data key at finnhub.io, then paste and Save.",
-  2: "Next: Import your holdings. Drop a Zerodha CSV (or open More formats for Groww/Upstox).",
-  3: "Next: Open any tab to go live. The ticker strip and today's P&L appear automatically."
+  1: "Optional: add a Finnhub key only if you hold US stocks or crypto.",
+  2: "Import your holdings (Zerodha CSV). Indian stocks price automatically — no API key.",
+  3: "Open any tab — the strip and today's P&L appear when prices load."
 };
 
 const WIZARD_NEXT_LABELS = {
-  1: "Next: Connect price data",
-  2: "Next: Import your holdings",
-  3: "Next: Open any tab to go live"
+  1: "Optional: US price key",
+  2: "Import holdings",
+  3: "Go live"
 };
 
 init();
@@ -252,16 +252,24 @@ async function refreshSetupUI() {
     setupWelcomeEl.classList.toggle("is-visible", showWelcome);
   }
 
-  setPill(statusApiEl, status.hasApiKey, "API key");
   setPill(statusHoldingsEl, status.hasHoldings, `Holdings (${status.holdingsCount})`);
+  setPill(statusLiveEl, status.hasLiveData, "Live prices");
   setPill(statusSyncEl, status.lastFetch > 0, `Sync ${formatLastSync(status.lastFetch)}`);
-  setPill(statusLiveEl, status.hasLiveData, "Live data");
+  // API key is optional — only highlight when US symbols need it
+  if (statusApiEl) {
+    if (status.needsUsKey && !status.hasApiKey) {
+      setPill(statusApiEl, false, "US key (optional)");
+    } else if (status.hasApiKey) {
+      setPill(statusApiEl, true, "US key");
+    } else {
+      setPill(statusApiEl, true, "India prices (auto)");
+    }
+  }
 
   if (rateLimitWarnEl) {
     rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
   }
 
-  // Shimmer when fully activated (api + holdings + live + ticker enabled)
   if ((status.activated || status.complete) && setupStatusEl) {
     chrome.storage.local.get(["pts_setup_shimmered"], (data) => {
       if (!data.pts_setup_shimmered) {
@@ -274,11 +282,12 @@ async function refreshSetupUI() {
     });
   }
 
-  const step = status.hasApiKey ? (status.hasHoldings ? 3 : 2) : 1;
+  // Wizard: holdings first (step 2), then live (3). Step 1 = optional US only.
+  const step = !status.hasHoldings ? 2 : status.hasLiveData ? 3 : 2;
   document.querySelectorAll(".wizard-step").forEach((btn) => {
     const n = Number(btn.dataset.step);
     const done =
-      (n === 1 && status.hasApiKey) ||
+      (n === 1 && (!status.needsUsKey || status.hasApiKey)) ||
       (n === 2 && status.hasHoldings) ||
       (n === 3 && status.hasLiveData);
     btn.classList.toggle("active", n === step && !status.complete);
@@ -287,11 +296,14 @@ async function refreshSetupUI() {
     btn.setAttribute("aria-current", n === step && !status.complete ? "step" : "false");
   });
   if (wizardHintEl) {
-    if (status.activated || status.complete) {
+    if (status.complete) {
       wizardHintEl.textContent =
-        "Setup complete. Strip and today's P&L are live. Holdings and keys stay in this browser.";
+        "You're live. Indian prices load automatically. US stocks need a Finnhub key under Market Data (optional).";
+    } else if (!status.hasHoldings) {
+      wizardHintEl.textContent = WIZARD_HINTS[2];
     } else {
-      wizardHintEl.textContent = WIZARD_HINTS[step] || WIZARD_NEXT_LABELS[step] || "";
+      wizardHintEl.textContent =
+        "Holdings saved. Fetching prices… keep the strip on and open any tab.";
     }
   }
 
@@ -788,9 +800,11 @@ function handleRefreshPreview() {
         return;
       }
 
-      const table = document.createElement("table");
-      table.className = "preview-table";
-
+      // Fixed header outside scroll body so column labels never scroll away
+      const headWrap = document.createElement("div");
+      headWrap.className = "preview-head";
+      const headTable = document.createElement("table");
+      headTable.className = "preview-table";
       const thead = document.createElement("thead");
       const headerRow = document.createElement("tr");
       for (const label of ["Symbol", "Qty", "Broker", "Exchange"]) {
@@ -799,8 +813,13 @@ function handleRefreshPreview() {
         headerRow.appendChild(th);
       }
       thead.appendChild(headerRow);
-      table.appendChild(thead);
+      headTable.appendChild(thead);
+      headWrap.appendChild(headTable);
 
+      const bodyWrap = document.createElement("div");
+      bodyWrap.className = "preview-body";
+      const bodyTable = document.createElement("table");
+      bodyTable.className = "preview-table";
       const tbody = document.createElement("tbody");
 
       for (const h of holdings) {
@@ -814,10 +833,7 @@ function handleRefreshPreview() {
         tdBroker.textContent = h.brokerId || "\u2014";
         const tdExchange = document.createElement("td");
         tdExchange.textContent = h.exchange || "\u2014";
-        tr.appendChild(tdSym);
-        tr.appendChild(tdQty);
-        tr.appendChild(tdBroker);
-        tr.appendChild(tdExchange);
+        tr.append(tdSym, tdQty, tdBroker, tdExchange);
         tbody.appendChild(tr);
       }
 
@@ -828,7 +844,7 @@ function handleRefreshPreview() {
           for (const c of manual) {
             const tr = document.createElement("tr");
             const tdSym = document.createElement("td");
-            tdSym.style.cssText = "color: #fbbf24; font-weight: 500;";
+            tdSym.style.cssText = "color: var(--text-secondary); font-weight: 500;";
             tdSym.textContent = c.symbol;
             const tdQty = document.createElement("td");
             tdQty.textContent = c.quantity;
@@ -836,10 +852,7 @@ function handleRefreshPreview() {
             tdBroker.textContent = "manual";
             const tdExchange = document.createElement("td");
             tdExchange.textContent = "CRYPTO";
-            tr.appendChild(tdSym);
-            tr.appendChild(tdQty);
-            tr.appendChild(tdBroker);
-            tr.appendChild(tdExchange);
+            tr.append(tdSym, tdQty, tdBroker, tdExchange);
             tbody.appendChild(tr);
           }
         } else {
@@ -847,14 +860,15 @@ function handleRefreshPreview() {
           const td = document.createElement("td");
           td.colSpan = 4;
           td.style.cssText = "text-align: center; color: var(--text-tertiary);";
-          td.textContent = "Top 5 watchlist enabled";
+          td.textContent = "Top 5 crypto watchlist enabled";
           tr.appendChild(td);
           tbody.appendChild(tr);
         }
       }
 
-      table.appendChild(tbody);
-      holdingsPreviewEl.replaceChildren(table);
+      bodyTable.appendChild(tbody);
+      bodyWrap.appendChild(bodyTable);
+      holdingsPreviewEl.replaceChildren(headWrap, bodyWrap);
 
       requestAnimationFrame(() => {
         holdingsPreviewEl.classList.remove("preview-updating");

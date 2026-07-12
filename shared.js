@@ -12,17 +12,28 @@ const STORAGE_KEYS = {
 };
 
 /**
- * MT-1: MyTicker's single activation event.
- * activated = api_ok AND holdings_count >= 1 AND ticker_enabled
+ * Activation event (India-first).
+ * activated = holdings_count >= 1 AND ticker_enabled
  *             AND >= 1 successful price refresh
+ * Finnhub API key is NOT required when prices come from Yahoo (NSE/BSE).
  */
 const ACTIVATION_EVENT = "myticker_activated";
 
 /**
- * Pure activation predicate — all four conjuncts required.
+ * Pure activation predicate.
+ * hasApiKey is accepted for backward-compatible call sites but ignored.
  */
-function isActivated({ hasApiKey, holdingsCount, tickerEnabled, hasSuccessfulRefresh }) {
-  return !!(hasApiKey && holdingsCount >= 1 && tickerEnabled && hasSuccessfulRefresh);
+function isActivated({ holdingsCount, tickerEnabled, hasSuccessfulRefresh }) {
+  return !!(holdingsCount >= 1 && tickerEnabled && hasSuccessfulRefresh);
+}
+
+/** True if any symbol needs Finnhub (not .NS / .BO). */
+function needsFinnhubKey(holdings) {
+  if (!Array.isArray(holdings) || !holdings.length) return false;
+  return holdings.some((h) => {
+    const s = String(h?.symbol || "");
+    return s && !s.endsWith(".NS") && !s.endsWith(".BO");
+  });
 }
 
 /**
@@ -281,6 +292,7 @@ export {
   DEFAULT_SETTINGS,
   ACTIVATION_EVENT,
   isActivated,
+  needsFinnhubKey,
   recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
