@@ -111,7 +111,7 @@ function init() {
   });
 
   // Event listeners
-  importCsvButton.addEventListener("click", handleImportCsv);
+  importCsvButton.addEventListener("click", () => handleImportCsv());
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
@@ -151,8 +151,12 @@ function init() {
   // Crypto mode toggle
   cryptoModeEl.addEventListener("change", updateCryptoManualVisibility);
 
-  // Drag-and-drop
-  dropZone.addEventListener("click", () => csvFileEl.click());
+  // Drag-and-drop / file pick — pass File objects directly (avoid double-read races)
+  dropZone.addEventListener("click", (e) => {
+    // Don't steal clicks from nested controls
+    if (e.target === csvFileEl) return;
+    csvFileEl.click();
+  });
   dropZone.addEventListener("keydown", (e) => {
     if (e.key === "Enter" || e.key === " ") {
       e.preventDefault();
@@ -161,6 +165,7 @@ function init() {
   });
   dropZone.addEventListener("dragover", (e) => {
     e.preventDefault();
+    e.stopPropagation();
     dropZone.classList.add("dragover");
   });
   dropZone.addEventListener("dragleave", () => {
@@ -168,21 +173,27 @@ function init() {
   });
   dropZone.addEventListener("drop", (e) => {
     e.preventDefault();
+    e.stopPropagation();
     dropZone.classList.remove("dragover");
     const file = e.dataTransfer?.files?.[0];
     if (file) {
-      // Create a DataTransfer to set the file input
-      const dt = new DataTransfer();
-      dt.items.add(file);
-      csvFileEl.files = dt.files;
-      handleImportCsv();
+      handleImportCsv(file);
+    } else {
+      showToast("No file found in that drop. Try Browse or Import sample.", "error");
     }
   });
   csvFileEl.addEventListener("change", () => {
-    if (csvFileEl.files?.length) {
-      handleImportCsv();
-    }
+    const file = csvFileEl.files?.[0];
+    if (file) handleImportCsv(file);
   });
+
+  const importSampleBtn = document.getElementById("importSampleButton");
+  if (importSampleBtn) {
+    importSampleBtn.addEventListener("click", (e) => {
+      e.preventDefault();
+      handleImportSampleCsv();
+    });
+  }
 
   // Populate preview on load.
   handleRefreshPreview();
@@ -353,87 +364,153 @@ function detectPresetFromRows(rows) {
   return null;
 }
 
-function handleImportCsv() {
-  const file = csvFileEl.files?.[0];
+let importInFlight = false;
+
+/** Read a File/Blob as text without relying on FileReader (more reliable in MV3 options). */
+async function readFileAsText(file) {
+  if (!file) throw new Error("No file selected");
+  if (typeof file.text === "function") {
+    return file.text();
+  }
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(String(reader.result || ""));
+    reader.onerror = () => {
+      const err = reader.error;
+      reject(new Error(err?.message || err?.name || "FileReader failed"));
+    };
+    try {
+      reader.readAsText(file);
+    } catch (e) {
+      reject(e instanceof Error ? e : new Error(String(e)));
+    }
+  });
+}
+
+/**
+ * @param {File|null} [fileOverride] - When set (drop/sample), use this File instead of the input.
+ */
+async function handleImportCsv(fileOverride = null) {
+  if (importInFlight) return;
+
+  // Event objects can arrive from addEventListener("click", handleImportCsv)
+  const file =
+    fileOverride instanceof File || fileOverride instanceof Blob
+      ? fileOverride
+      : csvFileEl.files?.[0];
+
   if (!file) {
-    showToast("Please choose a CSV file.", "error");
+    showToast("Please choose a CSV file, or click Import sample CSV.", "error");
     return;
   }
   if (file.size > 500_000) {
     showToast("CSV is too large (max 500 KB). Export only your holdings, not full transaction history.", "error");
     return;
   }
+  if (file.size === 0) {
+    showToast("That file is empty (0 bytes). Re-download the sample or re-export from your broker.", "error");
+    return;
+  }
 
+  importInFlight = true;
   importCsvButton.disabled = true;
   importCsvButton.textContent = "Importing…";
 
-  const reader = new FileReader();
-  reader.onload = () => {
-    let presetKey = brokerPresetEl.value || "zerodha";
-    try {
-      const text = String(reader.result || "");
-      if (!text.trim()) {
-        showToast("That file looks empty.", "error");
-        recordImportResult(presetKey, false).then(renderImportStats);
-        return;
-      }
-      const rows = parseCsv(text);
-
-      // Auto-detect preset from headers; fall back to whatever is selected
-      const detected = detectPresetFromRows(rows);
-      if (detected && detected !== presetKey) {
-        presetKey = detected;
-        brokerPresetEl.value = detected;
-        showToast(`Auto-detected broker: ${BROKER_PRESETS[detected].name}`, "success");
-      }
-      const preset = BROKER_PRESETS[presetKey] || BROKER_PRESETS.generic;
-
-      const diag = diagnoseCsvImport(rows, preset);
-      if (diag) {
-        showToast(diag, "error");
-        recordImportResult(presetKey, false).then(renderImportStats);
-        return;
-      }
-
-      const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
-      if (!holdings.length) {
-        showToast("No holdings found in that CSV.", "error");
-        recordImportResult(presetKey, false).then(renderImportStats);
-        return;
-      }
-      const nsCount = holdings.filter((h) => h.symbol.endsWith(".NS")).length;
-
-      chrome.storage.local.set({ [STORAGE_KEYS.holdings]: holdings }, async () => {
-        const msg =
-          nsCount > 0
-            ? `Imported ${holdings.length} holdings (${nsCount} with .NS for NSE)`
-            : `Imported ${holdings.length} holdings (${preset.name})`;
-        showToast(msg, "success");
-        csvStatusEl.textContent = `${holdings.length} holdings`;
-        await recordImportResult(presetKey, true);
-        await renderImportStats();
-        await markWizardStep(3);
-        handleRefreshPreview();
-        requestImmediatePoll();
-        refreshSetupUI();
-      });
-    } catch (err) {
-      console.error("Failed to parse CSV", err);
-      showToast("Failed to parse CSV file.", "error");
-      recordImportResult(presetKey, false).then(renderImportStats);
-    } finally {
-      importCsvButton.disabled = false;
-      importCsvButton.textContent = "Import holdings";
-    }
-  };
-  reader.onerror = () => {
-    showToast("Error reading file.", "error");
-    const presetKey = brokerPresetEl.value || "zerodha";
-    recordImportResult(presetKey, false).then(renderImportStats);
+  let presetKey = brokerPresetEl.value || "zerodha";
+  try {
+    const text = await readFileAsText(file);
+    await processCsvText(text, presetKey);
+  } catch (err) {
+    console.error("Failed to read/import CSV", err);
+    const detail = err?.message || String(err);
+    showToast(`Could not read file (${detail}). Try Import sample CSV instead.`, "error");
+    await recordImportResult(presetKey, false);
+    await renderImportStats();
+  } finally {
+    importInFlight = false;
     importCsvButton.disabled = false;
     importCsvButton.textContent = "Import holdings";
-  };
-  reader.readAsText(file);
+  }
+}
+
+/** One-click golden path: load packaged sample (no FileReader / Downloads needed). */
+async function handleImportSampleCsv() {
+  if (importInFlight) return;
+  importInFlight = true;
+  importCsvButton.disabled = true;
+  importCsvButton.textContent = "Importing…";
+  try {
+    const url = chrome.runtime.getURL("test_fixtures/sample_holdings_zerodha.csv");
+    const resp = await fetch(url);
+    if (!resp.ok) {
+      throw new Error(`Could not load sample (${resp.status})`);
+    }
+    const text = await resp.text();
+    if (brokerPresetEl) brokerPresetEl.value = "zerodha";
+    await processCsvText(text, "zerodha");
+  } catch (err) {
+    console.error("Sample CSV import failed", err);
+    showToast(err?.message || "Could not load the packaged sample CSV.", "error");
+    await recordImportResult("zerodha", false);
+    await renderImportStats();
+  } finally {
+    importInFlight = false;
+    importCsvButton.disabled = false;
+    importCsvButton.textContent = "Import holdings";
+  }
+}
+
+async function processCsvText(text, presetKeyHint = "zerodha") {
+  let presetKey = presetKeyHint || brokerPresetEl.value || "zerodha";
+  const raw = String(text || "");
+  if (!raw.trim()) {
+    showToast("That file looks empty.", "error");
+    await recordImportResult(presetKey, false);
+    await renderImportStats();
+    return;
+  }
+
+  const rows = parseCsv(raw);
+
+  // Auto-detect preset from headers; fall back to whatever is selected
+  const detected = detectPresetFromRows(rows);
+  if (detected && detected !== presetKey) {
+    presetKey = detected;
+    if (brokerPresetEl) brokerPresetEl.value = detected;
+    showToast(`Auto-detected broker: ${BROKER_PRESETS[detected].name}`, "success");
+  }
+  const preset = BROKER_PRESETS[presetKey] || BROKER_PRESETS.generic;
+
+  const diag = diagnoseCsvImport(rows, preset);
+  if (diag) {
+    showToast(diag, "error");
+    await recordImportResult(presetKey, false);
+    await renderImportStats();
+    return;
+  }
+
+  const holdings = mapRowsToHoldings(rows, preset.columns, presetKey, preset.defaults || {});
+  if (!holdings.length) {
+    showToast("No holdings found in that CSV.", "error");
+    await recordImportResult(presetKey, false);
+    await renderImportStats();
+    return;
+  }
+  const nsCount = holdings.filter((h) => h.symbol.endsWith(".NS")).length;
+
+  await chrome.storage.local.set({ [STORAGE_KEYS.holdings]: holdings });
+  const msg =
+    nsCount > 0
+      ? `Imported ${holdings.length} holdings (${nsCount} with .NS for NSE)`
+      : `Imported ${holdings.length} holdings (${preset.name})`;
+  showToast(msg, "success");
+  if (csvStatusEl) csvStatusEl.textContent = `${holdings.length} holdings`;
+  await recordImportResult(presetKey, true);
+  await renderImportStats();
+  await markWizardStep(3);
+  handleRefreshPreview();
+  requestImmediatePoll();
+  refreshSetupUI();
 }
 
 function handleClearHoldings() {

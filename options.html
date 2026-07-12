@@ -387,6 +387,18 @@
         margin-bottom: 8px;
       }
 
+      .golden-path-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 12px;
+        margin-top: 4px;
+      }
+
+      .golden-path-actions .btn {
+        width: auto;
+      }
+
       .golden-path-sample {
         font-size: 12px;
         color: var(--accent);
@@ -1042,9 +1054,14 @@
             <div class="golden-path-hint">
               Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
             </div>
-            <a class="golden-path-sample" href="test_fixtures/sample_holdings_zerodha.csv" download>
-              Download a sample Zerodha CSV to try it first
-            </a>
+            <div class="golden-path-actions">
+              <button type="button" class="btn btn-primary btn-pressable" id="importSampleButton">
+                Import sample CSV (try first)
+              </button>
+              <a class="golden-path-sample" id="downloadSampleLink" href="test_fixtures/sample_holdings_zerodha.csv" download="sample_holdings_zerodha.csv">
+                Or download the sample file
+              </a>
+            </div>
           </div>
 
           <details class="card more-formats" style="border: none; padding: 0; margin-bottom: 14px; background: transparent;">
