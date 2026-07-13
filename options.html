@@ -35,51 +35,75 @@
         margin-bottom: 20px;
       }
 
-      /* Settings tabs — reduce scroll by sectionating */
+      /* Settings tabs — flat row + gold underline (no pill / curved chrome) */
       .settings-tabs {
         display: flex;
         flex-wrap: wrap;
-        gap: 4px;
-        margin-bottom: 24px;
-        padding: 5px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
+        gap: 0;
+        margin: 0 0 28px;
+        padding: 0;
+        background: transparent;
+        border: none;
+        border-bottom: 1px solid var(--border);
+        border-radius: 0;
         position: sticky;
         top: 0;
         z-index: 20;
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
+        background: color-mix(in srgb, var(--bg) 88%, transparent);
       }
       .settings-tab {
-        flex: 1 1 auto;
-        min-width: 88px;
-        padding: 11px 12px;
+        flex: 0 0 auto;
+        min-width: 0;
+        margin: 0;
+        padding: 12px 14px 11px;
         border: none;
-        border-radius: var(--radius-sm);
+        border-radius: 0;
         background: transparent;
         color: var(--text-tertiary);
-        font-size: 12px;
-        font-weight: 600;
+        font-size: 13px;
+        font-weight: 500;
         font-family: inherit;
+        letter-spacing: -0.01em;
         cursor: pointer;
         white-space: nowrap;
-        transition:
-          background var(--motion-fast, 150ms) var(--ease-out, ease),
-          color var(--motion-fast, 150ms) var(--ease-out, ease);
+        box-shadow: none;
+        position: relative;
+        transition: color var(--motion-fast, 150ms) var(--ease-out, ease);
       }
       .settings-tab:hover {
         color: var(--text-secondary);
-        background: var(--bg-hover);
+        background: transparent;
       }
+      /* Active: plain gold hairline under the label only */
       .settings-tab[aria-selected="true"] {
         color: var(--text-primary);
-        background: var(--bg-hover);
-        box-shadow: inset 0 -2px 0 var(--accent);
+        font-weight: 600;
+        background: transparent;
+        box-shadow: none;
+      }
+      .settings-tab[aria-selected="true"]::after {
+        content: "";
+        position: absolute;
+        left: 10px;
+        right: 10px;
+        bottom: -1px;
+        height: 2px;
+        background: var(--accent);
+        border-radius: 0;
       }
       .settings-tab:focus-visible {
-        outline: 2px solid var(--accent);
-        outline-offset: 1px;
+        outline: none;
+        color: var(--text-primary);
+      }
+      .settings-tab:focus-visible::before {
+        content: "";
+        position: absolute;
+        inset: 4px 6px;
+        border: 1px solid var(--accent);
+        border-radius: 2px;
+        pointer-events: none;
       }
       .tab-panel {
         display: none;
