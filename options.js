@@ -66,7 +66,13 @@ init();
 
 function init() {
   setPlatformShortcut(document.getElementById("tipsShortcut"));
+  wireSettingsTabs();
   wireWizardSteps();
+  // Deep-link: options.html#portfolio | #market | #appearance | etc.
+  const hashTab = (location.hash || "").replace(/^#/, "").toLowerCase();
+  if (hashTab && document.getElementById(`tab-${hashTab}`)) {
+    switchSettingsTab(hashTab);
+  }
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
@@ -214,6 +220,73 @@ function setPlatformShortcut(el) {
   el.textContent = platform.includes("mac") ? "⌘+Shift+Y" : "Ctrl+Shift+Y";
 }
 
+/** Map wizard steps → settings tabs (sections live on different panels). */
+const WIZARD_STEP_TO_TAB = {
+  1: "market", // optional US Finnhub key
+  2: "portfolio", // import holdings
+  3: "setup" // go live / status
+};
+
+function wireSettingsTabs() {
+  const tabs = document.querySelectorAll(".settings-tab[data-tab]");
+  tabs.forEach((tab) => {
+    tab.addEventListener("click", () => {
+      switchSettingsTab(tab.dataset.tab);
+    });
+    tab.addEventListener("keydown", (e) => {
+      if (e.key !== "ArrowRight" && e.key !== "ArrowLeft" && e.key !== "Home" && e.key !== "End") {
+        return;
+      }
+      e.preventDefault();
+      const list = Array.from(tabs);
+      const i = list.indexOf(tab);
+      let next = i;
+      if (e.key === "ArrowRight") next = (i + 1) % list.length;
+      if (e.key === "ArrowLeft") next = (i - 1 + list.length) % list.length;
+      if (e.key === "Home") next = 0;
+      if (e.key === "End") next = list.length - 1;
+      list[next].focus();
+      switchSettingsTab(list[next].dataset.tab);
+    });
+  });
+}
+
+function switchSettingsTab(tabId) {
+  if (!tabId) return;
+  const tabs = document.querySelectorAll(".settings-tab[data-tab]");
+  const panels = document.querySelectorAll(".tab-panel[id^='tab-']");
+  let matched = false;
+  tabs.forEach((tab) => {
+    const selected = tab.dataset.tab === tabId;
+    tab.setAttribute("aria-selected", selected ? "true" : "false");
+    tab.tabIndex = selected ? 0 : -1;
+    if (selected) matched = true;
+  });
+  if (!matched) return;
+  panels.forEach((panel) => {
+    const active = panel.id === `tab-${tabId}`;
+    panel.classList.toggle("is-active", active);
+    if (active) {
+      panel.removeAttribute("hidden");
+    } else {
+      panel.setAttribute("hidden", "");
+    }
+  });
+  try {
+    history.replaceState(null, "", `#${tabId}`);
+  } catch {
+    /* ignore */
+  }
+  // Refresh tab-specific live data when opened
+  if (tabId === "portfolio") {
+    handleRefreshPreview();
+    renderImportStats();
+  }
+  if (tabId === "setup") {
+    refreshSetupUI();
+  }
+}
+
 function wireWizardSteps() {
   document.querySelectorAll(".wizard-step").forEach((btn) => {
     btn.addEventListener("click", () => {
@@ -234,11 +307,18 @@ function goToWizardStep(step) {
   if (wizardHintEl) {
     wizardHintEl.textContent = WIZARD_HINTS[step] || WIZARD_HINTS[1];
   }
+  const tabId = WIZARD_STEP_TO_TAB[step];
+  if (tabId) {
+    switchSettingsTab(tabId);
+  }
   const target = step === 1 ? sectionMarket : step === 2 ? sectionImport : null;
   if (target) {
-    target.classList.add("section-highlight");
-    target.scrollIntoView({ behavior: "smooth", block: "start" });
-    setTimeout(() => target.classList.remove("section-highlight"), 2000);
+    // Wait a frame so the target tab is visible before highlighting.
+    requestAnimationFrame(() => {
+      target.classList.add("section-highlight");
+      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      setTimeout(() => target.classList.remove("section-highlight"), 2000);
+    });
   }
   refreshSetupUI();
 }
