@@ -3,6 +3,102 @@
 const MAX_CONCURRENT = 6;
 const CACHE_TTL_MS = 30_000;
 const FINNHUB_FALLBACK = "https://finnhub.io/api/v1";
+const COINGECKO_SIMPLE_PRICE_URL = "https://api.coingecko.com/api/v3/simple/price";
+const BINANCE_TICKER_URL = "https://data-api.binance.vision/api/v3/ticker/24hr";
+const BINANCE_USDT_PAIRS = {
+  bitcoin: "BTCUSDT",
+  ethereum: "ETHUSDT",
+  binancecoin: "BNBUSDT",
+  ripple: "XRPUSDT",
+  solana: "SOLUSDT"
+};
+
+export class CoinGeckoPriceProvider {
+  async getQuotes(ids) {
+    const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+    if (!uniqueIds.length) return [];
+
+    const params = new URLSearchParams({
+      ids: uniqueIds.join(","),
+      vs_currencies: "usd",
+      include_24hr_change: "true",
+      include_last_updated_at: "true"
+    });
+
+    try {
+      const response = await fetch(`${COINGECKO_SIMPLE_PRICE_URL}?${params}`);
+      if (!response.ok) return [];
+      const data = await response.json();
+      return uniqueIds.flatMap((symbol) => {
+        const quote = data?.[symbol];
+        if (!Number.isFinite(quote?.usd)) return [];
+        return [{
+          symbol,
+          lastPrice: quote.usd,
+          prevClose: null,
+          changePct: Number.isFinite(quote.usd_24h_change) ? quote.usd_24h_change : null,
+          currency: "USD",
+          source: "coingecko"
+        }];
+      });
+    } catch {
+      return [];
+    }
+  }
+}
+
+export class BinancePriceProvider {
+  async getQuotes(ids) {
+    const uniqueIds = [...new Set((ids || []).filter((id) => BINANCE_USDT_PAIRS[id]))];
+    const results = await Promise.all(uniqueIds.map((id) => this._getQuote(id)));
+    return results.filter(Boolean);
+  }
+
+  async _getQuote(symbol) {
+    const pair = BINANCE_USDT_PAIRS[symbol];
+    try {
+      const response = await fetch(`${BINANCE_TICKER_URL}?symbol=${pair}`);
+      if (!response.ok) return null;
+      const data = await response.json();
+      const lastPrice = Number(data?.lastPrice);
+      if (!Number.isFinite(lastPrice)) return null;
+      const changePct = Number(data?.priceChangePercent);
+      return {
+        symbol,
+        lastPrice,
+        prevClose: null,
+        changePct: Number.isFinite(changePct) ? changePct : null,
+        currency: "USD",
+        source: "binance"
+      };
+    } catch {
+      return null;
+    }
+  }
+}
+
+export async function getCryptoQuotes(ids, providers = {}) {
+  const uniqueIds = [...new Set((ids || []).filter(Boolean))];
+  const coinGecko = providers.coinGecko || new CoinGeckoPriceProvider();
+  const binance = providers.binance || new BinancePriceProvider();
+  let coinGeckoQuotes = [];
+
+  try {
+    coinGeckoQuotes = await coinGecko.getQuotes(uniqueIds);
+  } catch {
+    coinGeckoQuotes = [];
+  }
+
+  const resolved = new Set(coinGeckoQuotes.map((quote) => quote.symbol));
+  const unresolved = uniqueIds.filter((id) => !resolved.has(id) && BINANCE_USDT_PAIRS[id]);
+  if (!unresolved.length) return coinGeckoQuotes;
+
+  try {
+    return [...coinGeckoQuotes, ...(await binance.getQuotes(unresolved))];
+  } catch {
+    return coinGeckoQuotes;
+  }
+}
 
 export function isIndiaSymbol(symbol) {
   const s = String(symbol || "");
