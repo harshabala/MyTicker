@@ -8,7 +8,8 @@ import {
   mergePriceSnapshots,
   inferDisplayCurrency,
   isActivated,
-  withTickerItems
+  withTickerItems,
+  hydrateTickerQuoteItems
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
@@ -209,8 +210,8 @@ async function handlePricePoll() {
     const holdingsState = computePositionsState(holdings, newHistory, now);
     const positionsState = withTickerItems({
       positionsState: holdingsState,
-      watchlist: addQuoteData(watchlist, quotes),
-      crypto: addQuoteData(crypto, quotes)
+      watchlist: hydrateTickerQuoteItems(watchlist, quotes, newHistory),
+      crypto: hydrateTickerQuoteItems(crypto, quotes, newHistory)
     });
 
     positionsState.updatedAt = now;
@@ -311,26 +312,6 @@ function normalizeCryptoId(symbol) {
   const raw = String(symbol || "").trim();
   const pair = raw.split(":").pop().toLowerCase();
   return CRYPTO_ID_BY_SYMBOL[pair] || (DEFAULT_TOP5_CRYPTO.includes(pair) ? pair : null);
-}
-
-function addQuoteData(items, quotes) {
-  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
-  return items.map((item) => {
-    const quote = quoteBySymbol.get(item.symbol);
-    const changePct = Number.isFinite(quote?.changePct)
-      ? quote.changePct
-      : Number.isFinite(quote?.lastPrice) && Number.isFinite(quote?.prevClose) && quote.prevClose
-        ? ((quote.lastPrice - quote.prevClose) / quote.prevClose) * 100
-        : null;
-    return {
-      ...item,
-      lastPrice: quote?.lastPrice ?? null,
-      changePct,
-      currency: quote?.currency || item.currency,
-      source: quote?.source,
-      updatedAt: quote?.updatedAt
-    };
-  });
 }
 
 // Strip exchange prefix (e.g. "BINANCE:BTCUSDT" → "BTCUSDT")

@@ -301,6 +301,36 @@ function withTickerItems({ positionsState, watchlist = [], crypto = [] } = {}) {
 }
 
 /**
+ * Attach current quotes to quote-only tape items. When a provider has no
+ * current quote, keep the latest stored snapshot visible and mark it stale.
+ */
+function hydrateTickerQuoteItems(items = [], quotes = [], priceHistory = {}) {
+  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  return items.map((item) => {
+    const quote = quoteBySymbol.get(item.symbol);
+    const snapshot = priceHistory[item.symbol]?.at(-1);
+    const price = quote?.lastPrice ?? snapshot?.p ?? null;
+    const prevClose = quote?.prevClose ?? snapshot?.prevClose ?? null;
+    const changePct = Number.isFinite(quote?.changePct)
+      ? quote.changePct
+      : Number.isFinite(price) && Number.isFinite(prevClose) && prevClose
+        ? ((price - prevClose) / prevClose) * 100
+        : null;
+
+    return {
+      ...item,
+      lastPrice: price,
+      prevClose,
+      changePct,
+      currency: quote?.currency || item.currency,
+      source: quote?.source || item.source,
+      updatedAt: quote?.updatedAt ?? snapshot?.t ?? item.updatedAt,
+      stale: !quote && !!snapshot
+    };
+  });
+}
+
+/**
  * Signed currency for P&L displays (e.g. +₹1,234.56).
  */
 function formatSignedCurrency(value, currency = "INR") {
@@ -339,6 +369,7 @@ export {
   formatQuotePrice,
   buildTickerItems,
   withTickerItems,
+  hydrateTickerQuoteItems,
   formatSignedCurrency,
   inferDisplayCurrency
 };

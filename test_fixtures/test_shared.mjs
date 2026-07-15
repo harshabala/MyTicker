@@ -17,7 +17,8 @@ import {
   inferDisplayCurrency,
   formatQuotePrice,
   buildTickerItems,
-  withTickerItems
+  withTickerItems,
+  hydrateTickerQuoteItems
 } from "../shared.js";
 
 let passed = 0;
@@ -108,6 +109,20 @@ assert(
   "one holding, watchlist, and crypto item stay in ticker order"
 );
 assertApprox(tapeState.aggregate.dayPnl, 20, 0.01, "ticker quote-only items do not change holdings aggregate");
+
+const outageTickerItem = hydrateTickerQuoteItems(
+  [{ symbol: "bitcoin", displayName: "Bitcoin", currency: "USD" }],
+  [],
+  { bitcoin: [{ t: 123_000, p: 65_000, prevClose: 64_000 }] }
+)[0];
+assert(
+  outageTickerItem.lastPrice === 65_000 && outageTickerItem.prevClose === 64_000,
+  "ticker item retains its latest history quote during a provider outage"
+);
+assert(
+  outageTickerItem.stale === true && outageTickerItem.updatedAt === 123_000,
+  "history-backed ticker quote is marked stale with its snapshot timestamp"
+);
 
 // ── Test Suite: mergePriceSnapshots ──
 console.log("\n📊 mergePriceSnapshots");
