@@ -37,6 +37,7 @@ export class CoinGeckoPriceProvider {
           lastPrice: quote.usd,
           prevClose: null,
           changePct: Number.isFinite(quote.usd_24h_change) ? quote.usd_24h_change : null,
+          updatedAt: Number.isFinite(quote.last_updated_at) ? quote.last_updated_at * 1000 : null,
           currency: "USD",
           source: "coingecko"
         }];

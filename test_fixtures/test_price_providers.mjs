@@ -42,6 +42,10 @@ assert(
   gecko[0]?.symbol === "bitcoin" && gecko[0]?.lastPrice === 65000,
   "CoinGecko maps a crypto quote"
 );
+assert(
+  gecko[0]?.updatedAt === 100_000,
+  "CoinGecko converts last-updated seconds to milliseconds"
+);
 
 const fallback = await getCryptoQuotes(["ethereum"], {
   coinGecko: { getQuotes: async () => [] },
