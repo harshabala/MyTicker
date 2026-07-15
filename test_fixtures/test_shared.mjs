@@ -14,7 +14,9 @@ import {
   formatSigned,
   formatCurrency,
   formatSignedCurrency,
-  inferDisplayCurrency
+  inferDisplayCurrency,
+  formatQuotePrice,
+  buildTickerItems
 } from "../shared.js";
 
 let passed = 0;
@@ -67,6 +69,28 @@ console.log("\n💰 formatCurrency");
 const usd = formatCurrency(1234.5);
 assert(usd.includes("1,234.50") || usd.includes("1234.50"), `formatCurrency USD: ${usd}`);
 assert(formatCurrency(null) === "$0.00" || formatCurrency(null).includes("0.00"), "null → $0.00");
+
+// ── Test Suite: Live market tape helpers ──
+console.log("\n📟 Live market tape helpers");
+assert(formatQuotePrice(123.4, "USD").includes("123.40"), "USD quotes at 100+ use two decimals");
+assert(formatQuotePrice(12.3456, "INR").includes("12.3456"), "INR quotes below 100 use four decimals");
+assert(formatQuotePrice(undefined, "USD") === "—", "missing USD quote is unavailable");
+
+const holdingTickerItem = { symbol: "HOLD", dayPnl: 42.5 };
+const watchlistTickerItem = { symbol: "WATCH", dayPnl: 10 };
+const cryptoTickerItem = { symbol: "BTC", dayPnl: -10 };
+const tickerItems = buildTickerItems({
+  positions: [holdingTickerItem],
+  watchlist: [watchlistTickerItem],
+  crypto: [cryptoTickerItem]
+});
+assert(
+  tickerItems.map((item) => item.symbol).join(",") === "HOLD,WATCH,BTC",
+  "ticker items order holdings, watchlist, then crypto"
+);
+assert(tickerItems[0].kind === "holding" && tickerItems[0].dayPnl === 42.5, "holding preserves day P&L");
+assert(tickerItems[1].kind === "watchlist" && tickerItems[1].dayPnl === null, "watchlist has no day P&L");
+assert(tickerItems[2].kind === "crypto" && tickerItems[2].dayPnl === null, "crypto has no day P&L");
 
 // ── Test Suite: mergePriceSnapshots ──
 console.log("\n📊 mergePriceSnapshots");

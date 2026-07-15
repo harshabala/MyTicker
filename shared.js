@@ -263,6 +263,32 @@ function formatCurrency(value, currency = "INR") {
 }
 
 /**
+ * Format an individual market quote, preserving precision for lower prices.
+ */
+function formatQuotePrice(value, currency = "USD") {
+  if (!Number.isFinite(value)) return "—";
+
+  const fractionDigits = Math.abs(value) >= 100 ? 2 : 4;
+  return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  }).format(value);
+}
+
+/**
+ * Normalise sources for ticker rendering while keeping holdings P&L intact.
+ */
+function buildTickerItems({ positions = [], watchlist = [], crypto = [] } = {}) {
+  return [
+    ...positions.map((item) => ({ ...item, kind: "holding" })),
+    ...watchlist.map((item) => ({ ...item, kind: "watchlist", dayPnl: null })),
+    ...crypto.map((item) => ({ ...item, kind: "crypto", dayPnl: null }))
+  ];
+}
+
+/**
  * Signed currency for P&L displays (e.g. +₹1,234.56).
  */
 function formatSignedCurrency(value, currency = "INR") {
@@ -298,6 +324,8 @@ export {
   computePositionsState,
   formatSigned,
   formatCurrency,
+  formatQuotePrice,
+  buildTickerItems,
   formatSignedCurrency,
   inferDisplayCurrency
 };
