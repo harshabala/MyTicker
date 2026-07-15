@@ -1,6 +1,6 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
 
-import { STORAGE_KEYS, formatSigned, formatSignedCurrency } from "./shared.js";
+import { STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } from "./shared.js";
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
@@ -10,6 +10,8 @@ const BODY_TRANSITION_ATTR = "data-pts-body-transition";
 let tickerHost = null;
 let tickerShadow = null;
 let tickerBar = null;
+let latestState;
+let latestStateResolved = false;
 
 const reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
 
@@ -22,7 +24,9 @@ reducedMotionMq.addEventListener("change", () => {
     tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
     chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
       const state = data[STORAGE_KEYS.positionsState];
-      if (state) renderTicker(state);
+      latestState = state;
+      latestStateResolved = true;
+      renderTicker(state);
     });
   }
 });
@@ -51,15 +55,17 @@ function init() {
 
     if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
       const state = changes[STORAGE_KEYS.positionsState].newValue;
+      latestState = state;
+      latestStateResolved = true;
       renderTicker(state);
     }
   });
 
   chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
     const state = data[STORAGE_KEYS.positionsState];
-    if (state) {
-      renderTicker(state);
-    }
+    latestState = state;
+    latestStateResolved = true;
+    renderTicker(state);
   });
 }
 
@@ -125,13 +131,17 @@ function ensureTickerContainer(animate = false) {
     document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-  setBodyMarginTop(originalPx + 28, animate, false);
+  setBodyMarginTop(originalPx + 34, animate, false);
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {
       tickerBar.classList.add("pts-ticker-visible");
     });
   }
+
+  // Storage can resolve before a late page body lets us mount. Re-render the
+  // cached state once this bar exists rather than dropping that first paint.
+  renderTicker(latestState);
 }
 
 function restoreBodyMargin(animate) {
@@ -258,15 +268,9 @@ function updateAggregate(parts, state) {
   aggregate.classList.remove("pts-up", "pts-down", "pts-flat");
   aggregate.classList.add(dirClass);
 
-  const prevSign = aggregate.dataset.ptsSign;
-  if (prevSign && prevSign !== newSign && !prefersReducedMotion()) {
-    aggregate.classList.remove("pts-aggregate-flash");
-    void aggregate.offsetWidth;
-    aggregate.classList.add("pts-aggregate-flash");
-  }
   aggregate.dataset.ptsSign = newSign;
 
-  aggregate.textContent = `Today ${formatSignedCurrency(aggPnl, currency)} (${aggPct.toFixed(2)}%)`;
+  aggregate.textContent = `my ticker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`;
 }
 
 function buildItemElement(pos) {
@@ -274,33 +278,42 @@ function buildItemElement(pos) {
   item.className = "pts-item";
   item.dataset.ptsKey = positionKey(pos);
 
-  const iconSpan = document.createElement("span");
-  iconSpan.className = "pts-icon";
+  const groupSpan = document.createElement("span");
+  groupSpan.className = "pts-group-marker";
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "pts-symbol";
 
-  const arrowSpan = document.createElement("span");
-  arrowSpan.className = "pts-arrow";
+  const priceSpan = document.createElement("span");
+  priceSpan.className = "pts-price";
 
   const changeSpan = document.createElement("span");
   changeSpan.className = "pts-change";
 
-  item.appendChild(iconSpan);
+  const pnlSpan = document.createElement("span");
+  pnlSpan.className = "pts-personal-pnl";
+
+  const staleSpan = document.createElement("span");
+  staleSpan.className = "pts-item-stale";
+  staleSpan.setAttribute("role", "status");
+
+  item.appendChild(groupSpan);
   item.appendChild(nameSpan);
-  item.appendChild(arrowSpan);
+  item.appendChild(priceSpan);
   item.appendChild(changeSpan);
+  item.appendChild(pnlSpan);
+  item.appendChild(staleSpan);
 
   return item;
 }
 
-function updateItemElement(item, pos) {
-  const w5pnl = Number(pos.window5mPnl) || 0;
-  const w5pct = Number(pos.window5mPnlPct) || 0;
-  const dPnl = Number(pos.dayPnl) || 0;
-  const dPct = Number(pos.dayPnlPct) || 0;
-
-  const dirClass = w5pnl > 0 ? "pts-up" : w5pnl < 0 ? "pts-down" : "pts-flat";
+function updateItemElement(item, pos, isGroupBoundary) {
+  const changePct = Number.isFinite(Number(pos.changePct))
+    ? Number(pos.changePct)
+    : Number(pos.dayPnlPct) || 0;
+  const isHolding = (pos.kind || "holding") === "holding";
+  const dayPnl = Number(pos.dayPnl) || 0;
+  const dirClass = changePct > 0 ? "pts-up" : changePct < 0 ? "pts-down" : "pts-flat";
   item.classList.remove("pts-up", "pts-down", "pts-flat", "pts-crypto");
   item.classList.add(dirClass);
   if (pos.assetClass === "crypto") {
@@ -309,39 +322,52 @@ function updateItemElement(item, pos) {
 
   item.dataset.ptsKey = positionKey(pos);
   // Privacy: never expose quantity in title attributes (page-scrape surface)
-  item.title = `${pos.displayName || pos.symbol || ""} · Day ${formatSigned(dPnl)} (${dPct.toFixed(2)}%)`;
+  item.title = `${pos.displayName || pos.symbol || ""} · ${formatSigned(changePct)}%`;
 
-  const [iconSpan, nameSpan, arrowSpan, changeSpan] = item.children;
-  iconSpan.textContent = getInitials(pos.displayName);
+  const [groupSpan, nameSpan, priceSpan, changeSpan, pnlSpan, staleSpan] = item.children;
+  groupSpan.textContent = isGroupBoundary ? getGroupLabel(pos.kind) : "";
+  groupSpan.hidden = !isGroupBoundary;
   nameSpan.textContent = pos.displayName || pos.symbol || "—";
-  arrowSpan.textContent = ""; // color-only deltas (arrows hidden in CSS)
-  changeSpan.textContent = `${formatSigned(w5pnl)} (${w5pct.toFixed(2)}%)`;
+  priceSpan.textContent = formatQuotePrice(pos.lastPrice, pos.currency || "USD");
+  changeSpan.textContent = `${formatSigned(changePct)}%`;
+  pnlSpan.textContent = isHolding ? `p&l ${formatSignedCurrency(dayPnl, pos.currency || "USD")}` : "";
+  pnlSpan.hidden = !isHolding;
+  staleSpan.textContent = pos.stale ? "stale" : "";
+  staleSpan.hidden = !pos.stale;
+  staleSpan.setAttribute("aria-label", pos.stale ? "Stale quote" : "");
 }
 
 function updateScrollItems(parts, state) {
-  const positions = state?.positions || [];
+  const positions = state?.tickerItems || state?.positions || [];
   const reduced = prefersReducedMotion();
   const scrollInner = parts.scrollInner;
-  const slotCount = reduced ? positions.length : positions.length * 2;
-
-  while (scrollInner.children.length > slotCount) {
-    scrollInner.removeChild(scrollInner.lastChild);
-  }
-
-  for (let i = 0; i < slotCount; i++) {
-    const pos = positions[i % positions.length];
-    if (!pos) continue;
-
-    let item = scrollInner.children[i];
-    if (!item) {
-      item = buildItemElement(pos);
-      scrollInner.appendChild(item);
-    } else {
-      updateItemElement(item, pos);
+  const renderSlots = (slotCount) => {
+    while (scrollInner.children.length > slotCount) {
+      scrollInner.removeChild(scrollInner.lastChild);
     }
-  }
 
-  parts.scrollInner.classList.toggle("pts-scroll-static", reduced);
+    for (let i = 0; i < slotCount; i++) {
+      const pos = positions[i % positions.length];
+      if (!pos) continue;
+
+      let item = scrollInner.children[i];
+      if (!item) {
+        item = buildItemElement(pos);
+        scrollInner.appendChild(item);
+      }
+      const previous = positions[(i - 1 + positions.length) % positions.length];
+      const isGroupBoundary = i % positions.length === 0 || previous?.kind !== pos.kind;
+      updateItemElement(item, pos, isGroupBoundary);
+    }
+  };
+
+  // Measure one copy first. Duplicate only when it actually overflows, so the
+  // marquee remains the tape's sole continuous animation.
+  renderSlots(positions.length);
+  const shouldMarquee = !reduced && scrollInner.scrollWidth > parts.scrollWrapper.clientWidth;
+  renderSlots(shouldMarquee ? positions.length * 2 : positions.length);
+
+  parts.scrollInner.classList.toggle("pts-scroll-static", !shouldMarquee);
 }
 
 function clearTickerContent(container) {
@@ -351,7 +377,7 @@ function clearTickerContent(container) {
     parts.stale = null;
   }
   if (parts?.aggregate) {
-    parts.aggregate.textContent = "No holdings — import CSV in Settings";
+    parts.aggregate.textContent = "No items — add holdings or a watchlist";
     parts.aggregate.classList.remove("pts-up", "pts-down", "pts-flat");
     parts.aggregate.classList.add("pts-flat");
     delete parts.aggregate.dataset.ptsSign;
@@ -368,7 +394,18 @@ function renderTicker(state) {
 
   tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
 
-  if (!state?.positions?.length) {
+  if (!latestStateResolved && !state) {
+    const parts = getTickerParts(tickerBar);
+    parts.aggregate.textContent = "Updating markets";
+    parts.aggregate.classList.remove("pts-up", "pts-down");
+    parts.aggregate.classList.add("pts-flat");
+    while (parts.scrollInner.firstChild) parts.scrollInner.removeChild(parts.scrollInner.firstChild);
+    return;
+  }
+
+  const items = state?.tickerItems || state?.positions || [];
+  if (!items.length) {
+    getTickerParts(tickerBar);
     clearTickerContent(tickerBar);
     return;
   }
@@ -377,6 +414,12 @@ function renderTicker(state) {
   updateStaleIndicator(tickerBar, parts, state);
   updateAggregate(parts, state);
   updateScrollItems(parts, state);
+}
+
+function getGroupLabel(kind) {
+  if (kind === "watchlist") return "watchlist";
+  if (kind === "crypto") return "crypto";
+  return "holdings";
 }
 
 function getInitials(name) {

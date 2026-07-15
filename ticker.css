@@ -1,6 +1,5 @@
 /**
- * MyTicker strip — ambient companion (craft pass)
- * Quieter height, no underline theater, no stale pulse, token-aligned motion.
+ * my ticker strip — Obsidian terminal tape.
  * Do not import brand.css into host pages.
  */
 :root {
@@ -19,27 +18,27 @@
 /* Theme tokens for shadow-DOM strip (mirrors brand.css) */
 :host,
 :root {
-  --pts-bg: rgba(0, 0, 0, 0.92);
-  --pts-fg: #f5f5f7;
-  --pts-border: rgba(255, 255, 255, 0.1);
-  --pts-icon-bg: #2c2c2e;
-  --pts-hairline: rgba(255, 255, 255, 0.08);
-  --green: #30d158;
-  --red: #ff453a;
-  --yellow: #ffd60a;
+  --pts-bg: #17191d;
+  --pts-fg: #e8ebed;
+  --pts-muted: #8b9299;
+  --pts-border: #30353b;
+  --pts-hairline: #292d32;
+  --green: #50c878;
+  --red: #f07870;
+  --yellow: #e7bd61;
 }
 
 @media (prefers-color-scheme: light) {
   :host,
   :root {
-    --pts-bg: rgba(255, 255, 255, 0.92);
-    --pts-fg: #1d1d1f;
-    --pts-border: rgba(0, 0, 0, 0.1);
-    --pts-icon-bg: #e8e8ed;
-    --pts-hairline: rgba(0, 0, 0, 0.08);
-    --green: #248a3d;
-    --red: #d70015;
-    --yellow: #b25000;
+  --pts-bg: #f3f4f2;
+  --pts-fg: #202428;
+  --pts-muted: #687078;
+  --pts-border: #cdd1d2;
+  --pts-hairline: #dce0df;
+  --green: #167a43;
+  --red: #bd4c47;
+  --yellow: #8b6308;
   }
 }
 
@@ -48,7 +47,7 @@
   top: 0;
   left: 0;
   right: 0;
-  height: 28px;
+  height: 34px;
   display: flex;
   align-items: center;
   background: var(--pts-bg, rgba(0, 0, 0, 0.92));
@@ -61,13 +60,7 @@
   -moz-osx-font-smoothing: grayscale;
   opacity: 0;
   transform: translateY(-100%);
-  transition:
-    opacity var(--motion-bar-enter) var(--ease-out),
-    transform var(--motion-bar-enter) var(--ease-out),
-    background var(--motion-medium, 220ms) var(--ease-out),
-    color var(--motion-medium, 220ms) var(--ease-out);
-  backdrop-filter: blur(12px) saturate(140%);
-  -webkit-backdrop-filter: blur(12px) saturate(140%);
+  transition: opacity var(--motion-bar-enter) var(--ease-out), transform var(--motion-bar-enter) var(--ease-out);
 }
 
 .pts-ticker-bar.pts-ticker-visible {
@@ -101,11 +94,8 @@
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
-  letter-spacing: -0.01em;
-}
-
-.pts-aggregate.pts-aggregate-flash {
-  animation: pts-aggregate-flash var(--motion-fast) var(--ease-out);
+  letter-spacing: 0.01em;
+  text-transform: lowercase;
 }
 
 .pts-scroll-wrapper {
@@ -137,56 +127,35 @@
 .pts-item {
   display: inline-flex;
   align-items: center;
+  gap: 7px;
   padding: 0 12px;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.08));
-  transition: background var(--motion-fast) var(--ease-out);
   cursor: default;
 }
 
-.pts-item:hover {
-  background: rgba(255, 255, 255, 0.04);
-}
-
-.pts-icon {
-  width: 16px;
-  height: 16px;
-  border-radius: 999px;
-  background: var(--pts-icon-bg, #2c2c2e);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+.pts-group-marker {
+  color: var(--pts-muted);
   font-size: 9px;
-  font-weight: 600;
-  margin-right: 6px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
   text-transform: uppercase;
-  opacity: 0.75;
-}
-
-.pts-arrow {
-  display: none; /* color-only deltas — no unicode triangle theater */
-}
-
-.pts-item.pts-crypto .pts-icon {
-  background: var(--pts-icon-bg, #2c2c2e);
-  border: 1px solid rgba(212, 192, 138, 0.35);
-  opacity: 1;
-}
-
-.pts-item.pts-crypto .pts-symbol {
-  color: var(--pts-fg, #f5f5f7);
-  /* crypto not recolored gold — accent reserved for chrome */
 }
 
 .pts-symbol {
-  margin-right: 6px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
 }
 
-.pts-change {
+.pts-price,
+.pts-change,
+.pts-personal-pnl {
   font-variant-numeric: tabular-nums;
   font-weight: 500;
 }
+
+.pts-price { color: var(--pts-fg); }
+.pts-personal-pnl { color: var(--pts-muted); }
+.pts-item-stale { color: var(--yellow); font-size: 10px; font-weight: 700; }
 
 .pts-up {
   color: var(--green, #30d158);
@@ -201,19 +170,9 @@
   opacity: 0.7;
 }
 
-/* No underline-as-link theater */
-.pts-item:hover .pts-change,
-.pts-item:hover .pts-symbol {
-  text-decoration: none;
-}
-
 .pts-scroll-wrapper:hover .pts-scroll-inner:not(.pts-scroll-static),
 .pts-scroll-inner:hover:not(.pts-scroll-static) {
   animation-play-state: paused;
-}
-
-.pts-ticker-bar.pts-reduced-motion .pts-stale-indicator {
-  animation: none;
 }
 
 .pts-ticker-bar.pts-reduced-motion .pts-scroll-inner {
@@ -232,9 +191,7 @@
   opacity: 1;
   transform: none;
   transition: none;
-  backdrop-filter: none;
-  -webkit-backdrop-filter: none;
-  background: var(--pts-bg, #000000);
+  background: var(--pts-bg, #17191d);
 }
 
 @keyframes pts-scroll {
@@ -246,35 +203,17 @@
   }
 }
 
-@keyframes pts-aggregate-flash {
-  0% {
-    opacity: 1;
-  }
-  40% {
-    opacity: 0.55;
-  }
-  100% {
-    opacity: 1;
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .pts-ticker-bar {
     opacity: 1;
     transform: none;
     transition: none;
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
-    background: var(--pts-bg, #000000);
+    background: var(--pts-bg, #17191d);
   }
 
   .pts-ticker-bar.pts-ticker-exiting {
     opacity: 0;
     transition: opacity var(--motion-fast) ease;
-  }
-
-  .pts-stale-indicator {
-    animation: none;
   }
 
   .pts-scroll-inner {
@@ -289,15 +228,11 @@
     display: none;
   }
 
-  .pts-aggregate.pts-aggregate-flash {
-    animation: none;
-  }
 }
 
 @media (prefers-reduced-transparency: reduce) {
   .pts-ticker-bar {
-    backdrop-filter: none;
-    -webkit-backdrop-filter: none;
+    background: var(--pts-bg, #17191d);
   }
 
   @media (prefers-color-scheme: dark) {
