@@ -16,7 +16,8 @@ import {
   formatSignedCurrency,
   inferDisplayCurrency,
   formatQuotePrice,
-  buildTickerItems
+  buildTickerItems,
+  withTickerItems
 } from "../shared.js";
 
 let passed = 0;
@@ -91,6 +92,22 @@ assert(
 assert(tickerItems[0].kind === "holding" && tickerItems[0].dayPnl === 42.5, "holding preserves day P&L");
 assert(tickerItems[1].kind === "watchlist" && tickerItems[1].dayPnl === null, "watchlist has no day P&L");
 assert(tickerItems[2].kind === "crypto" && tickerItems[2].dayPnl === null, "crypto has no day P&L");
+
+const holdingOnlyState = computePositionsState(
+  [{ symbol: "HOLD", displayName: "Holding", quantity: 2, assetClass: "stock" }],
+  { HOLD: [{ t: 1, p: 110, prevClose: 100 }] },
+  1
+);
+const tapeState = withTickerItems({
+  positionsState: holdingOnlyState,
+  watchlist: [{ symbol: "WATCH", displayName: "Watch", quantity: 0, assetClass: "watchlist" }],
+  crypto: [{ symbol: "bitcoin", displayName: "Bitcoin", quantity: 0, assetClass: "crypto" }]
+});
+assert(
+  tapeState.tickerItems.map((item) => item.kind).join(",") === "holding,watchlist,crypto",
+  "one holding, watchlist, and crypto item stay in ticker order"
+);
+assertApprox(tapeState.aggregate.dayPnl, 20, 0.01, "ticker quote-only items do not change holdings aggregate");
 
 // ── Test Suite: mergePriceSnapshots ──
 console.log("\n📊 mergePriceSnapshots");

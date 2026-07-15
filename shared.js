@@ -288,6 +288,18 @@ function buildTickerItems({ positions = [], watchlist = [], crypto = [] } = {}) 
   ];
 }
 
+/** Add quote-only tape items without changing the holdings P&L state. */
+function withTickerItems({ positionsState, watchlist = [], crypto = [] } = {}) {
+  return {
+    ...positionsState,
+    tickerItems: buildTickerItems({
+      positions: positionsState?.positions || [],
+      watchlist,
+      crypto
+    })
+  };
+}
+
 /**
  * Signed currency for P&L displays (e.g. +₹1,234.56).
  */
@@ -326,6 +338,7 @@ export {
   formatCurrency,
   formatQuotePrice,
   buildTickerItems,
+  withTickerItems,
   formatSignedCurrency,
   inferDisplayCurrency
 };
