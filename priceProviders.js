@@ -61,8 +61,10 @@ export class BinancePriceProvider {
       const response = await fetch(`${BINANCE_TICKER_URL}?symbol=${pair}`);
       if (!response.ok) return null;
       const data = await response.json();
-      const lastPrice = Number(data?.lastPrice);
-      if (!Number.isFinite(lastPrice)) return null;
+      const rawLastPrice = data?.lastPrice;
+      if (typeof rawLastPrice === "string" && !rawLastPrice.trim()) return null;
+      const lastPrice = Number(rawLastPrice);
+      if (!Number.isFinite(lastPrice) || lastPrice <= 0) return null;
       const changePct = Number(data?.priceChangePercent);
       return {
         symbol,
