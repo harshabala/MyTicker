@@ -13,14 +13,18 @@ function assert(condition, message) {
   }
 }
 
-const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, manifestSource, priceProvidersSource] = await Promise.all([
+const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, manifestSource, priceProvidersSource, backgroundSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
   readFile(new URL("../popup.html", import.meta.url), "utf8"),
   readFile(new URL("../popup.js", import.meta.url), "utf8"),
   readFile(new URL("../options.html", import.meta.url), "utf8"),
   readFile(new URL("../options.js", import.meta.url), "utf8"),
   readFile(new URL("../brand.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.json", import.meta.url), "utf8"),
-  readFile(new URL("../priceProviders.js", import.meta.url), "utf8")
+  readFile(new URL("../priceProviders.js", import.meta.url), "utf8"),
+  readFile(new URL("../background.js", import.meta.url), "utf8"),
+  readFile(new URL("../README.md", import.meta.url), "utf8"),
+  readFile(new URL("../PRIVACY.md", import.meta.url), "utf8"),
+  readFile(new URL("../STORE_LISTING.md", import.meta.url), "utf8")
 ]);
 const manifest = JSON.parse(manifestSource);
 const visibleCopy = `${popupHtml}\n${popupJs}\n${optionsHtml}\n${optionsJs}`;
@@ -52,7 +56,11 @@ assert(visibleText.includes("BTC / Bitcoin") && visibleText.includes("SOL / Sola
 assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.includes('<option value="top5">Top 5</option>') && optionsHtml.includes('<option value="manual">Manual</option>'), "uses explicit Off, Top 5, and Manual crypto modes");
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
+assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider header describes the implemented crypto providers");
+for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {
+  assert(source.includes("CoinGecko") && source.includes("Binance") && !/US\/crypto|for US stocks and crypto|Finnhub\/Binance/i.test(source), `${name} describes CoinGecko/Binance crypto sourcing without Finnhub crypto`);
+}
 assert(visibleText.includes("No Finnhub key is required for crypto quotes"), "states crypto quotes do not require a Finnhub key");
 assert(visibleText.includes("Finnhub key is still required for US equities"), "keeps the US-equity Finnhub requirement distinct");
 assert(visibleText.includes("third strip group, after holdings and watchlist"), "explains crypto strip placement");

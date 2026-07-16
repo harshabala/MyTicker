@@ -20,7 +20,7 @@ The ticker scrolls smoothly across the top of every page. Hover to pause. Click 
 
 ### 🪙 Crypto Support
 
-Optionally add crypto to your ticker (via Finnhub, `BINANCE:SYMBOL` format):
+Optionally add supported crypto to your ticker (CoinGecko primary, with mapped Binance fallback):
 • **Top 5 watchlist** — BTC, ETH, BNB, XRP, SOL (unit price change, qty 1)
 • **Manual holdings** — e.g. `BINANCE:BTCUSDT, 0.5` (one symbol per line)
 

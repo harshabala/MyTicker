@@ -240,7 +240,7 @@ async function handlePricePoll() {
 
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
-    // India (.NS/.BO) quotes via Yahoo without a key. Finnhub only for US/crypto when key present.
+    // India (.NS/.BO) quotes via Yahoo without a key; Finnhub is optional for US symbols. Crypto uses CoinGecko with mapped Binance fallback.
     const apiKeyOverride = (localData["pts_price_api_key"] || "").trim();
     const apiConfig = {
       apiKey: apiKeyOverride,

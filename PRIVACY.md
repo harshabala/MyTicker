@@ -27,7 +27,9 @@ The following data is stored **exclusively in your browser** using Chrome's `chr
 MyTicker network use:
 
 - **Yahoo Finance chart API** (`query1.finance.yahoo.com`) — automatic prices for Indian NSE/BSE symbols (`.NS` / `.BO`) after you import holdings. No API key. Only the ticker symbol is requested.
-- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — optional, for US stocks and crypto when you add a free Finnhub key. Only symbol + your API key are sent.
+- **Finnhub API** (`https://finnhub.io/api/v1/quote`) — optional, for US stocks when you add a free Finnhub key. Only symbol + your API key are sent.
+- **CoinGecko API** — primary crypto price source for supported canonical assets; only the public crypto ID is requested.
+- **Binance public API** — fallback for mapped liquid crypto pairs when CoinGecko has no quote; no API key is sent.
 - Portfolio holdings, quantities, and keys are never uploaded to MyTicker servers (there are none).
 
 ### Data NOT collected

@@ -745,6 +745,9 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
       const sym = document.createElement("span");
       sym.className = "watch-symbol";
       sym.textContent = item.displayName || item.symbol;
+      const asset = document.createElement("span");
+      asset.className = "watch-asset";
+      asset.textContent = formatWatchlistAssetLabel(item);
       const priceEl = document.createElement("span");
       priceEl.className = "watch-price";
       const changeEl = document.createElement("span");
@@ -781,9 +784,18 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
         );
         await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: updated });
       });
-      row.append(sym, priceEl, changeEl, removeBtn);
+      row.append(sym, asset, priceEl, changeEl, removeBtn);
       panel.appendChild(row);
     }
   }
   container.appendChild(panel);
+}
+
+function formatWatchlistAssetLabel(item = {}) {
+  if (item.assetClass === "crypto" || String(item.canonicalKey || "").startsWith("crypto:")) return "Crypto · USD";
+  const exchange = item.exchange || (String(item.symbol).endsWith(".NS") ? "NSE" : String(item.symbol).endsWith(".BO") ? "BSE" : "");
+  if (exchange === "NSE" || exchange === "BSE") return `India · ${exchange} · INR`;
+  if (exchange === "INDEX") return "Index · USD";
+  if (exchange === "ETF") return "ETF · USD";
+  return `US${exchange ? ` · ${exchange}` : ""} · USD`;
 }
