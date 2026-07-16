@@ -1228,6 +1228,129 @@
       }
 
       /* Footer */
+      /* ── Instrument-panel refinement ──
+         Shared presentation layer: existing tabs and settings logic remain intact. */
+      .page {
+        max-width: 980px;
+        padding: 2.5rem 1.5rem 3.25rem;
+      }
+      .page-header {
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .page-header img {
+        width: 44px;
+        height: 44px;
+        border-radius: 11px;
+      }
+      .page-header-text h1 {
+        font-size: 1.625rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        text-wrap: balance;
+      }
+      .page-header-text p { max-width: 62ch; }
+      .settings-tabs {
+        margin-bottom: 26px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .settings-tab {
+        flex: 1 1 0;
+        min-height: 54px;
+        padding: 15px 12px 13px;
+        text-align: center;
+      }
+      .settings-tab[aria-selected="true"] {
+        color: var(--brand-gold);
+      }
+      .settings-tab[aria-selected="true"]::after {
+        left: 16px;
+        right: 16px;
+        background: var(--brand-gold);
+      }
+      .section { margin-bottom: 22px; }
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0 0 12px;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-weight: 650;
+        letter-spacing: -0.015em;
+      }
+      .section-title::after { display: none; }
+      .card {
+        border-color: var(--border);
+        background: var(--bg-surface);
+        box-shadow: var(--material-elevated-shadow);
+      }
+      .settings-card { padding: 0; overflow: hidden; }
+      .form-stack { gap: 0; }
+      .form-stack .field,
+      .settings-card > .field,
+      .settings-card > .card-item {
+        padding: 18px 24px;
+        border-bottom: 1px solid var(--border);
+      }
+      .form-stack .field {
+        display: grid;
+        grid-template-columns: minmax(180px, .85fr) minmax(260px, 1.15fr);
+        column-gap: 24px;
+        align-items: start;
+      }
+      .form-stack .field-label { padding-top: 9px; }
+      .form-stack .field-hint { grid-column: 2; margin-top: 7px; }
+      .form-action-row {
+        padding: 18px 24px !important;
+        background: var(--bg-inset);
+      }
+      .form-action-row .btn-primary { min-width: 190px; justify-content: center; }
+      .configured-list {
+        margin: 0;
+        padding: 18px 24px;
+        background: var(--bg-inset);
+        border-top: 1px solid var(--border);
+      }
+      .configured-list:empty::before {
+        content: "Your saved symbols will appear here.";
+        color: var(--text-secondary);
+      }
+      .card-item { padding: 18px 24px; }
+      .field { padding: 18px 24px; }
+      .field-label { font-size: .875rem; color: var(--text-primary); }
+      .field-hint { color: var(--text-secondary); }
+      input, select {
+        min-height: 44px;
+        border-color: var(--border);
+        background: var(--bg-inset);
+      }
+      input:focus, select:focus { border-color: var(--brand-gold); }
+      .btn-primary {
+        min-height: 44px;
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
+      }
+      .btn-secondary { min-height: 40px; }
+      .preview-container { border-color: var(--border); }
+      .page-footer {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        padding: 20px 12px 0;
+        border-top: 1px solid var(--border);
+      }
+      @media (max-width: 680px) {
+        .page { padding: 1.5rem 1rem 2.5rem; }
+        .settings-tabs { overflow-x: auto; padding: 0; }
+        .settings-tab { flex: 0 0 auto; min-width: 112px; }
+        .form-stack .field { display: block; }
+        .form-stack .field-label { padding-top: 0; }
+        .form-stack .field-hint { margin-top: 7px; }
+      }
       .page-footer {
         text-align: center;
         padding-top: 16px;
