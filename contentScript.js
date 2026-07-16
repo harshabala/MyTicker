@@ -7,7 +7,6 @@ let formatSignedCurrency;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
-const BODY_TRANSITION_ATTR = "data-pts-body-transition";
 const TAPE_RESERVATION_PROPERTY = "--myticker-tape-reservation";
 const CHATGPT_DIALOG_SELECTOR = "dialog[open]";
 
@@ -175,25 +174,6 @@ function init() {
       renderTicker(state);
     });
   });
-}
-
-function setBodyMarginTop(px, animate, isExit = false) {
-  if (!document.body) return;
-  const reduced = prefersReducedMotion();
-  const shouldAnimate = animate && !reduced;
-
-  if (shouldAnimate) {
-    const duration = isExit ? "var(--motion-fast, 150ms)" : "var(--motion-bar-enter, 300ms)";
-    document.body.style.transition = `margin-top ${duration} var(--ease-out, ease)`;
-    document.body.setAttribute(BODY_TRANSITION_ATTR, "1");
-    // Force a reflow so the transition style is registered by the browser before updating margin-top
-    void document.body.offsetHeight;
-  } else {
-    document.body.style.transition = "";
-    document.body.removeAttribute(BODY_TRANSITION_ATTR);
-  }
-
-  document.body.style.marginTop = px > 0 ? `${px}px` : "";
 }
 
 function snapshotInlineValue(style, property) {
@@ -431,13 +411,13 @@ function ensureTickerContainer(animate = false) {
   renderTicker(latestState);
 }
 
-function restoreBodyMargin(animate) {
+function restoreBodyMargin() {
   clearTapeReservation();
 }
 
 function removeTickerContainer() {
   if (!tickerHost || !tickerBar) {
-    restoreBodyMargin(false);
+    restoreBodyMargin();
     tickerHost = null;
     tickerShadow = null;
     tickerBar = null;
@@ -462,14 +442,17 @@ function removeTickerContainer() {
   };
 
   if (prefersReducedMotion()) {
-    restoreBodyMargin(false);
+    restoreBodyMargin();
     finish();
     return;
   }
 
   bar.classList.remove("pts-ticker-visible");
   bar.classList.add("pts-ticker-exiting");
-  restoreBodyMargin(true);
+  // Page reservation changes are deliberately immediate: the tape can be
+  // toggled by keyboard and must never animate host-page layout or force sync
+  // reflow. Only the tape itself uses transform/opacity on exit.
+  restoreBodyMargin();
 
   const onEnd = (e) => {
     if (e.propertyName !== "opacity") return;

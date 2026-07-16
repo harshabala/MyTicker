@@ -13,12 +13,13 @@ function assert(condition, message) {
   }
 }
 
-const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, sharedSource, vaultSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
+const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, motionCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, sharedSource, vaultSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
   readFile(new URL("../popup.html", import.meta.url), "utf8"),
   readFile(new URL("../popup.js", import.meta.url), "utf8"),
   readFile(new URL("../options.html", import.meta.url), "utf8"),
   readFile(new URL("../options.js", import.meta.url), "utf8"),
   readFile(new URL("../brand.css", import.meta.url), "utf8"),
+  readFile(new URL("../motion.css", import.meta.url), "utf8"),
   readFile(new URL("../ticker.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.json", import.meta.url), "utf8"),
   readFile(new URL("../priceProviders.js", import.meta.url), "utf8"),
@@ -90,6 +91,12 @@ assert(optionsHtml.includes("<h1>MyTicker settings</h1>"), "uses canonical MyTic
 assert(manifest.name === "MyTicker", "uses canonical MyTicker name in the extension manifest");
 assert(manifest.action?.default_title === "MyTicker", "uses canonical MyTicker name in the extension action title");
 assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
+
+console.log("\n🎞️ Tape motion safety");
+assert(!contentScriptSource.includes("BODY_TRANSITION_ATTR") && !/offsetHeight/.test(contentScriptSource) && !/style\.transition\s*=\s*`margin-top/.test(contentScriptSource), "reserves and restores page layout immediately without animating margin or forcing a synchronous reflow");
+assert(!/body \*,\s*\n\s*body \*::before,\s*\n\s*body \*::after/.test(motionCss), "does not globally suppress every extension transition for reduced-motion users");
+assert(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.btn-pressable:active[\s\S]*?transform:\s*none/.test(motionCss), "keeps reduced-motion policy scoped to positional button feedback");
+assert(/\.pts-ticker-bar\.pts-reduced-motion[\s\S]*?animation:\s*none[\s\S]*?transition:\s*none/.test(tickerCss), "stops tape movement and bar transitions while preserving the static readable tape");
 
 console.log("\n🔒 Release-gate privacy and extension-boundary audit");
 const expectedProviderHosts = [
