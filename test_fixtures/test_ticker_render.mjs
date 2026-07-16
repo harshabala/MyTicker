@@ -99,7 +99,7 @@ globalThis.chrome = {
     sendMessage: (message) => lifecycleMessages.push(message)
   },
   storage: {
-    sync: { get: (_keys, callback) => callback({ pts_settings: { enabled: true } }) },
+    sync: { get: (_keys, callback) => callback({ pts_settings: { enabled: true, tickerStyleConfig: { tapeScale: "large" } } }) },
     local: { get: (_keys, callback) => callback({ pts_positions_state: state }) },
     onChanged: { addListener() {} }
   }
@@ -117,6 +117,7 @@ const host = document.documentElement.children.find((child) => child.id === "pts
 const rendered = host?.shadowRootForTest?.textContent || "";
 console.log("\n📟 delayed ticker mount");
 assert(Boolean(host), "mounts after the body becomes available");
+assert(host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"))?.getAttribute("data-tape-size") === "large", "applies the selected tape size to the tape root");
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
 assert(rendered.includes("₹1,450.00"), "renders Indian holdings in rupees");

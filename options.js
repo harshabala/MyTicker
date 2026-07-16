@@ -20,6 +20,7 @@ const providerStatusEl = document.getElementById("providerStatus");
 const testConnectionButton = document.getElementById("testConnectionButton");
 
 const tickerSpeedEl = document.getElementById("tickerSpeed");
+const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
 
 const includeCryptoEl = document.getElementById("includeCrypto");
@@ -96,6 +97,10 @@ function init() {
       settings.tickerStyleConfig?.tickerSpeed ||
         DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
     );
+    const tapeScale = normalizeTapeScale(settings.tickerStyleConfig?.tapeScale);
+    tapeScaleEls.forEach((input) => {
+      input.checked = input.value === tapeScale;
+    });
 
     const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
     includeCryptoEl.checked = !!cryptoConfig.includeCrypto;
@@ -852,12 +857,15 @@ function handleSaveAppearance() {
     5,
     Number(tickerSpeedEl.value) || DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
   ));
+  const selectedTapeScale = document.querySelector('input[name="tapeScale"]:checked')?.value;
+  const tapeScale = normalizeTapeScale(selectedTapeScale);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
     settings.tickerStyleConfig = {
       ...(settings.tickerStyleConfig || {}),
-      tickerSpeed
+      tickerSpeed,
+      tapeScale
     };
 
     settings.portfolioFilters = {
@@ -904,6 +912,12 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
     refreshSetupUI();
   }
 });
+
+function normalizeTapeScale(value) {
+  return ["compact", "comfortable", "large"].includes(value)
+    ? value
+    : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
 
 function requestImmediatePoll() {
   chrome.runtime.sendMessage({ action: "poll-now" }, () => {

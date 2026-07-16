@@ -43,17 +43,18 @@
 }
 
 .pts-ticker-bar {
+  --pts-tape-scale: 1.08;
   position: fixed;
   top: 0;
   left: 0;
   right: 0;
-  height: 34px;
+  height: calc(34px * var(--pts-tape-scale));
   display: flex;
   align-items: center;
   background: var(--pts-bg, rgba(0, 0, 0, 0.92));
   color: var(--pts-fg, #f5f5f7);
   font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-  font-size: 11px;
+  font-size: calc(11px * var(--pts-tape-scale));
   z-index: var(--pts-z-index-ticker) !important;
   box-shadow: inset 0 -0.5px 0 var(--pts-hairline, rgba(255, 255, 255, 0.08));
   -webkit-font-smoothing: antialiased;
@@ -62,6 +63,10 @@
   transform: translateY(-100%);
   transition: opacity var(--motion-bar-enter) var(--ease-out), transform var(--motion-bar-enter) var(--ease-out);
 }
+
+.pts-ticker-bar[data-tape-size="compact"] { --pts-tape-scale: 0.92; }
+.pts-ticker-bar[data-tape-size="comfortable"] { --pts-tape-scale: 1.08; }
+.pts-ticker-bar[data-tape-size="large"] { --pts-tape-scale: 1.20; }
 
 .pts-ticker-bar.pts-ticker-visible {
   opacity: 1;
@@ -79,9 +84,9 @@
 
 .pts-stale-indicator {
   flex: 0 0 auto;
-  padding: 0 8px;
+  padding: 0 calc(8px * var(--pts-tape-scale));
   color: var(--yellow, #ffd60a);
-  font-size: 11px;
+  font-size: calc(11px * var(--pts-tape-scale));
   font-weight: 600;
   cursor: help;
   /* Static amber — no infinite pulse (vestibular + ambient restraint) */
@@ -90,7 +95,7 @@
 
 .pts-aggregate {
   flex: 0 0 auto;
-  padding: 0 12px;
+  padding: 0 calc(12px * var(--pts-tape-scale));
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
@@ -127,15 +132,15 @@
 .pts-item {
   display: inline-flex;
   align-items: center;
-  gap: 7px;
-  padding: 0 12px;
+  gap: calc(7px * var(--pts-tape-scale));
+  padding: 0 calc(12px * var(--pts-tape-scale));
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.08));
   cursor: default;
 }
 
 .pts-group-marker {
   color: var(--pts-muted);
-  font-size: 9px;
+  font-size: calc(9px * var(--pts-tape-scale));
   font-weight: 700;
   letter-spacing: 0.08em;
   text-transform: uppercase;
@@ -155,7 +160,7 @@
 
 .pts-price { color: var(--pts-fg); }
 .pts-personal-pnl { color: var(--pts-muted); }
-.pts-item-stale { color: var(--yellow); font-size: 10px; font-weight: 700; }
+.pts-item-stale { color: var(--yellow); font-size: calc(10px * var(--pts-tape-scale)); font-weight: 700; }
 
 .pts-up {
   color: var(--green, #30d158);

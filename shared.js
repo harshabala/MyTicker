@@ -114,7 +114,8 @@ const DEFAULT_SETTINGS = {
   },
   tickerStyleConfig: {
     theme: "dark",
-    tickerSpeed: 40
+    tickerSpeed: 40,
+    tapeScale: "comfortable"
   },
   cryptoConfig: {
     includeCrypto: false,
@@ -126,6 +127,13 @@ const DEFAULT_SETTINGS = {
     showCrypto: true
   }
 };
+
+const TAPE_SCALES = new Set(["compact", "comfortable", "large"]);
+
+/** Return a supported named tape density, safely defaulting legacy settings. */
+function normalizeTapeScale(value) {
+  return TAPE_SCALES.has(value) ? value : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
 
 /**
  * Merge new quote snapshot into existing history.
@@ -431,6 +439,7 @@ export {
   sanitizeDiagnosticEntry,
   appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
+  normalizeTapeScale,
   ACTIVATION_EVENT,
   isActivated,
   needsFinnhubKey,

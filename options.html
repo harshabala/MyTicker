@@ -267,6 +267,23 @@
         margin-top: 4px;
       }
 
+      .tape-size-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        border: 0;
+        margin: 0;
+        padding: 0;
+      }
+
+      .tape-size-options label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--text-secondary);
+      }
+
       .setup-status {
         display: grid;
         grid-template-columns: 1.2fr 0.8fr;
@@ -1370,6 +1387,15 @@
             <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
             <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
             <div class="field-hint">Lower = faster scroll. Minimum 5 seconds. Theme follows system light/dark.</div>
+          </div>
+          <div class="field">
+            <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
+              <legend class="field-label">Market tape size</legend>
+              <label><input type="radio" name="tapeScale" value="compact" /> Compact (0.92×)</label>
+              <label><input type="radio" name="tapeScale" value="comfortable" checked /> Comfortable (1.08×)</label>
+              <label><input type="radio" name="tapeScale" value="large" /> Large (1.20×)</label>
+            </fieldset>
+            <div class="field-hint" id="tapeSizeHelp">Changes the tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save</button>

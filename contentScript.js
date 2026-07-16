@@ -15,6 +15,7 @@ let tickerShadow = null;
 let tickerBar = null;
 let latestState;
 let latestStateResolved = false;
+let tickerSettings = null;
 let reducedMotionMq = { matches: false, addEventListener() {} };
 
 function reportLifecycle(stage, error) {
@@ -84,10 +85,12 @@ function init() {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     try {
       const settings = data[STORAGE_KEYS.settings];
+      tickerSettings = settings;
       reportLifecycle("storage-settings-read");
       if (settings?.enabled) {
         ensureTickerContainer(false);
         applyTickerSpeed(settings);
+        applyTapeSize(settings);
       }
     } catch (error) {
       reportFatal(error);
@@ -98,12 +101,14 @@ function init() {
     runSafely(() => {
       if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
         const newSettings = changes[STORAGE_KEYS.settings].newValue;
+        tickerSettings = newSettings;
         if (newSettings && newSettings.enabled) {
           ensureTickerContainer(true);
         } else {
           removeTickerContainer();
         }
         applyTickerSpeed(newSettings);
+        applyTapeSize(newSettings);
       }
 
       if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
@@ -191,7 +196,8 @@ function ensureTickerContainer(animate = false) {
     document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-  setBodyMarginTop(originalPx + 34, animate, false);
+  applyTapeSize(tickerSettings);
+  setBodyMarginTop(originalPx + getTapeBarHeight(), animate, false);
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {
@@ -508,4 +514,31 @@ function applyTickerSpeed(settings) {
   if (tickerBar) {
     tickerBar.style.setProperty("--pts-ticker-duration", value);
   }
+}
+
+function getTapeScale(settings) {
+  const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
+  return { compact: 0.92, comfortable: 1.08, large: 1.20 }[size];
+}
+
+function getTapeBarHeight(settings) {
+  return 34 * getTapeScale(settings);
+}
+
+function applyTapeSize(settings) {
+  const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
+  const scale = getTapeScale(settings);
+  document.documentElement.style.setProperty("--pts-tape-scale", String(scale));
+  if (tickerBar) {
+    tickerBar.setAttribute("data-tape-size", size);
+    tickerBar.style.setProperty("--pts-tape-scale", String(scale));
+  }
+  if (document.body?.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
+    const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
+    setBodyMarginTop(originalPx + getTapeBarHeight(settings), false);
+  }
+}
+
+function normalizeTapeScale(value) {
+  return ["compact", "comfortable", "large"].includes(value) ? value : "comfortable";
 }
