@@ -105,6 +105,8 @@ assert(visibleText.includes("Live US prices require Finnhub"), "makes the US liv
 assert(visibleText.includes("BTC / Bitcoin") && visibleText.includes("SOL / Solana"), "lists the supported canonical crypto catalog");
 assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.includes('<option value="top5">Top 5</option>') && optionsHtml.includes('<option value="manual">Manual</option>'), "uses explicit Off, Top 5, and Manual crypto modes");
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
+assert(/<section class="crypto-selector" aria-label="Manual crypto selection">[\s\S]*?<div class="crypto-search-region">[\s\S]*?id="cryptoSearch"[\s\S]*?id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"[\s\S]*?<div class="crypto-selected-region">[\s\S]*?id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"[\s\S]*?<div class="[^"]*crypto-selector-guidance"/.test(optionsHtml), "contains manual crypto search, selected coins, and guidance in dedicated semantic regions");
+assert(["crypto-result-list", "crypto-result-action", "crypto-selected-chip", "crypto-chip-remove"].every((className) => optionsHtml.includes(`.${className}`)), "styles add results as compact actions and selections as removable chips");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
 assert(!/id="addWatchBtn"/.test(popupHtml), "popup has no quick-add header action");
 assert(!/quickAddInput|quickAddExchange|quickAddBtn/.test(popupHtml), "popup has no quick-add sheet inputs");
@@ -121,6 +123,7 @@ assert(/\btransition\s*:\s*none\s*;/.test(reducedMotionTickerExit), "reduced-mot
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
 assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");
+assert(optionsJs.includes('resultList.className = "crypto-result-list"') && optionsJs.includes('button.className = "crypto-result-action"') && optionsJs.includes('chip.className = "crypto-selected-chip"') && optionsJs.includes('remove.className = "crypto-chip-remove"'), "renders the manual crypto controls with their contained selector semantics");
 assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider header describes the implemented crypto providers");
 for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {
   assert(source.includes("CoinGecko") && source.includes("Binance") && !/US\/crypto|for US stocks and crypto|Finnhub\/Binance/i.test(source), `${name} describes CoinGecko/Binance crypto sourcing without Finnhub crypto`);

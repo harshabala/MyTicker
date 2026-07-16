@@ -629,6 +629,101 @@
         opacity: 1;
       }
 
+      .crypto-selector {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+
+      .crypto-search-region,
+      .crypto-selected-region {
+        display: grid;
+        gap: 8px;
+      }
+
+      .crypto-region-label {
+        color: var(--text-secondary);
+        font-size: var(--text-label, 12px);
+        font-weight: 600;
+      }
+
+      .crypto-search-results,
+      .crypto-selected-chips {
+        min-height: 0;
+      }
+
+      .crypto-result-list,
+      .crypto-selected-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .crypto-result-action,
+      .crypto-selected-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .crypto-result-action {
+        cursor: pointer;
+      }
+
+      .crypto-result-action:hover {
+        background: var(--bg-hover);
+        border-color: var(--brand-gold);
+      }
+
+      .crypto-result-action:focus-visible,
+      .crypto-chip-remove:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+
+      .crypto-selected-chip {
+        padding-right: 4px;
+        background: color-mix(in srgb, var(--brand-gold-muted) 52%, var(--bg-surface));
+      }
+
+      .crypto-chip-remove {
+        display: inline-grid;
+        width: 22px;
+        height: 22px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .crypto-chip-remove:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+
+      .crypto-selector-guidance {
+        margin: 0;
+        padding-top: 2px;
+      }
+
       .preview-container.preview-updating {
         opacity: 0.55;
         transition: opacity var(--motion-fast, 150ms) ease;
@@ -1395,11 +1490,18 @@
             </select>
           </div>
           <div class="field" id="cryptoManualField" hidden inert>
-            <label class="field-label" for="cryptoSearch">Search supported crypto</label>
-            <input id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
-            <div id="cryptoSearchResults" class="field-hint"></div>
-            <div id="cryptoSelectedChips" class="field-hint"></div>
-            <div class="field-hint">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
+            <section class="crypto-selector" aria-label="Manual crypto selection">
+              <div class="crypto-search-region">
+                <label class="field-label" for="cryptoSearch">Search supported crypto</label>
+                <input id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
+                <div id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"></div>
+              </div>
+              <div class="crypto-selected-region">
+                <div class="crypto-region-label">Selected coins</div>
+                <div id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"></div>
+              </div>
+              <div class="field-hint crypto-selector-guidance">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
+            </section>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>

@@ -632,14 +632,27 @@ function renderCryptoSelector() {
   if (!cryptoSearchResultsEl || !cryptoSelectedChipsEl) return;
   const query = (cryptoSearchEl?.value || "").trim().toLowerCase();
   const matches = CRYPTO_CATALOG.filter((coin) => !query || [coin.id, coin.symbol, coin.name].some((value) => value.toLowerCase().includes(query)));
-  cryptoSearchResultsEl.replaceChildren(...matches.map((coin) => {
-    const button = document.createElement("button"); button.type = "button"; button.className = "btn btn-secondary"; button.textContent = `Add ${coin.symbol} / ${coin.name}`;
+  const resultList = document.createElement("div");
+  resultList.className = "crypto-result-list";
+  resultList.append(...matches.map((coin) => {
+    const button = document.createElement("button"); button.type = "button"; button.className = "crypto-result-action"; button.textContent = `Add ${coin.symbol} / ${coin.name}`;
     button.addEventListener("click", () => { if (!selectedCrypto.some((item) => item.symbol === coin.id)) selectedCrypto.push({ symbol: coin.id, quantity: 1 }); cryptoSearchEl.value = ""; renderCryptoSelector(); });
     return button;
   }));
+  cryptoSearchResultsEl.replaceChildren(resultList);
   cryptoSelectedChipsEl.replaceChildren(...selectedCrypto.map((item) => {
-    const coin = resolveCryptoCatalogEntry(item.symbol); const chip = document.createElement("button"); chip.type = "button"; chip.className = "btn btn-secondary"; chip.textContent = `${coin?.symbol || item.symbol} ×`;
-    chip.addEventListener("click", () => { selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol); renderCryptoSelector(); }); return chip;
+    const coin = resolveCryptoCatalogEntry(item.symbol);
+    const chip = document.createElement("span");
+    chip.className = "crypto-selected-chip";
+    chip.textContent = coin?.symbol || item.symbol;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "crypto-chip-remove";
+    remove.setAttribute("aria-label", `Remove ${coin?.symbol || item.symbol}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => { selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol); renderCryptoSelector(); });
+    chip.appendChild(remove);
+    return chip;
   }));
 }
 
