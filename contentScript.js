@@ -104,11 +104,11 @@ function init() {
         tickerSettings = newSettings;
         if (newSettings && newSettings.enabled) {
           ensureTickerContainer(true);
+          applyTickerSpeed(newSettings);
+          applyTapeSize(newSettings);
         } else {
           removeTickerContainer();
         }
-        applyTickerSpeed(newSettings);
-        applyTapeSize(newSettings);
       }
 
       if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
