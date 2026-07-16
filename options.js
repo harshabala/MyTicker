@@ -51,7 +51,7 @@ const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height=
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Optional: add a Finnhub key only if you hold US stocks or crypto.",
+  1: "Optional: add a Finnhub key if you hold US equities. Crypto quotes do not need it.",
   2: "Import your holdings (Zerodha CSV). Indian stocks price automatically — no API key.",
   3: "Open any tab — the strip and today's P&L appear when prices load."
 };
@@ -378,7 +378,7 @@ async function refreshSetupUI() {
   if (wizardHintEl) {
     if (status.complete) {
       wizardHintEl.textContent =
-        "You're live. Indian prices load automatically. US stocks need a Finnhub key under Market Data (optional).";
+        "You're live. Indian prices load automatically. US equities need a Finnhub key under Market Data; crypto quotes do not.";
     } else if (!status.hasHoldings) {
       wizardHintEl.textContent = WIZARD_HINTS[2];
     } else {

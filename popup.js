@@ -312,7 +312,7 @@ function getSetupSteps(status) {
       done: status.hasApiKey,
       wizardStep: 1,
       label: "Optional: US price key",
-      hint: "Only needed for US stocks or crypto (Finnhub free key)"
+      hint: "Needed for US equities; crypto quotes use CoinGecko with Binance fallback"
     });
   }
   return steps;
@@ -712,7 +712,7 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "No symbols yet. Tap + above to add a ticker, or import holdings for full P&L.";
+      "No symbols yet. Tap + to add a symbol and exchange. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {

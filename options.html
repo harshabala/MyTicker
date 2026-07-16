@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>MyTicker Settings</title>
+    <title>my ticker settings</title>
     <link rel="stylesheet" href="brand.css" />
     <style>
 
@@ -16,6 +16,7 @@
         font-family: var(--font-sans);
         background: var(--bg);
         color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         min-height: 100vh;
@@ -1108,9 +1109,9 @@
   <body>
     <div class="page">
       <div class="page-header">
-        <img src="icons/icon48.png" alt="MyTicker" />
+        <img src="icons/icon48.png" alt="my ticker" />
         <div class="page-header-text">
-          <h1>MyTicker Settings</h1>
+          <h1>my ticker settings</h1>
           <p>Import holdings, prices, and appearance — sectioned so you don’t scroll forever.</p>
         </div>
       </div>
@@ -1266,7 +1267,7 @@
             <div class="provider-card-header">
               <div>
                 <div class="provider-name">NYSE &amp; NASDAQ</div>
-                <div class="provider-sub">Finnhub · free key for US / crypto</div>
+                <div class="provider-sub">Finnhub · free key for US equities</div>
               </div>
               <span class="provider-badge optional">Optional</span>
             </div>
@@ -1306,8 +1307,8 @@
           <div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label" id="labelIncludeCrypto">Include crypto</div>
-              <div class="item-desc">Finnhub quotes via BINANCE:SYMBOL (e.g. BINANCE:BTCUSDT) — requires US key</div>
+              <div class="item-label" id="labelIncludeCrypto">Include crypto in the strip</div>
+              <div class="item-desc">CoinGecko first for supported canonical crypto, then Binance for mapped liquid assets. No Finnhub key is required for crypto quotes.</div>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="includeCrypto" aria-labelledby="labelIncludeCrypto" />
@@ -1316,11 +1317,11 @@
           </div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label">Mode</div>
+              <div class="item-label">Crypto list</div>
             </div>
             <select id="cryptoMode" style="width: auto; min-width: 160px;">
-              <option value="top5">Top 5 (watchlist)</option>
-              <option value="manual">My holdings</option>
+              <option value="top5">Top five market watchlist</option>
+              <option value="manual">Manual holdings</option>
             </select>
           </div>
           <div class="field" id="cryptoManualField">
@@ -1330,7 +1331,7 @@
               rows="3"
               placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
             ></textarea>
-            <div class="field-hint">One per line: BINANCE:PAIR, quantity. Top 5 mode is a watchlist (qty 1, unit price P&amp;L).</div>
+            <div class="field-hint">One per line: coin ID or BINANCE:PAIR, quantity. The top-five option is a market watchlist; manual uses your quantities. Crypto becomes the third strip group, after holdings and watchlist.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>
@@ -1391,17 +1392,18 @@
         </div>
       </div>
       <div class="section">
-        <div class="section-title">US stocks &amp; crypto</div>
+        <div class="section-title">US stocks, watchlist &amp; crypto</div>
         <div class="card" style="padding: 20px 24px;">
           <ul class="tips-list">
-            <li>US equities and crypto need a free <strong>Finnhub</strong> key under <strong>Market data</strong> (optional for pure India portfolios).</li>
-            <li>Crypto pairs use Finnhub’s BINANCE symbols (e.g. <code style="color: var(--text-secondary);">BINANCE:BTCUSDT</code>) — enable under <strong>Optional</strong>.</li>
+            <li>A <strong>Finnhub</strong> key is still required for US equities under <strong>Market data</strong> (optional for pure India portfolios).</li>
+            <li>Crypto uses <strong>CoinGecko</strong> first for supported canonical assets and <strong>Binance</strong> only as a fallback for mapped liquid assets; no Finnhub key is required for those quotes.</li>
+            <li>Your manually added watchlist uses the symbol and exchange you select in the popup. It appears as the second strip group, after holdings; crypto follows as the third group when enabled.</li>
             <li>Free Finnhub tiers are rate-limited (~60 calls/min). Prefer a 2+ minute refresh for large US books.</li>
           </ul>
         </div>
       </div>
       <div class="section">
-        <div class="section-title">How MyTicker works</div>
+        <div class="section-title">How my ticker works</div>
         <div class="card" style="padding: 20px 24px;">
           <ul class="tips-list">
             <li><strong>Service worker</strong> fetches quotes on a <code style="color: var(--text-secondary);">chrome.alarms</code> schedule (not <code style="color: var(--text-secondary);">setInterval</code>), so fetches continue when the worker sleeps.</li>
@@ -1425,7 +1427,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.4.1 · Holdings and keys stay in this browser. India prices: Yahoo · US/crypto: Finnhub (optional). We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        my ticker v0.4.1 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 
