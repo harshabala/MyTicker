@@ -133,7 +133,7 @@ assert(visibleText.includes("second strip group, after holdings"), "explains wat
 assert(!visibleText.includes("Finnhub quotes via BINANCE:SYMBOL"), "removes the obsolete Finnhub-only crypto claim");
 assert(!visibleText.includes("US equities and crypto need a free Finnhub key"), "removes the obsolete shared Finnhub requirement");
 assert(brandCss.includes("--accent: #9fb0c3") && brandCss.includes("--green: #34d399"), "reserves emerald for positive market state and uses a neutral interaction accent");
-assert(optionsHtml.includes("background: var(--accent);") && !popupHtml.includes("background: var(--accent);"), "keeps existing settings interaction neutral while the popup uses its brand accent");
+assert(!optionsHtml.includes("background: var(--accent);") && !popupHtml.includes("background: var(--accent);"), "keeps the neutral interaction accent out of gold-branded primary surfaces");
 assert(brandCss.includes("--brand-gold:") && brandCss.includes("--brand-gold-hover:") && brandCss.includes("--brand-gold-muted:"), "defines shared MyTicker gold, hover, and muted interaction tokens");
 const systemDarkTokens = tokenMap(cssRuleBodyAt(brandCss, ":root {"));
 const systemLightStart = brandCss.indexOf("/* ── Light theme (system) ── */");
@@ -156,7 +156,12 @@ assert(/\.icon-btn:focus-visible\s*\{[\s\S]*?var\(--brand-gold\)/.test(popupHtml
 assert(/\.help-row a\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml) && /\.section-head \.link-quiet\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for explanatory and action links");
 assert(/\.btn-setup\s*\{[\s\S]*?background:\s*var\(--brand-gold\)[\s\S]*?color:\s*var\(--brand-gold-ink\)/.test(popupHtml), "uses the paired MyTicker gold and ink tokens for the popup primary action");
 assert(/\.pnl-positive\s*\{\s*color:\s*var\(--green\);\s*\}/.test(popupHtml) && /\.pnl-negative\s*\{\s*color:\s*var\(--red\);\s*\}/.test(popupHtml), "keeps green and red reserved for positive and negative market values");
-assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--accent);"), "uses the neutral interaction accent for completed wizard steps");
+assert(/\.settings-tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(optionsHtml), "uses MyTicker gold for the selected Settings tab underline");
+assert(/\.btn-primary\s*\{[\s\S]*?background:\s*var\(--brand-gold\)[\s\S]*?color:\s*var\(--brand-gold-ink\)/.test(optionsHtml) && /\.btn-primary:hover\s*\{[\s\S]*?background:\s*var\(--brand-gold-hover\)/.test(optionsHtml), "uses paired MyTicker gold tokens for Settings primary CTAs");
+assert(/\.btn:focus-visible,[\s\S]*?outline:\s*2px solid var\(--brand-gold\)/.test(optionsHtml) && /\.settings-tab:focus-visible::before\s*\{[\s\S]*?border:\s*1px solid var\(--brand-gold\)/.test(optionsHtml), "uses MyTicker gold for visible Settings keyboard focus");
+assert(/\.golden-path-sample\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(optionsHtml) && optionsHtml.includes('style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a>'), "uses MyTicker gold for Settings explanatory and action links");
+assert(!/\.settings-tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--accent\)/.test(optionsHtml) && !/\.btn-primary\s*\{[\s\S]*?background:\s*var\(--accent\)/.test(optionsHtml), "does not retain the neutral accent on Settings gold interaction primitives");
+assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--brand-gold);"), "uses MyTicker gold for completed Settings wizard steps");
 assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
 assert(optionsJs.includes('switchSettingsTab(tabId, { updateHash: false })') && optionsJs.includes('location.hash !== `#${tabId}`'), "handles location-driven tabs without a hash event loop");
 assert(optionsJs.includes('history.pushState(null, "", `#${tabId}`)'), "user-selected settings tabs create browser history entries for Back and Forward navigation");

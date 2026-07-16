@@ -36,7 +36,7 @@
         margin-bottom: 20px;
       }
 
-      /* Settings tabs — flat row with a neutral interaction selection line. */
+      /* Settings tabs — flat row with a single brand selection line. */
       .settings-tabs {
         display: flex;
         flex-wrap: wrap;
@@ -98,7 +98,7 @@
         right: 10px;
         bottom: -1px;
         height: 2px;
-        background: var(--accent);
+        background: var(--brand-gold);
         border-radius: 0;
       }
       .settings-tab:focus-visible {
@@ -109,7 +109,7 @@
         content: "";
         position: absolute;
         inset: 4px 6px;
-        border: 1px solid var(--accent);
+        border: 1px solid var(--brand-gold);
         border-radius: 2px;
         pointer-events: none;
       }
@@ -376,12 +376,12 @@
       .btn:focus-visible,
       .wizard-step:focus-visible,
       .drop-zone:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 2px;
       }
 
       .toggle-switch input:focus-visible + .toggle-slider {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 2px;
         border-radius: 11px;
       }
@@ -407,20 +407,20 @@
       }
 
       .wizard-step.active {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+        background: var(--brand-gold-muted);
       }
 
       .wizard-step.done {
-        color: var(--accent);
+        color: var(--brand-gold);
         opacity: 0.55;
       }
 
       .wizard-step.is-next {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+        background: var(--brand-gold-muted);
         font-weight: 600;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       }
@@ -502,7 +502,7 @@
 
       .golden-path-sample {
         font-size: 12px;
-        color: var(--accent);
+        color: var(--brand-gold);
         text-decoration: none;
       }
 
@@ -564,7 +564,7 @@
       }
 
       .section-highlight {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 4px;
         border-radius: var(--radius);
         transition: outline-color var(--motion-fast, 150ms) ease, outline-offset var(--motion-fast, 150ms) ease;
@@ -667,7 +667,7 @@
       }
 
       .toggle-switch input:checked + .toggle-slider {
-        background: var(--accent);
+        background: var(--brand-gold);
       }
 
       .toggle-switch input:checked + .toggle-slider::before {
@@ -696,12 +696,12 @@
       }
 
       .btn-primary {
-        background: var(--accent);
-        color: var(--accent-ink, #0a0a0a);
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
       }
 
       .btn-primary:hover {
-        background: var(--accent-hover);
+        background: var(--brand-gold-hover);
       }
 
       .btn-primary:active {
@@ -741,8 +741,8 @@
 
       .drop-zone:hover,
       .drop-zone.dragover {
-        border-color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        background: var(--brand-gold-muted);
         border-style: solid;
       }
 
@@ -1020,7 +1020,7 @@
         transition: color 0.15s ease;
       }
       .input-eye-btn:hover { color: var(--text-primary); }
-      .input-eye-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .input-eye-btn:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
 
       /* Test connection disabled state */
       .btn:disabled {
@@ -1116,7 +1116,7 @@
         content: "→";
         position: absolute;
         left: 0;
-        color: var(--accent);
+        color: var(--brand-gold);
         font-weight: 600;
       }
 
@@ -1212,7 +1212,7 @@
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--brand-gold);">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
               <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
@@ -1320,7 +1320,7 @@
                 </svg>
               </button>
             </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
           </div>
           <div class="field">
             <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
@@ -1494,7 +1494,7 @@
       </div>
 
       <div class="page-footer">
-        MyTicker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 
