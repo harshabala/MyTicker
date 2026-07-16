@@ -39,7 +39,7 @@ messageListener({
     origin: "https://www.linkedin.com",
     error: { name: "TypeError", message: "Failed at https://untrusted.example/path?secret=1" }
   }
-}, { id: undefined, frameId: 0, url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
+}, { id: undefined, tab: {}, frameId: 0, url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 const status = local.get("pts_content_script_status");

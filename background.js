@@ -64,6 +64,7 @@ async function savePollHealth() {
 }
 
 let pollHealthLoaded = false;
+let settingsMigrationInFlight = null;
 
 async function recordDiagnostic(entry) {
   const data = await chrome.storage.local.get([STORAGE_KEYS.diagnosticsLog]);
@@ -113,17 +114,26 @@ function isTrustedExtensionSender(sender) {
 
 function isTrustedContentSender(sender, payload) {
   const senderOrigin = safeOrigin(sender?.url);
-  return sender?.id === chrome.runtime.id && sender?.frameId === 0 && !!senderOrigin && senderOrigin === safeOrigin(payload?.origin);
+  return sender?.id === chrome.runtime.id && !!sender?.tab && sender?.frameId === 0 && /^https?:\/\//.test(senderOrigin) && senderOrigin === safeOrigin(payload?.origin);
 }
 
 async function migrateStoredSettings() {
-  const data = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
-  const migrated = migrateSettings(data[STORAGE_KEYS.settings]);
-  const previous = data[STORAGE_KEYS.settings];
-  if (JSON.stringify(previous) !== JSON.stringify(migrated)) {
-    await chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrated });
+  if (settingsMigrationInFlight) return settingsMigrationInFlight;
+  const migration = (async () => {
+    const data = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
+    const migrated = migrateSettings(data[STORAGE_KEYS.settings]);
+    const previous = data[STORAGE_KEYS.settings];
+    if (JSON.stringify(previous) !== JSON.stringify(migrated)) {
+      await chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrated });
+    }
+    return migrated;
+  })();
+  settingsMigrationInFlight = migration;
+  try {
+    return await migration;
+  } finally {
+    if (settingsMigrationInFlight === migration) settingsMigrationInFlight = null;
   }
-  return migrated;
 }
 
 function providerQuoteCounts(quotes) {
@@ -157,7 +167,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (message.type === "poll-now" && isTrustedExtensionSender(sender)) {
     handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
       console.error("[MyTicker] poll-now failed", err);
-      sendResponse({ ok: false, error: String(err) });
+      sendResponse({ ok: false, error: "Unable to refresh prices" });
     });
     return true;
   }

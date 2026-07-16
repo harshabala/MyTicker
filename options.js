@@ -1106,7 +1106,7 @@ function applyDocumentTheme(theme) {
 }
 
 function requestImmediatePoll() {
-  chrome.runtime.sendMessage({ action: "poll-now" }, () => {
+  chrome.runtime.sendMessage({ type: "poll-now", payload: {} }, () => {
     void chrome.runtime.lastError;
   });
 }

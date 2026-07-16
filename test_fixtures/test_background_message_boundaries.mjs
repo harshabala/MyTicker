@@ -68,4 +68,11 @@ messageListener(
 await new Promise((resolve) => setTimeout(resolve, 0));
 assert.equal(local.has("pts_content_script_status"), false, "untrusted lifecycle message is ignored");
 
+messageListener(
+  { type: "content-script-lifecycle", payload: { stage: "loaded", origin: "chrome-extension://test-extension-id" } },
+  { id: "test-extension-id", frameId: 0, url: "chrome-extension://test-extension-id/options.html" }
+);
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(local.has("pts_content_script_status"), false, "extension pages cannot claim content lifecycle telemetry");
+
 console.log("background message boundaries: passed");
