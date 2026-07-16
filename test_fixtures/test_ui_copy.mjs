@@ -189,6 +189,13 @@ assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.i
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");
 assert(brandCss.includes("--weight-display: 700") && brandCss.includes("--weight-section: 600") && brandCss.includes("--weight-label: 500") && brandCss.includes("--weight-body: 400"), "defines the intended type-weight hierarchy");
+assert(/\.settings-card\s*\{[^}]*padding:\s*24px/.test(optionsHtml), "Settings form cards use a consistent 24px inset");
+assert(/\.form-stack\s*\{[^}]*display:\s*grid[^}]*gap:\s*16px/.test(optionsHtml), "Settings form stacks use a 16px rhythm");
+assert(/\.form-stack\s+\.field\s*\{[^}]*gap:\s*8px/.test(optionsHtml), "Settings fields pair labels and controls with an 8px rhythm");
+assert(/\.form-action-row\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Settings actions are separated from fields by 16px");
+assert(/\.configured-list\s*\{[^}]*padding:\s*12px\s+14px/.test(optionsHtml), "Configured watchlist state has a padded list container");
+const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || "";
+assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, symbol/hint, error, action, then configured-list order");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

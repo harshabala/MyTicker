@@ -170,6 +170,40 @@
         box-shadow: var(--material-elevated-shadow);
       }
 
+      .settings-card {
+        padding: 24px;
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .form-stack .field {
+        display: grid;
+        gap: 8px;
+        padding: 0;
+        border: 0;
+      }
+
+      .form-stack .field-label,
+      .form-stack .field-hint {
+        margin: 0;
+      }
+
+      .form-action-row {
+        margin-top: 16px;
+        padding: 0;
+      }
+
+      .configured-list {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+
       .card-item {
         padding: 12px 16px;
         border-bottom: 1px solid var(--border);
@@ -1183,13 +1217,15 @@
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
         <div class="section">
           <div class="section-title">Watchlist</div>
-          <div class="card">
-            <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
-            <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
-            <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
-            <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
-            <div class="btn-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
-            <div id="watchlistConfigured" class="field-hint"></div>
+          <div class="card settings-card">
+            <div class="form-stack">
+              <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
+              <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
+              <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
+              <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
+            </div>
+            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
+            <div id="watchlistConfigured" class="configured-list field-hint"></div>
           </div>
         </div>
       </div>
