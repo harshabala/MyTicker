@@ -128,7 +128,8 @@ globalThis.getComputedStyle = (element) => ({
   marginTop: element.style.getPropertyValue("margin-top") || "0px",
   position: element.style.getPropertyValue("position") || "static"
 });
-globalThis.requestAnimationFrame = (callback) => callback();
+globalThis.requestAnimationFrame = (callback) => { callback(); return null; };
+globalThis.cancelAnimationFrame = () => {};
 globalThis.setTimeout = (callback) => { callback(); return null; };
 globalThis.clearTimeout = () => {};
 globalThis.chrome = {
@@ -229,6 +230,30 @@ assert(contentStages.includes("loaded"), "reports that the content script loaded
 assert(contentStages.includes("storage-settings-read"), "reports that settings were read");
 assert(contentStages.includes("mount-success"), "reports successful ticker mounting");
 assert(contentStages.includes("render-success"), "reports successful ticker rendering");
+
+const queuedFrames = [];
+const cancelledFrames = [];
+globalThis.requestAnimationFrame = (callback) => { queuedFrames.push(callback); return queuedFrames.length; };
+globalThis.cancelAnimationFrame = (id) => { cancelledFrames.push(id); };
+documentObserver?.trigger([{ type: "childList", target: document.documentElement }]);
+documentObserver?.trigger([{ type: "childList", target: document.documentElement }]);
+assert(queuedFrames.length === 1, "coalesces rapid document reconciliation into one animation frame");
+settingsChangeListener({ pts_settings: { newValue: { enabled: false } } }, "sync");
+assert(cancelledFrames.length === 1, "cancels a queued reconciliation when the tape is disabled");
+globalThis.requestAnimationFrame = (callback) => { callback(); return null; };
+globalThis.cancelAnimationFrame = () => {};
+
+const deferredTimers = [];
+globalThis.setTimeout = (callback) => { deferredTimers.push(callback); return deferredTimers.length; };
+globalThis.clearTimeout = (id) => { deferredTimers[id - 1] = null; };
+settingsChangeListener({ pts_settings: { newValue: { enabled: true } } }, "sync");
+const reenabledHost = document.documentElement.children.find((child) => child.id === "pts-ticker-container");
+const reenabledBar = reenabledHost?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"));
+assert(Boolean(reenabledHost) && reenabledBar?.className.includes("pts-ticker-visible") && !reenabledBar.className.includes("pts-ticker-exiting"), "rapid re-enable cancels the pending tape exit and restores visibility");
+for (const callback of deferredTimers) callback?.();
+assert(document.documentElement.children.includes(reenabledHost), "a cancelled exit timer cannot remove the re-enabled tape host");
+globalThis.setTimeout = (callback) => { callback(); return null; };
+globalThis.clearTimeout = () => {};
 
 settingsChangeListener({ pts_settings: { newValue: { enabled: false } } }, "sync");
 document.body.dispatchEvent({ type: "transitionend", propertyName: "margin-top" });

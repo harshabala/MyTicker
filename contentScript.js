@@ -23,7 +23,8 @@ let tapeReservation = null;
 let tapeResizeObserver = null;
 let tapeDocumentObserver = null;
 let chatgptDialog = null;
-let tapeReconcileTimer = null;
+let tapeReconcileFrame = null;
+let cancelTickerExit = null;
 let extensionContextAlive = true;
 
 function isContextInvalidated(error) {
@@ -33,8 +34,8 @@ function isContextInvalidated(error) {
 function teardownForInvalidatedContext() {
   if (!extensionContextAlive) return;
   extensionContextAlive = false;
-  if (tapeReconcileTimer !== null) clearTimeout(tapeReconcileTimer);
-  tapeReconcileTimer = null;
+  cancelTapeReconciliation();
+  cancelTickerExit?.();
   tapeResizeObserver?.disconnect();
   tapeDocumentObserver?.disconnect();
   tapeResizeObserver = null;
@@ -322,9 +323,9 @@ function observeTapeDocument() {
 }
 
 function queueTapeReconciliation() {
-  if (!extensionContextAlive || tapeReconcileTimer !== null) return;
-  tapeReconcileTimer = setTimeout(() => {
-    tapeReconcileTimer = null;
+  if (!extensionContextAlive || tapeReconcileFrame !== null) return;
+  tapeReconcileFrame = requestAnimationFrame(() => {
+    tapeReconcileFrame = null;
     runSafely(() => {
       if (!tickerBar) return;
       if (tapeReservation?.body !== document.body) {
@@ -336,10 +337,17 @@ function queueTapeReconciliation() {
       }
       applyTapeReservation();
     });
-  }, 0);
+  });
+}
+
+function cancelTapeReconciliation() {
+  if (tapeReconcileFrame === null) return;
+  cancelAnimationFrame?.(tapeReconcileFrame);
+  tapeReconcileFrame = null;
 }
 
 function clearTapeReservation() {
+  cancelTapeReconciliation();
   tapeResizeObserver?.disconnect();
   tapeResizeObserver = null;
   tapeDocumentObserver?.disconnect();
@@ -360,6 +368,7 @@ function clearTapeReservation() {
 function ensureTickerContainer(animate = false) {
   const hostMounted = document.documentElement.contains?.(tickerHost) ?? tickerHost?.parentNode === document.documentElement;
   if (tickerHost && hostMounted && tickerBar) {
+    cancelTickerExit?.();
     if (tapeReservation?.body !== document.body) {
       applyTapeReservation();
       observeTapeReservation();
@@ -439,14 +448,17 @@ function removeTickerContainer() {
   const bar = tickerBar;
 
   let finished = false;
+  let cancelled = false;
+  let exitTimer = null;
   const finish = () => {
-    if (finished) return;
+    if (finished || cancelled) return;
     finished = true;
     if (host.parentNode) host.parentNode.removeChild(host);
     delete bar._ptsParts;
     tickerHost = null;
     tickerShadow = null;
     tickerBar = null;
+    cancelTickerExit = null;
   };
 
   if (prefersReducedMotion()) {
@@ -464,7 +476,15 @@ function removeTickerContainer() {
     finish();
   };
   bar.addEventListener("transitionend", onEnd, { once: true });
-  setTimeout(finish, 200);
+  exitTimer = setTimeout(finish, 200);
+  cancelTickerExit = () => {
+    if (finished || cancelled) return;
+    cancelled = true;
+    clearTimeout(exitTimer);
+    bar.classList.remove("pts-ticker-exiting");
+    bar.classList.add("pts-ticker-visible");
+    cancelTickerExit = null;
+  };
 }
 
 function getTickerParts(container) {

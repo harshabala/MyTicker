@@ -120,9 +120,12 @@ function isTrustedContentSender(sender, payload) {
 async function migrateStoredSettings() {
   if (settingsMigrationInFlight) return settingsMigrationInFlight;
   const migration = (async () => {
-    const data = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
-    const migrated = migrateSettings(data[STORAGE_KEYS.settings]);
-    const previous = data[STORAGE_KEYS.settings];
+    const initial = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
+    // Options and commands may write while a worker is waking. Re-read before
+    // migration writes so the normalizer applies to the newest user settings.
+    const latest = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
+    const previous = latest[STORAGE_KEYS.settings] ?? initial[STORAGE_KEYS.settings];
+    const migrated = migrateSettings(previous);
     if (JSON.stringify(previous) !== JSON.stringify(migrated)) {
       await chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrated });
     }
