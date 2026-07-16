@@ -197,7 +197,7 @@ function ensureTickerContainer(animate = false) {
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
   applyTapeSize(tickerSettings);
-  setBodyMarginTop(originalPx + getTapeBarHeight(), animate, false);
+  setBodyMarginTop(originalPx + getTapeBarHeight(tickerSettings), animate, false);
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {

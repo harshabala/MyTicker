@@ -89,6 +89,8 @@ const state = {
     { kind: "crypto", symbol: "bitcoin", displayName: "Bitcoin", lastPrice: 65000, changePct: 1.5, currency: "USD", assetClass: "crypto" }
   ]
 };
+const requestedTapeSize = process.env.TAPE_SCALE === "compact" ? "compact" : "large";
+const expectedTapeOffset = requestedTapeSize === "compact" ? 31.28 : 40.8;
 const lifecycleMessages = [];
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
@@ -99,7 +101,7 @@ globalThis.chrome = {
     sendMessage: (message) => lifecycleMessages.push(message)
   },
   storage: {
-    sync: { get: (_keys, callback) => callback({ pts_settings: { enabled: true, tickerStyleConfig: { tapeScale: "large" } } }) },
+    sync: { get: (_keys, callback) => callback({ pts_settings: { enabled: true, tickerStyleConfig: { tapeScale: requestedTapeSize } } }) },
     local: { get: (_keys, callback) => callback({ pts_positions_state: state }) },
     onChanged: { addListener() {} }
   }
@@ -117,7 +119,8 @@ const host = document.documentElement.children.find((child) => child.id === "pts
 const rendered = host?.shadowRootForTest?.textContent || "";
 console.log("\n📟 delayed ticker mount");
 assert(Boolean(host), "mounts after the body becomes available");
-assert(host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"))?.getAttribute("data-tape-size") === "large", "applies the selected tape size to the tape root");
+assert(host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"))?.getAttribute("data-tape-size") === requestedTapeSize, `applies the selected ${requestedTapeSize} tape size to the tape root`);
+assert(Math.abs(Number.parseFloat(document.body.style.marginTop) - expectedTapeOffset) < 0.001, `uses the selected ${requestedTapeSize} tape height for the initial body offset`);
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
 assert(rendered.includes("₹1,450.00"), "renders Indian holdings in rupees");
