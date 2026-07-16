@@ -13,6 +13,13 @@ const STORAGE_KEYS = {
 };
 
 const DIAGNOSTICS_LOG_LIMIT = 40;
+const DIAGNOSTIC_EVENTS = new Set([
+  "refresh-start",
+  "eligible-symbols",
+  "provider-results",
+  "state-write",
+  "refresh-failed"
+]);
 
 /**
  * Keep refresh diagnostics operational and safe to copy. This deliberately
@@ -22,7 +29,7 @@ const DIAGNOSTICS_LOG_LIMIT = 40;
 function sanitizeDiagnosticEntry(entry = {}) {
   const safe = {
     timestamp: Number(entry.timestamp) || Date.now(),
-    event: String(entry.event || "refresh-event").slice(0, 48)
+    event: DIAGNOSTIC_EVENTS.has(entry.event) ? entry.event : "unknown"
   };
   for (const key of [
     "holdingsCount", "watchlistCount", "cryptoCount", "equitySymbols",

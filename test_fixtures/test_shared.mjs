@@ -70,6 +70,13 @@ assert(unsafeDiagnostic.timestamp === 100 && unsafeDiagnostic.event === "refresh
 assert(unsafeDiagnostic.holdingsCount === 2 && unsafeDiagnostic.quoteCount === 4, "keeps safe operational counts");
 assert(!("quantity" in unsafeDiagnostic) && !("apiKey" in unsafeDiagnostic) && !("portfolioValue" in unsafeDiagnostic), "removes quantities, keys, and portfolio values");
 assert(unsafeDiagnostic.error === "Refresh failed", "replaces unsafe error details with a generic label");
+const hostileEventDiagnostic = sanitizeDiagnosticEntry({
+  timestamp: 101,
+  event: "token=secret-token; DROP TABLE diagnostics",
+  quoteCount: 1
+});
+assert(hostileEventDiagnostic.event === "unknown", "replaces hostile lifecycle event text with unknown");
+assert(!JSON.stringify(hostileEventDiagnostic).includes("secret-token"), "does not preserve secret-like event input");
 const boundedDiagnostics = Array.from({ length: DIAGNOSTICS_LOG_LIMIT + 2 }, (_, i) => ({ timestamp: i, event: "refresh-start" }))
   .reduce((log, entry) => appendDiagnosticLogEntry(log, entry), []);
 assert(boundedDiagnostics.length === DIAGNOSTICS_LOG_LIMIT, "caps diagnostics log at its configured bound");

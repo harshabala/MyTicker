@@ -33,8 +33,12 @@ assert(manifest.action?.default_title === "my ticker", "uses lowercase product n
 assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
 assert(optionsHtml.includes('data-tab="diagnostics"'), "includes a Diagnostics settings tab");
 assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
+assert(optionsHtml.includes('id="refreshDiagnosticsButton"'), "includes a refresh diagnostics button");
 assert(visibleText.includes("What changed"), "includes a visible What changed section");
 assert(visibleText.includes("CoinGecko and Binance only"), "does not overclaim unimplemented crypto providers");
+assert(visibleText.includes("Ticker enabled") && visibleText.includes("Holdings:") && visibleText.includes("Watchlist:"), "diagnostics copy includes required ticker and item counts");
+assert(visibleText.includes("CoinGecko:") && visibleText.includes("Binance:") && visibleText.includes("Yahoo Finance:") && visibleText.includes("Finnhub:"), "diagnostics copy names every active provider");
+assert(visibleText.includes("Recent refresh lifecycle"), "diagnostics copy includes the bounded change-log lifecycle");
 assert(visibleText.includes("CoinGecko first for supported canonical crypto"), "explains CoinGecko as the primary crypto source");
 assert(visibleText.includes("Binance for mapped liquid assets"), "explains the Binance fallback");
 assert(visibleText.includes("No Finnhub key is required for crypto quotes"), "states crypto quotes do not require a Finnhub key");
