@@ -80,6 +80,10 @@ const WIZARD_NEXT_LABELS = {
   3: "Go live"
 };
 
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+}
+
 init();
 
 function init() {
@@ -497,7 +501,7 @@ function goToWizardStep(step) {
     // Wait a frame so the target tab is visible before highlighting.
     requestAnimationFrame(() => {
       target.classList.add("section-highlight");
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       setTimeout(() => target.classList.remove("section-highlight"), 2000);
     });
   }

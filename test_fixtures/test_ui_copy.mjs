@@ -217,6 +217,11 @@ assert(goldThemes.every(([, tokens]) => ["text-tertiary", "bg", "bg-surface"].ev
 assert(/\.checklist-item\.done \.check-icon\s*\{[\s\S]*?background:\s*var\(--bg-surface\)[\s\S]*?color:\s*var\(--green\)/.test(popupHtml) && goldThemes.every(([, tokens]) => ["green", "bg-surface"].every((name) => tokens[name]) && contrastRatio(tokens.green, tokens["bg-surface"]) >= 4.5), "keeps the 11px success glyph at WCAG AA contrast against its resolved neutral checklist chip background");
 assert((brandCss.match(/--brand-gold:/g) || []).length === 4 && (brandCss.match(/--brand-gold-hover:/g) || []).length === 4, "declares gold tokens once per canonical theme layer without overridden duplicates");
 assert(!/transition:\s*all\s+0\.15s\s+ease/.test(optionsHtml + popupHtml), "uses motion tokens and explicit transition properties instead of transition-all");
+assert(!/grid-template-rows\s*:/.test(optionsHtml) && !/details\.crypto-details\s*>\s*div\s*\{[\s\S]*?transition:/.test(optionsHtml), "opens crypto details immediately instead of animating layout geometry");
+assert(/target\.scrollIntoView\(\{ behavior: prefersReducedMotion\(\) \? "auto" : "smooth", block: "start" \}\)/.test(optionsJs), "uses an instant wizard scroll for reduced-motion users");
+assert(/\.btn-copy-entry\s*\{[\s\S]*?transition:\s*color var\(--motion-fast\) var\(--ease-out\), border-color var\(--motion-fast\) var\(--ease-out\);/.test(optionsHtml), "limits copy affordance motion to its color and border changes");
+assert(!/fadeOutView\(/.test(popupJs) && !/waitMs\(/.test(popupJs), "does not make popup state changes wait for a symmetric fade-out");
+assert(/function mountView\(container, viewEl, viewName, \{ animate = false \} = \{\}\)/.test(popupJs), "keeps popup view mounting immediate unless a deliberate transition is requested");
 assert(/html\[data-theme="dark"\]\s*\{[\s\S]*?--bg:\s*#0c0c0d;[\s\S]*?--bg-surface:\s*#18181a;/.test(brandCss), "uses graphite and obsidian rather than slate-blue dark surfaces");
 assert(/\.tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the selected popup tab underline");
 assert(/\.icon-btn:focus-visible\s*\{[\s\S]*?var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the Settings gear focus ring");

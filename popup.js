@@ -111,33 +111,18 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function waitMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fadeOutView(viewEl) {
-  if (!viewEl || prefersReducedMotion()) return;
-  viewEl.classList.add("view-exit");
-  await Promise.race([
-    new Promise((resolve) => {
-      viewEl.addEventListener("transitionend", resolve, { once: true });
-    }),
-    waitMs(260)
-  ]);
-}
-
-function mountView(container, viewEl, viewName) {
-  viewEl.classList.add("popup-view", "view-enter");
+function mountView(container, viewEl, viewName, { animate = false } = {}) {
+  viewEl.classList.add("popup-view");
   if (viewEl.parentNode !== container) container.appendChild(viewEl);
   currentView = viewName;
-  if (!prefersReducedMotion()) {
+  // Popup data is often refreshed while keyboard navigation is in progress.
+  // Keep the default immediate; a future deliberate, non-keyboard transition
+  // must opt in and will still honor reduced-motion preferences.
+  if (animate && !prefersReducedMotion()) {
+    viewEl.classList.add("view-enter");
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        viewEl.classList.remove("view-enter");
-      });
+      viewEl.classList.remove("view-enter");
     });
-  } else {
-    viewEl.classList.remove("view-enter");
   }
 }
 
@@ -205,11 +190,9 @@ async function _refreshPopupInner(container) {
 
   const loadingEl = container.querySelector(".loading-state");
   if (loadingEl) {
-    await fadeOutView(loadingEl);
     loadingEl.className = "";
     loadingEl.replaceChildren();
   } else if (outgoing) {
-    await fadeOutView(outgoing);
     outgoing.className = "";
     outgoing.replaceChildren();
   }
