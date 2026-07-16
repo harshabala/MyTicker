@@ -267,7 +267,11 @@ function observeTapeDocument() {
   tapeDocumentObserver?.disconnect();
   tapeDocumentObserver = null;
   if (typeof MutationObserver !== "function" || !document.documentElement) return;
-  tapeDocumentObserver = new MutationObserver(() => runSafely(() => {
+  tapeDocumentObserver = new MutationObserver((records) => runSafely(() => {
+    const hasRelevantChange = records.some((record) =>
+      record.type === "childList" || (record.type === "attributes" && record.attributeName === "open")
+    );
+    if (!hasRelevantChange) return;
     if (!tickerBar) return;
     if (tapeReservation?.body !== document.body) {
       clearTapeReservation();
@@ -278,7 +282,12 @@ function observeTapeDocument() {
     }
     applyTapeReservation();
   }));
-  tapeDocumentObserver.observe(document.documentElement, { childList: true, subtree: true });
+  tapeDocumentObserver.observe(document.documentElement, {
+    childList: true,
+    subtree: true,
+    attributes: true,
+    attributeFilter: ["open"]
+  });
 }
 
 function clearTapeReservation() {
