@@ -24,7 +24,7 @@ assert.doesNotMatch(
 );
 assert.match(
   backgroundSource,
-  /let settingsMigrationInFlight/, 
+  /let settingsMigrationInFlight/,
   "settings migration has a shared in-flight serialization guard"
 );
 
