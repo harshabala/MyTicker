@@ -1,5 +1,5 @@
 /**
- * MyTicker design system — graphite, slate, and restrained emerald.
+ * MyTicker design system — graphite, slate, restrained gold, and semantic market color.
  * System is the default; light and dark can be explicitly selected.
  * 4-pt spacing · rem type ramp · restrained emerald · no decorative gradients
  */
@@ -30,6 +30,11 @@
   --accent-pressed: #7e91a7;
   --accent-muted: rgba(159, 176, 195, 0.16);
   --accent-ink: #172033;
+
+  /* Gold is the MyTicker interaction accent; market direction stays semantic. */
+  --brand-gold: #c99724;
+  --brand-gold-hover: #e0ae36;
+  --brand-gold-muted: rgba(201, 151, 36, 0.16);
 
   --green: #34d399;
   --red: #ff453a;
@@ -96,6 +101,9 @@ html[data-theme="light"] {
   --accent-pressed: #2a3d52;
   --accent-muted: rgba(66, 86, 110, 0.12);
   --accent-ink: #ffffff;
+  --brand-gold: #a56f00;
+  --brand-gold-hover: #875b00;
+  --brand-gold-muted: rgba(165, 111, 0, 0.14);
   --green: #078a62;
   --red: #cf4d55;
   --yellow: #9b6d11;
@@ -125,6 +133,9 @@ html[data-theme="dark"] {
     --accent-pressed: #7e91a7;
     --accent-muted: rgba(159, 176, 195, 0.16);
     --accent-ink: #172033;
+    --brand-gold: #c99724;
+    --brand-gold-hover: #e0ae36;
+    --brand-gold-muted: rgba(201, 151, 36, 0.16);
     --green: #34d399;
     --red: #ff6259;
     --yellow: #e7bd61;
@@ -156,6 +167,9 @@ html[data-theme="dark"] {
     --accent-pressed: #2a3d52;
     --accent-muted: rgba(66, 86, 110, 0.12);
     --accent-ink: #ffffff;
+    --brand-gold: #a56f00;
+    --brand-gold-hover: #875b00;
+    --brand-gold-muted: rgba(165, 111, 0, 0.14);
 
     --green: #248a3d;
     --red: #d70015;
@@ -216,6 +230,9 @@ html[data-theme="light"] {
   --accent-hover: #34485f;
   --accent-pressed: #2a3d52;
   --accent-ink: #ffffff;
+  --brand-gold: #a56f00;
+  --brand-gold-hover: #875b00;
+  --brand-gold-muted: rgba(165, 111, 0, 0.14);
   --green: #078a62;
   --red: #cf4d55;
   --yellow: #9b6d11;
@@ -242,6 +259,9 @@ html[data-theme="dark"] {
   --accent-hover: #c1cedd;
   --accent-pressed: #7e91a7;
   --accent-ink: #172033;
+  --brand-gold: #c99724;
+  --brand-gold-hover: #e0ae36;
+  --brand-gold-muted: rgba(201, 151, 36, 0.16);
   --green: #34d399;
   --red: #ff6259;
   --yellow: #e7bd61;

@@ -62,11 +62,11 @@
         transition: background var(--motion-fast) var(--ease-out), color var(--motion-fast) var(--ease-out);
       }
       .icon-btn:hover {
-        background: var(--bg-hover);
-        color: var(--text-primary);
+        background: var(--brand-gold-muted);
+        color: var(--brand-gold-hover);
       }
       .icon-btn:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 2px;
       }
       .icon-btn svg {
@@ -111,10 +111,10 @@
         bottom: -1px;
         height: 2px;
         border-radius: 2px 2px 0 0;
-        background: var(--accent);
+        background: var(--brand-gold);
       }
       .tab:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: -2px;
       }
 
@@ -122,7 +122,7 @@
       .hero-card {
         background: var(--bg-surface);
         border: 1px solid var(--border);
-        border-radius: var(--radius);
+        border-radius: 10px;
         padding: 16px;
         margin-bottom: 14px;
         box-shadow: var(--material-elevated-shadow);
@@ -218,11 +218,11 @@
         flex-wrap: wrap;
       }
       .help-row a {
-        color: var(--text-tertiary);
+        color: var(--brand-gold);
         text-decoration: none;
       }
       .help-row a:hover {
-        color: var(--text-secondary);
+        color: var(--brand-gold-hover);
         text-decoration: underline;
       }
 
@@ -241,7 +241,7 @@
       .section-head .link-quiet {
         font-size: 12px;
         font-weight: 500;
-        color: var(--text-tertiary);
+        color: var(--brand-gold);
         background: none;
         border: none;
         cursor: pointer;
@@ -249,11 +249,16 @@
         padding: 0;
       }
       .section-head .link-quiet:hover {
-        color: var(--accent);
+        color: var(--brand-gold-hover);
       }
 
       .movers-section {
         margin-bottom: 14px;
+        padding: 12px 14px 2px;
+        background: var(--bg-surface);
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        box-shadow: var(--material-elevated-shadow);
       }
       .mover-item {
         display: flex;
@@ -385,14 +390,18 @@
         min-height: 44px;
         border: none;
         border-radius: var(--radius-sm);
-        background: var(--accent);
-        color: var(--accent-ink);
+        background: var(--brand-gold);
+        color: #17120a;
         font-size: 13px;
         font-weight: 600;
         cursor: pointer;
         font-family: inherit;
       }
-      .btn-setup:hover { background: var(--accent-hover); }
+      .btn-setup:hover { background: var(--brand-gold-hover); }
+      .btn-setup:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
       .empty-state { padding: 8px 0; }
       .empty-state .subtitle {
         font-size: 12px;

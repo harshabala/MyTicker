@@ -110,7 +110,13 @@ assert(visibleText.includes("second strip group, after holdings"), "explains wat
 assert(!visibleText.includes("Finnhub quotes via BINANCE:SYMBOL"), "removes the obsolete Finnhub-only crypto claim");
 assert(!visibleText.includes("US equities and crypto need a free Finnhub key"), "removes the obsolete shared Finnhub requirement");
 assert(brandCss.includes("--accent: #9fb0c3") && brandCss.includes("--green: #34d399"), "reserves emerald for positive market state and uses a neutral interaction accent");
-assert(optionsHtml.includes("background: var(--accent);") && popupHtml.includes("background: var(--accent);"), "uses the neutral interaction accent for settings and popup tabs");
+assert(optionsHtml.includes("background: var(--accent);") && !popupHtml.includes("background: var(--accent);"), "keeps existing settings interaction neutral while the popup uses its brand accent");
+assert(brandCss.includes("--brand-gold:") && brandCss.includes("--brand-gold-hover:") && brandCss.includes("--brand-gold-muted:"), "defines shared MyTicker gold, hover, and muted interaction tokens");
+assert(/\.tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the selected popup tab underline");
+assert(/\.icon-btn:focus-visible\s*\{[\s\S]*?var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the Settings gear focus ring");
+assert(/\.help-row a\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml) && /\.section-head \.link-quiet\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for explanatory and action links");
+assert(/\.btn-setup\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the popup primary action");
+assert(/\.pnl-positive\s*\{\s*color:\s*var\(--green\);\s*\}/.test(popupHtml) && /\.pnl-negative\s*\{\s*color:\s*var\(--red\);\s*\}/.test(popupHtml), "keeps green and red reserved for positive and negative market values");
 assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--accent);"), "uses the neutral interaction accent for completed wizard steps");
 assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
 assert(optionsJs.includes('switchSettingsTab(tabId, { updateHash: false })') && optionsJs.includes('location.hash !== `#${tabId}`'), "handles location-driven tabs without a hash event loop");
