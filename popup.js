@@ -1,6 +1,5 @@
 import {
   STORAGE_KEYS,
-  DEFAULT_SETTINGS,
   formatSignedCurrency
 } from "./shared.js";
 import { getSetupStatus, markWizardStep, setOnboarding } from "./onboarding.js";
@@ -168,21 +167,18 @@ async function _refreshPopupInner(container) {
     currentView = VIEW_LOADING;
   }
 
-  const [status, local, sync] = await Promise.all([
+  const [status, local] = await Promise.all([
     getSetupStatus(),
     chrome.storage.local.get([
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.watchlist,
       STORAGE_KEYS.onboarding
-    ]),
-    chrome.storage.sync.get([STORAGE_KEYS.settings])
+    ])
   ]);
 
   const state = local[STORAGE_KEYS.positionsState];
   const watchlistItems = local[STORAGE_KEYS.watchlist] || [];
-  const settings = sync[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
-
-  lastPnlPayload = { state, watchlistItems, status, settings };
+  lastPnlPayload = { state, watchlistItems, status };
 
   let nextView = VIEW_PNL;
   if (!status.complete) {
@@ -196,7 +192,7 @@ async function _refreshPopupInner(container) {
   if (tabs) tabs.style.display = nextView === VIEW_PNL ? "flex" : "none";
 
   if (currentView === nextView && outgoing && nextView === VIEW_PNL) {
-    updatePnlInPlace(outgoing, state, watchlistItems, settings);
+    updatePnlInPlace(outgoing, state, watchlistItems);
     popupHasRendered = true;
     return;
   }
@@ -242,7 +238,7 @@ async function _refreshPopupInner(container) {
 }
 
 function renderActiveTab(container, payload) {
-  const { state, watchlistItems, status, settings } = payload;
+  const { state, watchlistItems, status } = payload;
   const panel = document.getElementById(activeTab === "watchlist" ? "panelWatchlist" : "panelHoldings");
   if (!panel) return;
   ["holdings", "watchlist"].forEach((name) => {
@@ -258,7 +254,7 @@ function renderActiveTab(container, payload) {
   if (activeTab === "watchlist") {
     renderWatchlistPanel(panel, watchlistItems, state?.watchlist || []);
   } else {
-    renderHoldingsPanel(panel, state, status, settings);
+    renderHoldingsPanel(panel, state, status);
   }
   currentView = VIEW_PNL;
 }
@@ -320,9 +316,9 @@ export function getAggregateDisplay(currency, value, percentage) {
   };
 }
 
-export function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
+export function updatePnlInPlace(viewEl, state, watchlistItems) {
   if (activeTab === "watchlist") {
-    renderActiveTab(viewEl, { state, watchlistItems, status: null, settings });
+    renderActiveTab(viewEl, { state, watchlistItems, status: null });
     return;
   }
   if (!state?.positions?.length) return;
@@ -500,7 +496,7 @@ export function buildMoverItem(pos) {
   return item;
 }
 
-export function renderHoldingsPanel(container, state, status, settings) {
+export function renderHoldingsPanel(container, state, status) {
   if (!state?.positions?.length) {
     renderEmptyState(container, status);
     return;
@@ -631,7 +627,7 @@ export function renderHoldingsPanel(container, state, status, settings) {
 
 }
 
-function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
+export function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
   const panel = document.createElement("div");
   panel.className = "watchlist-panel";
   const priceMap = Object.fromEntries((watchlistPrices || []).map((w) => [w.symbol, w]));

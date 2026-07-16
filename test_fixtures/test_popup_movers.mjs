@@ -8,6 +8,7 @@ class Element {
     this._textContent = "";
     this.dataset = {};
     this.hidden = false;
+    this.listeners = new Map();
     this.classList = {
       toggle: (name, force) => {
         const classes = new Set(this.className.split(/\s+/).filter(Boolean));
@@ -20,7 +21,8 @@ class Element {
   appendChild(child) { this.append(child); return child; }
   replaceChildren(...children) { this.children = children; this._textContent = ""; }
   setAttribute() {}
-  addEventListener() {}
+  addEventListener(type, listener) { this.listeners.set(type, listener); }
+  async trigger(type) { return this.listeners.get(type)?.(); }
   querySelector(selector) {
     const matches = (node) => selector.startsWith(".")
       ? node.className.split(/\s+/).includes(selector.slice(1))
@@ -39,8 +41,17 @@ globalThis.document = {
   addEventListener() {},
   createElement() { return new Element(); }
 };
+let savedWatchlist = null;
+globalThis.chrome = {
+  storage: {
+    local: {
+      async get() { return { pts_watchlist: [{ symbol: "MSFT", displayName: "Microsoft" }] }; },
+      async set(value) { savedWatchlist = value.pts_watchlist; }
+    }
+  }
+};
 
-const { buildMoverItem, getAggregateDisplay, renderHoldingsPanel, updatePnlInPlace } = await import(`../popup.js?test=${Date.now()}`);
+const { buildMoverItem, getAggregateDisplay, renderHoldingsPanel, renderWatchlistPanel, updatePnlInPlace } = await import(`../popup.js?test=${Date.now()}`);
 const indianMover = buildMoverItem({ symbol: "RELIANCE.NS", displayName: "Reliance", dayPnl: 25, dayPnlPct: 1, currency: "INR" });
 const usMover = buildMoverItem({ symbol: "MSFT", displayName: "Microsoft", dayPnl: 25, dayPnlPct: 1, currency: "USD" });
 
@@ -67,16 +78,21 @@ const mixedState = {
   aggregate: { dayPnl: 50, dayPnlPct: 9.9, window5mPnl: 20, window5mPnlPct: 8.8 }
 };
 const initialContainer = new Element();
-renderHoldingsPanel(initialContainer, mixedState, null, { enabled: true });
+renderHoldingsPanel(initialContainer, mixedState, null);
 assert(initialContainer.querySelector(".pnl-pct").hidden, "initial mixed render hides day percentage");
 assert(initialContainer.querySelector(".pnl-value").className.includes("pnl-flat"), "initial mixed render is neutral");
 assert(!initialContainer.querySelector("[data-five-value]").textContent.includes("%"), "initial mixed render hides 5-minute percentage");
 
 const updateContainer = new Element();
-renderHoldingsPanel(updateContainer, { ...mixedState, displayCurrency: "USD" }, null, { enabled: true });
-updatePnlInPlace(updateContainer, mixedState, [], { enabled: true });
+renderHoldingsPanel(updateContainer, { ...mixedState, displayCurrency: "USD" }, null);
+updatePnlInPlace(updateContainer, mixedState, []);
 assert(updateContainer.querySelector(".pnl-pct").hidden, "in-place mixed update hides day percentage");
 assert(updateContainer.querySelector(".pnl-value").className.includes("pnl-flat"), "in-place mixed update clears directional styling");
 assert(!updateContainer.querySelector("[data-five-value]").textContent.includes("%"), "in-place mixed update hides 5-minute percentage");
+
+const watchlistContainer = new Element();
+renderWatchlistPanel(watchlistContainer, [{ symbol: "MSFT", displayName: "Microsoft" }], []);
+await watchlistContainer.querySelector(".watch-remove").trigger("click");
+assert(Array.isArray(savedWatchlist) && savedWatchlist.length === 0, "watchlist remove persists the remaining items");
 console.log(`\n${failed ? "failed" : "passed"}`);
 process.exit(failed ? 1 : 0);
