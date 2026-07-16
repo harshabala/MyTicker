@@ -207,11 +207,9 @@ function applyChatGptReservation(height) {
     return;
   }
   const dialog = document.querySelector?.(CHATGPT_DIALOG_SELECTOR) || null;
-  if (!isFullScreenDialog(dialog)) {
-    clearChatGptReservation();
-    return;
-  }
-  if (chatgptDialog?.element !== dialog) clearChatGptReservation();
+  const trackedDialog = chatgptDialog?.element === dialog && dialog?.hasAttribute("open");
+  if (!trackedDialog && chatgptDialog) clearChatGptReservation();
+  if (!trackedDialog && !isFullScreenDialog(dialog)) return;
   if (!chatgptDialog) {
     chatgptDialog = {
       element: dialog,

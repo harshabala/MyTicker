@@ -190,10 +190,14 @@ document.chatgptDialog.getBoundingClientRect = () => ({ top: 0, left: 0, width: 
 documentObserver?.callback();
 assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "53px 0 0", "offsets only the open full-screen ChatGPT dialog once");
 assert(document.chatgptDialog.style.getPropertyPriority("inset") === "important" && document.chatgptDialog.style.getPropertyPriority("height") === "important", "owns active dialog offsets with important priority");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 53, left: 0, width: 1200, height: 747, right: 1200, bottom: 800 });
 tickerBar.getBoundingClientRect = () => ({ top: 0, height: 61 });
 resizeObserver?.callback();
 assert(document.body.style.marginTop === "73px" && document.documentElement.style.getPropertyValue("scroll-padding-top") === "61px", "reconciles the layout reservation when the measured tape height changes");
 assert(document.chatgptDialog.style.getPropertyValue("inset") === "61px 0 0" && document.chatgptDialog.style.getPropertyValue("height") === "calc(100% - 61px)", "updates the dialog offset once when the tape resizes");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 61, left: 0, width: 1200, height: 739, right: 1200, bottom: 800 });
+documentObserver?.callback();
+assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "61px 0 0", "retains the tracked dialog reservation during document reconciliation after it shifts");
 document.chatgptDialog.removeAttribute("open");
 documentObserver?.callback();
 assert(!document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("top") === "2px" && document.chatgptDialog.style.getPropertyPriority("top") === "important", "restores the dialog exactly when it closes");
