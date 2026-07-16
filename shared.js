@@ -8,8 +8,40 @@ const STORAGE_KEYS = {
   pollHealth: "pts_poll_health",
   onboarding: "pts_onboarding",
   watchlist: "pts_watchlist",
-  metrics: "pts_metrics"
+  metrics: "pts_metrics",
+  diagnosticsLog: "pts_diagnostics_log"
 };
+
+const DIAGNOSTICS_LOG_LIMIT = 40;
+
+/**
+ * Keep refresh diagnostics operational and safe to copy. This deliberately
+ * allows only lifecycle names and aggregate counts: no keys, quantities,
+ * symbols, prices, or portfolio values can enter the persisted log.
+ */
+function sanitizeDiagnosticEntry(entry = {}) {
+  const safe = {
+    timestamp: Number(entry.timestamp) || Date.now(),
+    event: String(entry.event || "refresh-event").slice(0, 48)
+  };
+  for (const key of [
+    "holdingsCount", "watchlistCount", "cryptoCount", "equitySymbols",
+    "totalSymbols", "equityQuotes", "cryptoQuotes", "quoteCount",
+    "coinGeckoQuotes", "binanceQuotes", "yahooQuotes", "finnhubQuotes"
+  ]) {
+    const value = Number(entry[key]);
+    if (Number.isFinite(value) && value >= 0) safe[key] = Math.floor(value);
+  }
+  if (entry.error) safe.error = "Refresh failed";
+  return safe;
+}
+
+/** Return a bounded, newest-last diagnostics log without mutating its input. */
+function appendDiagnosticLogEntry(log, entry, limit = DIAGNOSTICS_LOG_LIMIT) {
+  const previous = Array.isArray(log) ? log : [];
+  const boundedLimit = Math.max(1, Number(limit) || DIAGNOSTICS_LOG_LIMIT);
+  return [...previous, sanitizeDiagnosticEntry(entry)].slice(-boundedLimit);
+}
 
 /**
  * Activation event (India-first).
@@ -357,6 +389,9 @@ function getStartOfDayTimestamp(now) {
 // ES module exports for background, options, popup, and content script.
 export {
   STORAGE_KEYS,
+  DIAGNOSTICS_LOG_LIMIT,
+  sanitizeDiagnosticEntry,
+  appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
   ACTIVATION_EVENT,
   isActivated,

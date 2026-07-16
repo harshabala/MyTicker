@@ -46,6 +46,9 @@ const rateLimitWarnEl = document.getElementById("rateLimitWarn");
 const wizardHintEl = document.getElementById("wizardHint");
 const sectionMarket = document.getElementById("section-market");
 const sectionImport = document.getElementById("section-import");
+const diagnosticsOutputEl = document.getElementById("diagnosticsOutput");
+const copyDiagnosticsButton = document.getElementById("copyDiagnosticsButton");
+const refreshDiagnosticsButton = document.getElementById("refreshDiagnosticsButton");
 
 const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
@@ -125,6 +128,8 @@ function init() {
   document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
   refreshPreviewButton.addEventListener("click", handleRefreshPreview);
   testConnectionButton.addEventListener("click", handleTestConnection);
+  copyDiagnosticsButton?.addEventListener("click", copyDiagnostics);
+  refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics);
 
   // Eye-toggle for API key visibility
   document.getElementById("toggleApiKeyVisibility").addEventListener("click", () => {
@@ -212,6 +217,7 @@ function init() {
   handleRefreshPreview();
   refreshSetupUI();
   renderImportStats();
+  renderDiagnostics();
 }
 
 function setPlatformShortcut(el) {
@@ -284,6 +290,81 @@ function switchSettingsTab(tabId) {
   }
   if (tabId === "setup") {
     refreshSetupUI();
+  }
+  if (tabId === "diagnostics") {
+    renderDiagnostics();
+  }
+}
+
+function formatDiagnosticTime(timestamp) {
+  const time = Number(timestamp);
+  return time ? new Date(time).toLocaleString() : "Never";
+}
+
+function providerResultLine(lastProviderResults, key, label) {
+  const count = Number(lastProviderResults?.[key]) || 0;
+  return `${label}: ${count} quote${count === 1 ? "" : "s"} in last provider result`;
+}
+
+async function renderDiagnostics() {
+  if (!diagnosticsOutputEl) return;
+  const [syncData, localData] = await Promise.all([
+    chrome.storage.sync.get([STORAGE_KEYS.settings]),
+    chrome.storage.local.get([
+      STORAGE_KEYS.holdings,
+      STORAGE_KEYS.watchlist,
+      STORAGE_KEYS.positionsState,
+      STORAGE_KEYS.pollHealth,
+      STORAGE_KEYS.diagnosticsLog,
+      "pts_price_api_key"
+    ])
+  ]);
+  const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+  const holdings = Array.isArray(localData[STORAGE_KEYS.holdings]) ? localData[STORAGE_KEYS.holdings] : [];
+  const watchlist = Array.isArray(localData[STORAGE_KEYS.watchlist]) ? localData[STORAGE_KEYS.watchlist] : [];
+  const state = localData[STORAGE_KEYS.positionsState] || {};
+  const health = localData[STORAGE_KEYS.pollHealth] || {};
+  const log = Array.isArray(localData[STORAGE_KEYS.diagnosticsLog]) ? localData[STORAGE_KEYS.diagnosticsLog] : [];
+  const providerResults = [...log].reverse().find((entry) => entry.event === "provider-results");
+  const cryptoEnabled = !!settings.cryptoConfig?.includeCrypto && settings.portfolioFilters?.showCrypto !== false;
+  const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
+  const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
+  const lines = [
+    `my ticker diagnostics · build v${buildVersion}`,
+    `Ticker enabled: ${settings.enabled ? "yes" : "no"}`,
+    `Holdings: ${holdings.length} · Watchlist: ${watchlist.length} · Ticker items: ${(state.tickerItems || state.positions || []).length}`,
+    `Last state update: ${formatDiagnosticTime(state.updatedAt)}`,
+    `Poll health: ${Number(health.consecutiveFailures) || 0} consecutive failure(s) · last successful fetch ${formatDiagnosticTime(health.lastSuccessfulFetch)}`,
+    "",
+    "Provider availability and latest result:",
+    `CoinGecko: primary crypto source · ${cryptoEnabled ? "eligible when supported crypto is enabled" : "crypto disabled"} · ${providerResultLine(providerResults, "coinGeckoQuotes", "result")}`,
+    `Binance: fallback for mapped liquid crypto only · ${cryptoEnabled ? "available" : "crypto disabled"} · ${providerResultLine(providerResults, "binanceQuotes", "result")}`,
+    `Yahoo Finance: automatic for .NS/.BO · available · ${providerResultLine(providerResults, "yahooQuotes", "result")}`,
+    `Finnhub: US equities · ${finnhubConfigured ? "API key configured" : "no API key configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
+    "",
+    "Recent refresh lifecycle (safe operational counts only):"
+  ];
+  if (!log.length) {
+    lines.push("No refresh diagnostics recorded yet.");
+  } else {
+    for (const entry of log.slice(-12)) {
+      const details = ["holdingsCount", "watchlistCount", "cryptoCount", "equitySymbols", "totalSymbols", "equityQuotes", "cryptoQuotes", "quoteCount"]
+        .filter((key) => Number.isFinite(entry[key]))
+        .map((key) => `${key.replace("Count", "")}=${entry[key]}`);
+      lines.push(`${formatDiagnosticTime(entry.timestamp)} · ${entry.event}${details.length ? ` · ${details.join(", ")}` : ""}${entry.error ? " · Refresh failed" : ""}`);
+    }
+  }
+  diagnosticsOutputEl.textContent = lines.join("\n");
+}
+
+async function copyDiagnostics() {
+  const text = diagnosticsOutputEl?.textContent || "";
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Diagnostics copied", "success");
+  } catch {
+    showToast("Could not copy diagnostics. Select the text and copy it manually.", "error");
   }
 }
 

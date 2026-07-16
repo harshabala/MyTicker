@@ -206,7 +206,8 @@ export class FinnhubPriceProvider {
     return {
       symbol,
       lastPrice: data.c,
-      prevClose: typeof data.pc === "number" ? data.pc : null
+      prevClose: typeof data.pc === "number" ? data.pc : null,
+      source: "finnhub"
     };
   }
 }
@@ -299,7 +300,8 @@ export class YahooIndiaPriceProvider {
     return {
       symbol,
       lastPrice,
-      prevClose
+      prevClose,
+      source: "yahoo"
     };
   }
 }

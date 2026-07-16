@@ -9,7 +9,8 @@ import {
   inferDisplayCurrency,
   isActivated,
   withTickerItems,
-  hydrateTickerQuoteItems
+  hydrateTickerQuoteItems,
+  appendDiagnosticLogEntry
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
@@ -61,6 +62,24 @@ async function savePollHealth() {
 }
 
 let pollHealthLoaded = false;
+
+async function recordDiagnostic(entry) {
+  const data = await chrome.storage.local.get([STORAGE_KEYS.diagnosticsLog]);
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.diagnosticsLog]: appendDiagnosticLogEntry(data[STORAGE_KEYS.diagnosticsLog], entry)
+  });
+}
+
+function providerQuoteCounts(quotes) {
+  const counts = { coinGeckoQuotes: 0, binanceQuotes: 0, yahooQuotes: 0, finnhubQuotes: 0 };
+  for (const quote of quotes) {
+    if (quote?.source === "coingecko") counts.coinGeckoQuotes++;
+    if (quote?.source === "binance") counts.binanceQuotes++;
+    if (quote?.source === "yahoo") counts.yahooQuotes++;
+    if (quote?.source === "finnhub") counts.finnhubQuotes++;
+  }
+  return counts;
+}
 
 async function ensurePollHealthLoaded() {
   if (!pollHealthLoaded) {
@@ -159,6 +178,13 @@ async function handlePricePoll() {
     const baseHoldings = localData[STORAGE_KEYS.holdings] || [];
     const watchlist = normalizeWatchlist(localData[STORAGE_KEYS.watchlist]);
     const crypto = buildCryptoTickerItems(settings);
+    const diagnosticCounts = {
+      timestamp: Date.now(),
+      holdingsCount: baseHoldings.length,
+      watchlistCount: watchlist.length,
+      cryptoCount: crypto.length
+    };
+    await recordDiagnostic({ ...diagnosticCounts, event: "refresh-start" });
 
     // Holdings alone contribute to positions and portfolio P&L.
     const holdings = buildCombinedHoldings(baseHoldings, settings);
@@ -167,6 +193,7 @@ async function handlePricePoll() {
       chrome.storage.local.set({
         [STORAGE_KEYS.positionsState]: null
       });
+      await recordDiagnostic({ ...diagnosticCounts, event: "state-write" });
       return;
     }
 
@@ -180,6 +207,13 @@ async function handlePricePoll() {
     };
 
     const equitySymbols = [...new Set([...holdings, ...watchlist].map((h) => h.symbol))];
+    await recordDiagnostic({
+      ...diagnosticCounts,
+      timestamp: Date.now(),
+      event: "eligible-symbols",
+      equitySymbols: equitySymbols.length,
+      totalSymbols: equitySymbols.length + crypto.length
+    });
 
     const [equityQuotes, cryptoQuotes] = await Promise.all([
       getAllQuotes(equitySymbols, apiConfig),
@@ -187,6 +221,15 @@ async function handlePricePoll() {
     ]);
     const quotes = [...equityQuotes, ...cryptoQuotes];
     const now = Date.now();
+    await recordDiagnostic({
+      ...diagnosticCounts,
+      timestamp: now,
+      event: "provider-results",
+      equityQuotes: equityQuotes.length,
+      cryptoQuotes: cryptoQuotes.length,
+      quoteCount: quotes.length,
+      ...providerQuoteCounts(quotes)
+    });
 
     if (quotes.length > 0) {
       consecutiveFailures = 0;
@@ -231,6 +274,7 @@ async function handlePricePoll() {
         [STORAGE_KEYS.priceHistory]: newHistory,
         [STORAGE_KEYS.positionsState]: positionsState
       });
+      await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     } catch (storageErr) {
       console.warn("[MyTicker] Storage quota exceeded, pruning history", storageErr);
       // Aggressive prune: keep only last 5 minutes of history.
@@ -247,11 +291,13 @@ async function handlePricePoll() {
         [STORAGE_KEYS.priceHistory]: newHistory,
         [STORAGE_KEYS.positionsState]: positionsState
       });
+      await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     }
   } catch (err) {
     console.error("Error in handlePricePoll", err);
     consecutiveFailures++;
     await savePollHealth();
+    await recordDiagnostic({ timestamp: Date.now(), event: "refresh-failed", error: true });
   } finally {
     pollInFlight = false;
   }

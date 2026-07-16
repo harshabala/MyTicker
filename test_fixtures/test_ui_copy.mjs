@@ -30,6 +30,11 @@ assert(popupHtml.includes("<h1>my ticker</h1>"), "uses lowercase product name in
 assert(optionsHtml.includes("<h1>my ticker settings</h1>"), "uses lowercase product name in settings");
 assert(manifest.name === "my ticker", "uses lowercase product name in the extension manifest");
 assert(manifest.action?.default_title === "my ticker", "uses lowercase product name in the extension action title");
+assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
+assert(optionsHtml.includes('data-tab="diagnostics"'), "includes a Diagnostics settings tab");
+assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
+assert(visibleText.includes("What changed"), "includes a visible What changed section");
+assert(visibleText.includes("CoinGecko and Binance only"), "does not overclaim unimplemented crypto providers");
 assert(visibleText.includes("CoinGecko first for supported canonical crypto"), "explains CoinGecko as the primary crypto source");
 assert(visibleText.includes("Binance for mapped liquid assets"), "explains the Binance fallback");
 assert(visibleText.includes("No Finnhub key is required for crypto quotes"), "states crypto quotes do not require a Finnhub key");

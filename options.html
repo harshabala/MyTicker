@@ -1122,6 +1122,7 @@
         <button type="button" class="settings-tab" role="tab" id="nav-market" data-tab="market" aria-selected="false" aria-controls="tab-market" tabindex="-1">Market data</button>
         <button type="button" class="settings-tab" role="tab" id="nav-optional" data-tab="optional" aria-selected="false" aria-controls="tab-optional" tabindex="-1">Optional</button>
         <button type="button" class="settings-tab" role="tab" id="nav-appearance" data-tab="appearance" aria-selected="false" aria-controls="tab-appearance" tabindex="-1">Appearance</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-diagnostics" data-tab="diagnostics" aria-selected="false" aria-controls="tab-diagnostics" tabindex="-1">Diagnostics</button>
         <button type="button" class="settings-tab" role="tab" id="nav-tips" data-tab="tips" aria-selected="false" aria-controls="tab-tips" tabindex="-1">Tips</button>
       </nav>
 
@@ -1378,6 +1379,31 @@
       </div>
       </div>
 
+      <!-- Tab: Diagnostics -->
+      <div class="tab-panel" id="tab-diagnostics" role="tabpanel" aria-labelledby="nav-diagnostics" hidden>
+        <div class="section">
+          <div class="section-title">Diagnostics</div>
+          <div class="card" style="padding: 20px;">
+            <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
+            <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
+            <div class="btn-row" style="padding: 14px 0 0;">
+              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy diagnostics</button>
+              <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">What changed</div>
+          <div class="card" style="padding: 20px 24px;">
+            <ul class="tips-list">
+              <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
+              <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
+              <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+
       <!-- Tab: Tips (expanded reference) -->
       <div class="tab-panel" id="tab-tips" role="tabpanel" aria-labelledby="nav-tips" hidden>
       <div class="section">
@@ -1427,7 +1453,7 @@
       </div>
 
       <div class="page-footer">
-        my ticker v0.4.1 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        my ticker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 

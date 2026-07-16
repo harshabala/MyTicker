@@ -18,7 +18,10 @@ import {
   formatQuotePrice,
   buildTickerItems,
   withTickerItems,
-  hydrateTickerQuoteItems
+  hydrateTickerQuoteItems,
+  sanitizeDiagnosticEntry,
+  appendDiagnosticLogEntry,
+  DIAGNOSTICS_LOG_LIMIT
 } from "../shared.js";
 
 let passed = 0;
@@ -49,6 +52,28 @@ assert(STORAGE_KEYS.priceHistory === "pts_price_history", "priceHistory key corr
 assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState key correct");
 assert(STORAGE_KEYS.watchlist === "pts_watchlist", "watchlist key correct");
 assert(STORAGE_KEYS.metrics === "pts_metrics", "metrics key correct");
+assert(STORAGE_KEYS.diagnosticsLog === "pts_diagnostics_log", "diagnostics log key correct");
+
+// ── Test Suite: diagnostics log privacy and bounds ──
+console.log("\n🔎 diagnostics log helpers");
+const unsafeDiagnostic = sanitizeDiagnosticEntry({
+  timestamp: 100,
+  event: "refresh-failed",
+  holdingsCount: 2,
+  quoteCount: 4,
+  quantity: 900,
+  apiKey: "secret-token",
+  portfolioValue: 123456,
+  error: "request failed with token=secret-token"
+});
+assert(unsafeDiagnostic.timestamp === 100 && unsafeDiagnostic.event === "refresh-failed", "keeps timestamp and lifecycle event");
+assert(unsafeDiagnostic.holdingsCount === 2 && unsafeDiagnostic.quoteCount === 4, "keeps safe operational counts");
+assert(!("quantity" in unsafeDiagnostic) && !("apiKey" in unsafeDiagnostic) && !("portfolioValue" in unsafeDiagnostic), "removes quantities, keys, and portfolio values");
+assert(unsafeDiagnostic.error === "Refresh failed", "replaces unsafe error details with a generic label");
+const boundedDiagnostics = Array.from({ length: DIAGNOSTICS_LOG_LIMIT + 2 }, (_, i) => ({ timestamp: i, event: "refresh-start" }))
+  .reduce((log, entry) => appendDiagnosticLogEntry(log, entry), []);
+assert(boundedDiagnostics.length === DIAGNOSTICS_LOG_LIMIT, "caps diagnostics log at its configured bound");
+assert(boundedDiagnostics[0].timestamp === 2, "keeps the newest diagnostics entries when bounded");
 
 // ── Test Suite: DEFAULT_SETTINGS ──
 console.log("\n⚙️  DEFAULT_SETTINGS");
