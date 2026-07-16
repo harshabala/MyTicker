@@ -87,7 +87,10 @@ class TestDocument extends EventTarget {
     this.body = null;
   }
   createElement(tagName) { return new Element(tagName); }
-  querySelector(selector) { return selector === "main" ? this.chatgptShell : null; }
+  querySelector(selector) {
+    if (selector === "main") return this.chatgptShell;
+    return selector === "dialog[open]" && this.chatgptDialog?.hasAttribute("open") ? this.chatgptDialog : null;
+  }
 }
 
 const state = {
@@ -104,6 +107,7 @@ const requestedTapeSize = process.env.TAPE_SCALE === "compact" ? "compact" : "la
 const lifecycleMessages = [];
 let settingsChangeListener;
 let resizeObserver;
+let documentObserver;
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
 globalThis.location = { hostname: "chatgpt.com", origin: "https://chatgpt.com" };
@@ -112,6 +116,15 @@ globalThis.ResizeObserver = class {
   observe(target) { this.target = target; }
   disconnect() { this.disconnected = true; }
 };
+globalThis.MutationObserver = class {
+  constructor(callback) { this.callback = callback; this.disconnected = false; documentObserver = this; }
+  observe(target, options) { this.target = target; this.options = options; }
+  disconnect() { this.disconnected = true; }
+};
+globalThis.getComputedStyle = (element) => ({
+  marginTop: element.style.getPropertyValue("margin-top") || "0px",
+  position: element.style.getPropertyValue("position") || "static"
+});
 globalThis.requestAnimationFrame = (callback) => callback();
 globalThis.chrome = {
   runtime: {
@@ -137,7 +150,7 @@ assert(tickerCss.includes('.pts-ticker-bar[data-theme="light"]') && tickerCss.in
 
 await import(`../contentScript.js?test=${Date.now()}`);
 document.body = new Element("body");
-document.body.getBoundingClientRect = () => ({ top: 12 });
+document.body.getBoundingClientRect = () => ({ top: 999 });
 document.body.style.setProperty("margin-top", "12px", "important");
 document.documentElement.style.setProperty("scroll-padding-top", "7px", "important");
 document.documentElement.style.setProperty("--myticker-tape-reservation", "18px", "important");
@@ -158,27 +171,33 @@ resizeObserver?.callback();
 assert(tickerParts?.scrollWrapper?.getAttribute("tabindex") === "0" && tickerParts.scrollWrapper.getAttribute("role") === "group" && tickerParts.scrollWrapper.getAttribute("aria-label"), "provides a labelled focusable tape strip so keyboard focus pauses the marquee");
 assert(document.body.style.marginTop === "65px", "reserves the measured tape height in addition to the original body margin");
 assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "53px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "53px", "publishes the measured reservation to browser scrolling and the document custom property");
-assert(document.chatgptShell.className.includes("myticker-chatgpt-tape-reserved"), "marks only the known ChatGPT shell while the tape is active");
-assert(document.chatgptShell.style.getPropertyValue("padding-top") === "53px", "adds a scoped inline offset that actually shifts the ChatGPT app shell");
+assert(document.body.style.getPropertyPriority("margin-top") === "important" && document.documentElement.style.getPropertyPriority("scroll-padding-top") === "important" && document.documentElement.style.getPropertyPriority("--myticker-tape-reservation") === "important", "owns active reservation styles with important priority");
+assert(document.chatgptShell.className === "" && document.chatgptShell.style.getPropertyValue("padding-top") === "", "leaves the normal-flow ChatGPT main shell unchanged");
 assert(!document.documentElement.className.includes("myticker-chatgpt-tape-reserved"), "does not apply the ChatGPT adapter to the document root");
-assert(Boolean(resizeObserver?.target), "observes the rendered tape for measured size changes");
+assert(Boolean(resizeObserver?.target) && Boolean(documentObserver?.target), "observes tape size and document lifecycle changes");
+document.chatgptDialog = new Element("dialog");
+document.chatgptDialog.setAttribute("open", "");
+document.chatgptDialog.style.setProperty("position", "fixed");
+document.chatgptDialog.style.setProperty("top", "2px", "important");
+document.chatgptDialog.style.setProperty("inset", "1px", "important");
+document.chatgptDialog.style.setProperty("height", "90vh", "important");
+documentObserver?.callback();
+assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "53px 0 0", "offsets only the open full-screen ChatGPT dialog once");
+assert(document.chatgptDialog.style.getPropertyPriority("inset") === "important" && document.chatgptDialog.style.getPropertyPriority("height") === "important", "owns active dialog offsets with important priority");
 tickerBar.getBoundingClientRect = () => ({ top: 0, height: 61 });
 resizeObserver?.callback();
 assert(document.body.style.marginTop === "73px" && document.documentElement.style.getPropertyValue("scroll-padding-top") === "61px", "reconciles the layout reservation when the measured tape height changes");
-assert(document.chatgptShell.style.getPropertyValue("padding-top") === "61px", "updates the scoped ChatGPT shell offset when the tape resizes");
-const replacedShell = document.chatgptShell;
-document.chatgptShell = new Element("main");
-document.chatgptShell.style.setProperty("padding-top", "4px", "important");
-resizeObserver.callback();
-assert(!replacedShell.className.includes("myticker-chatgpt-tape-reserved") && replacedShell.style.getPropertyValue("padding-top") === "", "cleans the previous ChatGPT shell when the app replaces it");
-assert(document.chatgptShell.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptShell.style.getPropertyValue("padding-top") === "61px", "applies the measured offset to the replacement ChatGPT shell");
+assert(document.chatgptDialog.style.getPropertyValue("inset") === "61px 0 0" && document.chatgptDialog.style.getPropertyValue("height") === "calc(100% - 61px)", "updates the dialog offset once when the tape resizes");
+document.chatgptDialog.removeAttribute("open");
+documentObserver?.callback();
+assert(!document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("top") === "2px" && document.chatgptDialog.style.getPropertyPriority("top") === "important", "restores the dialog exactly when it closes");
 const previousBody = document.body;
 const previousResizeObserver = resizeObserver;
 document.body = new Element("body");
-document.body.getBoundingClientRect = () => ({ top: 9 });
+document.body.getBoundingClientRect = () => ({ top: 700 });
 document.body.style.setProperty("margin-top", "9px", "important");
 document.documentElement.appendChild(document.body);
-settingsChangeListener({ pts_settings: { newValue: { enabled: true, tickerStyleConfig: { tapeScale: requestedTapeSize } } } }, "sync");
+documentObserver?.callback();
 assert(previousBody.style.marginTop === "12px" && document.body.style.marginTop === "70px" && previousResizeObserver.disconnected, "restores the replaced body and moves reservation ownership to the new body");
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
@@ -202,8 +221,7 @@ document.body.dispatchEvent({ type: "transitionend", propertyName: "margin-top" 
 assert(document.body.style.marginTop === "9px", "restores the original page offset after the tape is disabled");
 assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "7px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "18px", "restores original document inline reservation values exactly");
 assert(document.body.style.getPropertyPriority("margin-top") === "important" && document.documentElement.style.getPropertyPriority("scroll-padding-top") === "important" && document.documentElement.style.getPropertyPriority("--myticker-tape-reservation") === "important", "restores inline reservation priorities exactly");
-assert(document.chatgptShell.style.getPropertyValue("padding-top") === "4px" && document.chatgptShell.style.getPropertyPriority("padding-top") === "important", "restores the replacement ChatGPT shell inline offset exactly");
-assert(!document.chatgptShell.className.includes("myticker-chatgpt-tape-reserved") && Boolean(resizeObserver?.disconnected), "cleans up the ChatGPT adapter and tape observer when disabled");
+assert(Boolean(resizeObserver?.disconnected) && Boolean(documentObserver?.disconnected), "cleans up the dialog adapter and both observers when disabled");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
