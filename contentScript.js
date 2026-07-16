@@ -157,12 +157,16 @@ function setBodyMarginTop(px, animate, isExit = false) {
 }
 
 function snapshotInlineValue(style, property) {
-  return style.getPropertyValue ? style.getPropertyValue(property) : style[property] || "";
+  return {
+    value: style.getPropertyValue ? style.getPropertyValue(property) : style[property] || "",
+    priority: style.getPropertyPriority?.(property) || ""
+  };
 }
 
-function restoreInlineValue(style, property, value) {
+function restoreInlineValue(style, property, snapshot) {
+  const { value, priority } = snapshot;
   if (style.setProperty && property.includes("-")) {
-    if (value) style.setProperty(property, value);
+    if (value) style.setProperty(property, value, priority);
     else style.removeProperty?.(property);
     return;
   }
@@ -174,14 +178,28 @@ function isChatGptPage() {
   return hostname === "chatgpt.com" || hostname === "chat.openai.com";
 }
 
-function applyChatGptReservation() {
-  if (!isChatGptPage()) return;
-  chatgptShell = document.querySelector?.(CHATGPT_SHELL_SELECTOR) || null;
-  chatgptShell?.classList.add("myticker-chatgpt-tape-reserved");
+function applyChatGptReservation(height) {
+  if (!isChatGptPage()) {
+    clearChatGptReservation();
+    return;
+  }
+  const shell = document.querySelector?.(CHATGPT_SHELL_SELECTOR) || null;
+  if (chatgptShell?.element !== shell) clearChatGptReservation();
+  if (!shell) return;
+  if (!chatgptShell) {
+    chatgptShell = {
+      element: shell,
+      paddingTop: snapshotInlineValue(shell.style, "padding-top")
+    };
+  }
+  shell.classList.add("myticker-chatgpt-tape-reserved");
+  shell.style.setProperty("padding-top", `${height}px`);
 }
 
 function clearChatGptReservation() {
-  chatgptShell?.classList.remove("myticker-chatgpt-tape-reserved");
+  if (!chatgptShell) return;
+  chatgptShell.element.classList.remove("myticker-chatgpt-tape-reserved");
+  restoreInlineValue(chatgptShell.element.style, "padding-top", chatgptShell.paddingTop);
   chatgptShell = null;
 }
 
@@ -192,7 +210,7 @@ function applyTapeReservation() {
   if (!tapeReservation) {
     tapeReservation = {
       body: document.body,
-      bodyMarginTop: document.body.style.marginTop || "",
+      bodyMarginTop: snapshotInlineValue(document.body.style, "margin-top"),
       rootScrollPaddingTop: snapshotInlineValue(document.documentElement.style, "scroll-padding-top"),
       rootReservation: snapshotInlineValue(document.documentElement.style, TAPE_RESERVATION_PROPERTY),
       originalPx: Math.max(0, document.body.getBoundingClientRect().top)
@@ -201,10 +219,10 @@ function applyTapeReservation() {
   }
 
   const height = Math.max(0, Number(tickerBar.getBoundingClientRect?.().height) || 0);
-  setBodyMarginTop(tapeReservation.originalPx + height, false);
+  document.body.style.setProperty("margin-top", `${tapeReservation.originalPx + height}px`);
   document.documentElement.style.setProperty("scroll-padding-top", `${height}px`);
   document.documentElement.style.setProperty(TAPE_RESERVATION_PROPERTY, `${height}px`);
-  applyChatGptReservation();
+  applyChatGptReservation(height);
 }
 
 function observeTapeReservation() {
@@ -223,7 +241,7 @@ function clearTapeReservation() {
 
   const { body, bodyMarginTop, rootScrollPaddingTop, rootReservation } = tapeReservation;
   if (body) {
-    body.style.marginTop = bodyMarginTop;
+    restoreInlineValue(body.style, "margin-top", bodyMarginTop);
     body.removeAttribute(ORIGINAL_MARGIN_ATTR);
   }
   restoreInlineValue(document.documentElement.style, "scroll-padding-top", rootScrollPaddingTop);
