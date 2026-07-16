@@ -42,6 +42,9 @@ document.addEventListener("DOMContentLoaded", () => {
 
   tabHoldings?.addEventListener("click", () => setTab("holdings", mainContent));
   tabWatchlist?.addEventListener("click", () => setTab("watchlist", mainContent));
+  [tabHoldings, tabWatchlist].filter(Boolean).forEach((tabEl) => {
+    tabEl.addEventListener("keydown", (event) => handleTabKeydown(event, mainContent));
+  });
 
   addWatchBtn?.addEventListener("click", () => {
     const open = addSheet?.classList.toggle("is-open");
@@ -122,13 +125,36 @@ function setTab(tab, mainContent) {
   activeTab = tab;
   const tabHoldings = document.getElementById("tabHoldings");
   const tabWatchlist = document.getElementById("tabWatchlist");
-  tabHoldings?.setAttribute("aria-selected", tab === "holdings" ? "true" : "false");
-  tabWatchlist?.setAttribute("aria-selected", tab === "watchlist" ? "true" : "false");
+  const panels = {
+    holdings: document.getElementById("panelHoldings"),
+    watchlist: document.getElementById("panelWatchlist")
+  };
+  [["holdings", tabHoldings], ["watchlist", tabWatchlist]].forEach(([name, tabEl]) => {
+    const selected = name === tab;
+    tabEl?.setAttribute("aria-selected", selected ? "true" : "false");
+    tabEl?.setAttribute("tabindex", selected ? "0" : "-1");
+    if (panels[name]) panels[name].hidden = !selected;
+  });
   if (lastPnlPayload && currentView === VIEW_PNL) {
     renderActiveTab(mainContent, lastPnlPayload);
   } else {
     refreshPopup(mainContent);
   }
+}
+
+function handleTabKeydown(event, mainContent) {
+  const tabs = [document.getElementById("tabHoldings"), document.getElementById("tabWatchlist")].filter(Boolean);
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else return;
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  setTab(nextTab.id === "tabHoldings" ? "holdings" : "watchlist", mainContent);
+  nextTab.focus();
 }
 
 async function setPlatformShortcut(el) {
@@ -177,7 +203,7 @@ async function fadeOutView(viewEl) {
 
 function mountView(container, viewEl, viewName) {
   viewEl.classList.add("popup-view", "view-enter");
-  container.appendChild(viewEl);
+  if (viewEl.parentNode !== container) container.appendChild(viewEl);
   currentView = viewName;
   if (!prefersReducedMotion()) {
     requestAnimationFrame(() => {
@@ -205,12 +231,14 @@ async function refreshPopup(container) {
 async function _refreshPopupInner(container) {
   const showLoading = !popupHasRendered;
   const outgoing = container.querySelector(".popup-view");
+  const holdingsPanel = document.getElementById("panelHoldings");
+  const watchlistPanel = document.getElementById("panelWatchlist");
 
   if (showLoading && !outgoing) {
-    const loading = document.createElement("div");
+    const loading = holdingsPanel;
+    loading.replaceChildren();
     loading.className = "popup-view loading-state view-enter";
     loading.textContent = "Loading…";
-    container.appendChild(loading);
     currentView = VIEW_LOADING;
   }
 
@@ -261,15 +289,19 @@ async function _refreshPopupInner(container) {
   const loadingEl = container.querySelector(".loading-state");
   if (loadingEl) {
     await fadeOutView(loadingEl);
-    loadingEl.remove();
+    loadingEl.className = "";
+    loadingEl.replaceChildren();
   } else if (outgoing) {
     await fadeOutView(outgoing);
-    outgoing.remove();
+    outgoing.className = "";
+    outgoing.replaceChildren();
   }
 
-  container.innerHTML = "";
-
-  const viewEl = document.createElement("div");
+  const viewEl = holdingsPanel;
+  watchlistPanel.replaceChildren();
+  watchlistPanel.hidden = true;
+  holdingsPanel.hidden = false;
+  holdingsPanel.replaceChildren();
   if (nextView === VIEW_CHECKLIST) {
     renderSetupChecklist(viewEl, status);
     if (!checklistStaggered) {
@@ -279,7 +311,9 @@ async function _refreshPopupInner(container) {
   } else if (nextView === VIEW_EMPTY) {
     renderEmptyState(viewEl, status);
   } else {
-    renderActiveTab(viewEl, lastPnlPayload);
+    renderActiveTab(container, lastPnlPayload);
+    popupHasRendered = true;
+    return;
   }
 
   mountView(container, viewEl, nextView);
@@ -288,12 +322,22 @@ async function _refreshPopupInner(container) {
 
 function renderActiveTab(container, payload) {
   const { state, watchlistItems, status, settings } = payload;
-  container.innerHTML = "";
-  container.className = "popup-view";
+  const panel = document.getElementById(activeTab === "watchlist" ? "panelWatchlist" : "panelHoldings");
+  if (!panel) return;
+  ["holdings", "watchlist"].forEach((name) => {
+    const selected = name === activeTab;
+    const tab = document.getElementById(name === "holdings" ? "tabHoldings" : "tabWatchlist");
+    const tabPanel = document.getElementById(name === "holdings" ? "panelHoldings" : "panelWatchlist");
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    tab?.setAttribute("tabindex", selected ? "0" : "-1");
+    if (tabPanel) tabPanel.hidden = !selected;
+  });
+  panel.replaceChildren();
+  panel.className = "popup-view";
   if (activeTab === "watchlist") {
-    renderWatchlistPanel(container, watchlistItems, state?.watchlist || []);
+    renderWatchlistPanel(panel, watchlistItems, state?.watchlist || []);
   } else {
-    renderHoldingsPanel(container, state, status, settings);
+    renderHoldingsPanel(panel, state, status, settings);
   }
   currentView = VIEW_PNL;
 }

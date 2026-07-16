@@ -59,6 +59,11 @@ assert(visibleText.includes("BTC / Bitcoin") && visibleText.includes("SOL / Sola
 assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.includes('<option value="top5">Top 5</option>') && optionsHtml.includes('<option value="manual">Manual</option>'), "uses explicit Off, Top 5, and Manual crypto modes");
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
+assert(popupHtml.includes('id="panelHoldings" role="tabpanel" aria-labelledby="tabHoldings"') && popupHtml.includes('id="panelWatchlist" role="tabpanel" aria-labelledby="tabWatchlist"'), "popup tabs control stable labelled tabpanels");
+assert(popupJs.includes('event.key === "ArrowRight"') && popupJs.includes('event.key === "ArrowLeft"') && popupJs.includes('event.key === "Home"') && popupJs.includes('event.key === "End"'), "popup tabs support roving Arrow, Home, and End keyboard navigation");
+assert(popupJs.includes('setAttribute("tabindex", selected ? "0" : "-1")'), "popup tab selection maintains a roving tabindex");
+assert(optionsHtml.includes('@media (prefers-reduced-transparency: reduce)') && optionsHtml.includes('backdrop-filter: none') && optionsHtml.includes('background: var(--bg-surface);'), "reduced transparency replaces the settings-nav blur with a solid semantic surface");
+assert(/\.pts-ticker-bar\.pts-ticker-exiting\s*\{[\s\S]*?transition:\s*none;/.test(await readFile(new URL("../ticker.css", import.meta.url), "utf8")), "reduced-motion ticker exit removes its transition entirely");
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
 assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");

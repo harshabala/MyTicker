@@ -642,8 +642,8 @@
     </div>
 
     <div class="tabs" role="tablist" aria-label="Popup sections">
-      <button type="button" class="tab" role="tab" id="tabHoldings" aria-selected="true" aria-controls="panelHoldings">Holdings</button>
-      <button type="button" class="tab" role="tab" id="tabWatchlist" aria-selected="false" aria-controls="panelWatchlist">Watchlist</button>
+      <button type="button" class="tab" role="tab" id="tabHoldings" aria-selected="true" aria-controls="panelHoldings" tabindex="0">Holdings</button>
+      <button type="button" class="tab" role="tab" id="tabWatchlist" aria-selected="false" aria-controls="panelWatchlist" tabindex="-1">Watchlist</button>
     </div>
 
     <div class="add-sheet" id="addSheet" hidden>
@@ -659,7 +659,10 @@
       </div>
     </div>
 
-    <div id="mainContent"></div>
+    <div id="mainContent">
+      <div id="panelHoldings" role="tabpanel" aria-labelledby="tabHoldings"></div>
+      <div id="panelWatchlist" role="tabpanel" aria-labelledby="tabWatchlist" hidden></div>
+    </div>
     <div class="shortcut-hint" id="shortcutHint" hidden></div>
 
     <script type="module" src="popup.js"></script>

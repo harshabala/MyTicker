@@ -254,7 +254,7 @@
 
   .pts-ticker-bar.pts-ticker-exiting {
     opacity: 0;
-    transition: opacity var(--motion-fast) ease;
+    transition: none;
   }
 
   .pts-scroll-inner {
