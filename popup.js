@@ -409,7 +409,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
       )
       .slice(0, 3);
     for (const pos of movers) {
-      moversList.appendChild(buildMoverItem(pos, currency));
+      moversList.appendChild(buildMoverItem(pos));
     }
   }
 
@@ -497,9 +497,12 @@ function renderEmptyState(container, status) {
   container.appendChild(empty);
 }
 
-function buildMoverItem(pos, currency = "INR") {
+export function buildMoverItem(pos) {
   const pct = Number(pos.dayPnlPct) || 0;
   const dayPnl = Number(pos.dayPnl) || 0;
+  const currency = pos.currency === "INR" || pos.currency === "USD"
+    ? pos.currency
+    : /\.(NS|BO)$/i.test(pos.symbol || "") ? "INR" : "USD";
   const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
   const item = document.createElement("div");
   item.className = "mover-item";
@@ -646,7 +649,7 @@ function renderHoldingsPanel(container, state, status, settings) {
     list.className = "movers-list";
     list.setAttribute("role", "list");
     for (const pos of movers) {
-      list.appendChild(buildMoverItem(pos, currency));
+      list.appendChild(buildMoverItem(pos));
     }
     section.appendChild(list);
     container.appendChild(section);
