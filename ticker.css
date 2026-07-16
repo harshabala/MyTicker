@@ -275,16 +275,4 @@
   .pts-ticker-bar {
     background: var(--pts-bg, #17191d);
   }
-
-  @media (prefers-color-scheme: dark) {
-    .pts-ticker-bar {
-      background: #000000;
-    }
-  }
-
-  @media (prefers-color-scheme: light) {
-    .pts-ticker-bar {
-      background: #ffffff;
-    }
-  }
 }

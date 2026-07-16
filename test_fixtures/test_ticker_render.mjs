@@ -111,6 +111,13 @@ globalThis.chrome = {
 const contentSharedSource = await readFile(new URL("../contentShared.js", import.meta.url), "utf8");
 vm.runInThisContext(contentSharedSource, { filename: "contentShared.js" });
 
+const tickerCss = await readFile(new URL("../ticker.css", import.meta.url), "utf8");
+console.log("\n🎨 reduced-transparency theme fallback");
+const reducedTransparencyBlock = tickerCss.match(/@media \(prefers-reduced-transparency: reduce\) \{([\s\S]*)\n\}/)?.[1] || "";
+assert(reducedTransparencyBlock.includes("background: var(--pts-bg"), "uses the semantic tape background when reduced transparency is requested");
+assert(!/prefers-color-scheme: (?:dark|light)[\s\S]*background:\s*#(?:000000|ffffff)/.test(reducedTransparencyBlock), "does not override an explicit tape theme with OS-scheme black or white");
+assert(tickerCss.includes('.pts-ticker-bar[data-theme="light"]') && tickerCss.includes('.pts-ticker-bar[data-theme="dark"]'), "defines explicit light and dark tape tokens while system mode continues to follow the OS");
+
 await import(`../contentScript.js?test=${Date.now()}`);
 document.body = new Element("body");
 document.body.getBoundingClientRect = () => ({ top: 12 });
