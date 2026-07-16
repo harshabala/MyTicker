@@ -314,12 +314,36 @@ const DATA_PANEL_IDS = new Set(["setup", "market", "diagnostics", "tips"]);
 
 function consolidateDataPanels() {
   const dataPanel = document.getElementById("tab-data");
-  if (!dataPanel) return;
+  const workspace = document.getElementById("dataWorkspace");
+  if (!dataPanel || !workspace) return;
   ["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
     const section = document.getElementById(id);
     if (!section) return;
     section.removeAttribute("hidden");
     dataPanel.append(section);
+    workspace.append(section);
+  });
+  document.querySelectorAll("#tab-tips .section").forEach((section) => {
+    if (section.dataset.disclosureReady === "true") return;
+    const heading = section.querySelector(".section-title");
+    const card = section.querySelector(".card");
+    if (!heading || !card) return;
+    const details = document.createElement("details");
+    details.className = "settings-disclosure data-disclosure help-disclosure";
+    const summary = document.createElement("summary");
+    const label = document.createElement("span");
+    label.className = "summary-label";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.classList.add("ui-icon");
+    icon.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "icons/phosphor-symbols.svg#ph-question");
+    icon.append(use);
+    label.append(icon, document.createTextNode(heading.textContent));
+    summary.append(label);
+    details.append(summary, card);
+    section.dataset.disclosureReady = "true";
+    section.replaceWith(details);
   });
 }
 
@@ -512,6 +536,12 @@ function goToWizardStep(step) {
 
 async function refreshSetupUI() {
   const status = await getSetupStatus();
+  const dataPageHealth = document.getElementById("dataPageHealth");
+  if (dataPageHealth) {
+    const healthy = status.hasLiveData || status.hasHoldings;
+    dataPageHealth.classList.toggle("is-healthy", healthy);
+    dataPageHealth.lastChild.textContent = healthy ? "System status available" : "Finish setup to go live";
+  }
 
   if (setupWelcomeEl) {
     const showWelcome = status.firstInstall || !status.complete;
@@ -629,7 +659,17 @@ async function renderImportStats() {
 function setPill(el, ok, label) {
   if (!el) return;
   el.className = `status-pill ${ok ? "ok" : "pending"}`;
-  el.textContent = `${ok ? "✓" : "○"} ${label}`;
+  const icon = el.dataset.icon || "ph-chart-line-up";
+  el.replaceChildren();
+  const iconEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  iconEl.classList.add("ui-icon");
+  iconEl.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `icons/phosphor-symbols.svg#${icon}`);
+  iconEl.append(use);
+  const copy = document.createElement("span");
+  copy.textContent = label;
+  el.append(iconEl, copy);
 }
 
 function updateCryptoManualVisibility() {

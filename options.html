@@ -1456,6 +1456,71 @@
       .data-section-panel > .section .section-title { margin-bottom: 8px; }
       .data-section-panel > .section .card { border-color: var(--border); }
       #tab-data.is-active { display: block; }
+      .ui-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        fill: currentColor;
+      }
+      .summary-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .summary-label .ui-icon { width: 18px; height: 18px; }
+      .data-page-heading {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 0 0 20px;
+        padding: 0 2px;
+      }
+      .data-page-heading .eyebrow {
+        margin: 0 0 4px;
+        color: var(--brand-gold);
+        font-size: .75rem;
+        font-weight: 700;
+        letter-spacing: .08em;
+        text-transform: uppercase;
+      }
+      .data-page-heading h2 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: clamp(1.45rem, 2vw, 1.8rem);
+        font-weight: 700;
+        letter-spacing: -.025em;
+      }
+      .data-page-heading p:not(.eyebrow) {
+        max-width: 62ch;
+        margin: 6px 0 0;
+        color: var(--text-secondary);
+        font-size: .875rem;
+      }
+      .data-page-health {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 11px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-secondary);
+        background: var(--bg-inset);
+        font-size: .75rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .data-page-health > span {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+      }
+      .data-page-health.is-healthy { color: var(--green); }
+      .data-page-health.is-healthy > span { background: var(--green); }
+      .data-workspace { display: grid; gap: 14px; }
+      .data-workspace > * { min-width: 0; }
       #tab-data > #tab-setup,
       #tab-data > #tab-market,
       #tab-data > #tab-diagnostics,
@@ -1477,12 +1542,20 @@
         min-height: 64px;
         display: flex;
         align-items: center;
-        justify-content: center;
-        text-align: center;
+        justify-content: flex-start;
+        gap: 9px;
+        padding: 12px;
+        text-align: left;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
         background: var(--bg-inset);
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        font-weight: 600;
       }
+      #section-setup .status-pill .ui-icon { color: var(--brand-gold); }
+      #section-setup .status-pill.ok { border-color: color-mix(in srgb, var(--green) 48%, var(--border)); color: var(--text-primary); }
+      #section-setup .status-pill.ok .ui-icon { color: var(--green); }
       #section-setup .setup-wizard {
         padding: 0 20px 16px;
       }
@@ -1523,6 +1596,10 @@
       #section-market .card-provider-india,
       #section-market .card-provider-us { margin: 0; min-height: 100%; }
       #section-market .card { box-shadow: none; }
+      #section-market .provider-name { font-size: 1rem; }
+      #section-market .provider-sub { margin-top: 4px; }
+      #section-market .field { padding: 16px 20px; }
+      #section-market .btn-row { border-top: 1px solid var(--border); }
       #tab-diagnostics { display: block; }
       #tab-diagnostics .section { margin: 0 0 14px; }
       #tab-diagnostics #diagnosticsOutput { max-height: 250px !important; }
@@ -1530,6 +1607,7 @@
       #tab-tips .section { margin: 0 0 14px; }
       #tab-tips .tips-list { columns: 1; }
       @media (max-width: 760px) {
+        .data-page-heading { align-items: flex-start; flex-direction: column; }
         #section-market { display: block; }
         #tab-data > * + *,
         #tab-diagnostics .section + .section,
@@ -1601,19 +1679,29 @@
       </nav>
 
       <!-- Data & diagnostics sections are presented together by the Data tab. -->
-      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden></div>
+      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden>
+        <header class="data-page-heading">
+          <div>
+            <p class="eyebrow">MyTicker</p>
+            <h2>Data &amp; diagnostics</h2>
+            <p>Connection health, market providers, and private operational details.</p>
+          </div>
+          <div class="data-page-health" id="dataPageHealth"><span aria-hidden="true"></span>Checking status</div>
+        </header>
+        <div class="data-workspace" id="dataWorkspace"></div>
+      </div>
       <div class="data-section-panel" id="tab-setup" hidden>
       <details class="settings-disclosure data-disclosure" id="section-setup" open>
-        <summary>Setup status</summary>
+        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Setup status</span><span class="data-summary-status">At a glance</span></summary>
         <div class="card">
           <div class="setup-welcome" id="setupWelcome" hidden>
             Import your broker holdings to go live. Indian stocks price automatically — no API key.
           </div>
           <div class="setup-status" id="setupStatus">
-            <div class="status-pill pending" id="statusHoldings">○ Holdings</div>
-            <div class="status-pill pending" id="statusLive">○ Live prices</div>
-            <div class="status-pill pending" id="statusSync">○ Last sync</div>
-            <div class="status-pill pending" id="statusApi">○ India prices (auto)</div>
+            <div class="status-pill pending" id="statusHoldings" data-icon="ph-folder">Holdings</div>
+            <div class="status-pill pending" id="statusLive" data-icon="ph-chart-line-up">Live prices</div>
+            <div class="status-pill pending" id="statusSync" data-icon="ph-arrows-clockwise">Last sync</div>
+            <div class="status-pill pending" id="statusApi" data-icon="ph-globe">India prices</div>
           </div>
           <div class="warn-banner" id="rateLimitWarn" hidden>
             Large portfolio with a Finnhub key: free tier is ~60 calls/min. Prefer a 2+ minute refresh.
@@ -1744,7 +1832,7 @@
       <!-- Data sources -->
       <div class="data-section-panel" id="tab-market" hidden>
       <details class="settings-disclosure data-disclosure" id="section-market" open>
-        <summary>Market data</summary>
+        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Market data providers</span><span class="data-summary-status">India · US</span></summary>
         <div class="section-title">India (automatic)</div>
         <div class="card card-provider-india">
           <div style="padding: 16px 20px 0;">
@@ -1810,7 +1898,7 @@
         </div>
       </details>
       <details class="settings-disclosure data-disclosure">
-        <summary>Crypto prices <span class="data-summary-status">CoinGecko · Binance fallback</span></summary>
+        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg>Crypto prices</span><span class="data-summary-status">CoinGecko · Binance fallback</span></summary>
         <div class="settings-disclosure-body">
           <div class="field-hint" style="padding: 16px 20px;">Crypto quotes use CoinGecko first and Binance only for mapped liquid pairs. No Finnhub key is required.</div>
         </div>
@@ -1858,9 +1946,9 @@
       <!-- Tab: Appearance -->
       <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="nav-appearance" hidden>
       <div class="section">
-        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">◌</div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the live tape behaves.</p></div></div>
+        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg></div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the live tape behaves.</p></div></div>
         <details class="settings-disclosure" open>
-          <summary>Display</summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Display</span></summary>
           <div class="settings-disclosure-body">
           <div class="card-item">
             <div class="item-left">
@@ -1883,7 +1971,7 @@
           </div>
         </details>
         <details class="settings-disclosure" open>
-          <summary>Theme</summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Theme</span></summary>
           <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="themeHelp">
@@ -1897,7 +1985,7 @@
           </div>
         </details>
         <details class="settings-disclosure" open>
-          <summary>Ticker speed</summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker speed</span></summary>
           <div class="settings-disclosure-body">
           <div class="field">
             <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
@@ -1907,7 +1995,7 @@
           </div>
         </details>
         <details class="settings-disclosure" open>
-          <summary>Tape size</summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Tape size</span></summary>
           <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
@@ -1932,7 +2020,7 @@
       <!-- Diagnostics -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
         <details class="settings-disclosure data-disclosure" open>
-          <summary>Diagnostics <span class="data-summary-status">Privacy-safe operational snapshot</span></summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Diagnostics</span><span class="data-summary-status">Private operational snapshot</span></summary>
           <div class="card" style="padding: 20px;">
             <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
             <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
@@ -1943,7 +2031,7 @@
           </div>
         </details>
         <details class="settings-disclosure data-disclosure">
-          <summary>What changed</summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-question"></use></svg>Quick help · What changed</span></summary>
           <div class="card" style="padding: 20px 24px;">
             <ul class="tips-list">
               <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
