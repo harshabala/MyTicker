@@ -194,6 +194,8 @@ assert(/\.form-stack\s*\{[^}]*display:\s*grid[^}]*gap:\s*16px/.test(optionsHtml)
 assert(/\.form-stack\s+\.field\s*\{[^}]*gap:\s*8px/.test(optionsHtml), "Settings fields pair labels and controls with an 8px rhythm");
 assert(/\.form-action-row\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Settings actions are separated from fields by 16px");
 assert(/\.configured-list\s*\{[^}]*padding:\s*12px\s+14px/.test(optionsHtml), "Configured watchlist state has a padded list container");
+assert(/\.configured-list\.field-hint\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Configured watchlist spacing overrides the later helper-text margin");
+assert(/\.btn-row\.form-action-row\s*\{[^}]*padding:\s*0/.test(optionsHtml), "Watchlist action-row padding explicitly overrides the base button row");
 const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || "";
 assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, symbol/hint, error, action, then configured-list order");
 
