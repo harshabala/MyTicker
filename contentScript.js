@@ -285,6 +285,9 @@ function getTickerParts(container) {
 
     const scrollWrapper = document.createElement("div");
     scrollWrapper.className = "pts-scroll-wrapper";
+    scrollWrapper.setAttribute("tabindex", "0");
+    scrollWrapper.setAttribute("role", "group");
+    scrollWrapper.setAttribute("aria-label", "Market tape. Focus pauses scrolling.");
     const scrollInner = document.createElement("div");
     scrollInner.className = "pts-scroll-inner";
     scrollWrapper.appendChild(scrollInner);

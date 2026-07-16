@@ -78,6 +78,7 @@ assert(optionsHtml.includes("background: var(--accent);") && popupHtml.includes(
 assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--accent);"), "uses the neutral interaction accent for completed wizard steps");
 assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
 assert(optionsJs.includes('switchSettingsTab(tabId, { updateHash: false })') && optionsJs.includes('location.hash !== `#${tabId}`'), "handles location-driven tabs without a hash event loop");
+assert(optionsJs.includes('history.pushState(null, "", `#${tabId}`)'), "user-selected settings tabs create browser history entries for Back and Forward navigation");
 assert(optionsJs.includes('return ["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested;'), "maps legacy settings hashes to the consolidated Data tab");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");

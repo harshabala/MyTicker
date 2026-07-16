@@ -358,7 +358,7 @@ function switchSettingsTab(tabId, { updateHash = true } = {}) {
   });
   if (updateHash && location.hash !== `#${tabId}`) {
     try {
-      history.replaceState(null, "", `#${tabId}`);
+      history.pushState(null, "", `#${tabId}`);
     } catch {
       /* ignore */
     }
