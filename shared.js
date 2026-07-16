@@ -113,7 +113,8 @@ const DEFAULT_SETTINGS = {
     refreshMinutes: 1
   },
   tickerStyleConfig: {
-    theme: "dark",
+    // "system" respects the browser; explicit light/dark remain available.
+    theme: "system",
     tickerSpeed: 40,
     tapeScale: "comfortable"
   },

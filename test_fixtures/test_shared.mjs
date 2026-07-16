@@ -107,6 +107,7 @@ assert(DEFAULT_SETTINGS.enabled === true, "enabled by default");
 assert(DEFAULT_SETTINGS.priceProvider === "finnhub", "default provider is finnhub");
 assert(DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed === 40, "default speed is 40s");
 assert(DEFAULT_SETTINGS.tickerStyleConfig.tapeScale === "comfortable", "default tape size is comfortable");
+assert(DEFAULT_SETTINGS.tickerStyleConfig.theme === "system", "default theme follows the browser");
 assert(DEFAULT_SETTINGS.cryptoConfig.includeCrypto === false, "crypto disabled by default");
 assert(normalizeTapeScale("compact") === "compact", "accepts compact tape size");
 assert(normalizeTapeScale("large") === "large", "accepts large tape size");

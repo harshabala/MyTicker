@@ -29,6 +29,10 @@ document.addEventListener("DOMContentLoaded", () => {
   const quickAddExchange = document.getElementById("quickAddExchange");
   const quickAddBtn = document.getElementById("quickAddBtn");
 
+  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+    applyPopupTheme(data[STORAGE_KEYS.settings]?.tickerStyleConfig?.theme);
+  });
+
   setPlatformShortcut(shortcutHint);
 
   openOptions?.addEventListener("click", (e) => {
@@ -93,10 +97,18 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshPopup(mainContent);
     }
     if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
+      applyPopupTheme(changes[STORAGE_KEYS.settings].newValue?.tickerStyleConfig?.theme);
       refreshPopup(mainContent);
     }
   });
 });
+
+function applyPopupTheme(theme) {
+  const root = document.documentElement;
+  if (!root) return;
+  if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
+  else root.removeAttribute("data-theme");
+}
 
 function openSettings() {
   if (chrome.runtime.openOptionsPage) {

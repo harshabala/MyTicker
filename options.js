@@ -21,6 +21,7 @@ const testConnectionButton = document.getElementById("testConnectionButton");
 
 const tickerSpeedEl = document.getElementById("tickerSpeed");
 const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
+const themeEls = document.querySelectorAll('input[name="theme"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
 
 const cryptoModeEl = document.getElementById("cryptoMode");
@@ -80,9 +81,10 @@ function init() {
   setPlatformShortcut(document.getElementById("tipsShortcut"));
   wireSettingsTabs();
   wireWizardSteps();
-  // Deep-link: options.html#portfolio | #market | #appearance | etc.
-  const hashTab = (location.hash || "").replace(/^#/, "").toLowerCase();
-  if (hashTab && document.getElementById(`tab-${hashTab}`)) {
+  // Legacy setup/market/diagnostics URLs resolve to the consolidated data task.
+  const requestedHash = (location.hash || "").replace(/^#/, "").toLowerCase();
+  const hashTab = ["setup", "market", "diagnostics", "tips"].includes(requestedHash) ? "data" : requestedHash;
+  if (hashTab && document.querySelector(`.settings-tab[data-tab="${hashTab}"]`)) {
     switchSettingsTab(hashTab);
   }
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -109,6 +111,9 @@ function init() {
     tapeScaleEls.forEach((input) => {
       input.checked = input.value === tapeScale;
     });
+    const theme = normalizeTheme(settings.tickerStyleConfig?.theme);
+    themeEls.forEach((input) => { input.checked = input.value === theme; });
+    applyDocumentTheme(theme);
 
     const cryptoConfig = normalizeCryptoConfig(settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig);
     cryptoModeEl.value = cryptoConfig.mode;
@@ -289,10 +294,12 @@ function setPlatformShortcut(el) {
 
 /** Map wizard steps → settings tabs (sections live on different panels). */
 const WIZARD_STEP_TO_TAB = {
-  1: "market", // optional US Finnhub key
+  1: "data", // optional US Finnhub key
   2: "portfolio", // import holdings
-  3: "setup" // go live / status
+  3: "data" // go live / status
 };
+
+const DATA_PANEL_IDS = new Set(["setup", "market", "diagnostics", "tips"]);
 
 function wireSettingsTabs() {
   const tabs = document.querySelectorAll(".settings-tab[data-tab]");
@@ -331,7 +338,8 @@ function switchSettingsTab(tabId) {
   });
   if (!matched) return;
   panels.forEach((panel) => {
-    const active = panel.id === `tab-${tabId}`;
+    const panelId = panel.id.replace(/^tab-/, "");
+    const active = tabId === "data" ? DATA_PANEL_IDS.has(panelId) : panelId === tabId;
     panel.classList.toggle("is-active", active);
     if (active) {
       panel.removeAttribute("hidden");
@@ -349,10 +357,8 @@ function switchSettingsTab(tabId) {
     handleRefreshPreview();
     renderImportStats();
   }
-  if (tabId === "setup") {
+  if (tabId === "data") {
     refreshSetupUI();
-  }
-  if (tabId === "diagnostics") {
     renderDiagnostics();
   }
 }
@@ -393,7 +399,7 @@ async function renderDiagnostics() {
   const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
   const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
   const lines = [
-    `my ticker diagnostics · build v${buildVersion}`,
+    `MyTicker diagnostics · build v${buildVersion}`,
     `Ticker enabled: ${settings.enabled ? "yes" : "no"}`,
     `Holdings: ${holdings.length} · Watchlist: ${watchlist.length} · Ticker items: ${(state.tickerItems || state.positions || []).length}`,
     `Last state update: ${formatDiagnosticTime(state.updatedAt)}`,
@@ -932,13 +938,15 @@ function handleSaveAppearance() {
   ));
   const selectedTapeScale = document.querySelector('input[name="tapeScale"]:checked')?.value;
   const tapeScale = normalizeTapeScale(selectedTapeScale);
+  const theme = normalizeTheme(document.querySelector('input[name="theme"]:checked')?.value);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
     settings.tickerStyleConfig = {
       ...(settings.tickerStyleConfig || {}),
       tickerSpeed,
-      tapeScale
+      tapeScale,
+      theme
     };
 
     settings.portfolioFilters = {
@@ -948,6 +956,7 @@ function handleSaveAppearance() {
     };
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+      applyDocumentTheme(theme);
       showToast("Appearance saved", "success");
     });
   });
@@ -988,6 +997,16 @@ function normalizeTapeScale(value) {
   return ["compact", "comfortable", "large"].includes(value)
     ? value
     : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
+
+function normalizeTheme(value) {
+  return ["system", "light", "dark"].includes(value) ? value : "system";
+}
+
+function applyDocumentTheme(theme) {
+  if (!document.documentElement) return;
+  if (theme === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
 }
 
 function requestImmediatePoll() {

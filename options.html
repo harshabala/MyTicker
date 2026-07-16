@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>my ticker settings</title>
+    <title>MyTicker settings</title>
     <link rel="stylesheet" href="brand.css" />
     <style>
 
@@ -36,7 +36,7 @@
         margin-bottom: 20px;
       }
 
-      /* Settings tabs — flat row + gold underline (no pill / curved chrome) */
+      /* Settings tabs — flat row with an emerald selection line. */
       .settings-tabs {
         display: flex;
         flex-wrap: wrap;
@@ -77,7 +77,7 @@
         color: var(--text-secondary);
         background: transparent;
       }
-      /* Active: plain gold hairline under the label only */
+      /* Active: one restrained hairline under the label. */
       .settings-tab[aria-selected="true"] {
         color: var(--text-primary);
         font-weight: 600;
@@ -1126,26 +1126,23 @@
   <body>
     <div class="page">
       <div class="page-header">
-        <img src="icons/icon48.png" alt="my ticker" />
+        <img src="icons/icon48.png" alt="MyTicker" />
         <div class="page-header-text">
-          <h1>my ticker settings</h1>
-          <p>Import holdings, prices, and appearance — sectioned so you don’t scroll forever.</p>
+          <h1>MyTicker settings</h1>
+          <p>Set up your portfolio, follow markets, and tune the live tape.</p>
         </div>
       </div>
 
       <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
-        <button type="button" class="settings-tab" role="tab" id="nav-setup" data-tab="setup" aria-selected="true" aria-controls="tab-setup" tabindex="0">Setup</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="false" aria-controls="tab-portfolio" tabindex="-1">Portfolio</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-market" data-tab="market" aria-selected="false" aria-controls="tab-market" tabindex="-1">Market data</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="true" aria-controls="tab-portfolio" tabindex="0">Portfolio</button>
         <button type="button" class="settings-tab" role="tab" id="nav-watchlist" data-tab="watchlist" aria-selected="false" aria-controls="tab-watchlist" tabindex="-1">Watchlist</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-optional" data-tab="optional" aria-selected="false" aria-controls="tab-optional" tabindex="-1">Optional</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-crypto" data-tab="crypto" aria-selected="false" aria-controls="tab-crypto" tabindex="-1">Crypto</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-setup" tabindex="-1">Data &amp; diagnostics</button>
         <button type="button" class="settings-tab" role="tab" id="nav-appearance" data-tab="appearance" aria-selected="false" aria-controls="tab-appearance" tabindex="-1">Appearance</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-diagnostics" data-tab="diagnostics" aria-selected="false" aria-controls="tab-diagnostics" tabindex="-1">Diagnostics</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-tips" data-tab="tips" aria-selected="false" aria-controls="tab-tips" tabindex="-1">Tips</button>
       </nav>
 
-      <!-- Tab: Setup -->
-      <div class="tab-panel is-active" id="tab-setup" role="tabpanel" aria-labelledby="nav-setup">
+      <!-- Data & diagnostics panels are presented together by the Data tab. -->
+      <div class="tab-panel" id="tab-setup" role="tabpanel" aria-labelledby="nav-data" hidden>
       <div class="section" id="section-setup">
         <div class="section-title">Setup status</div>
         <div class="card">
@@ -1199,9 +1196,8 @@
         </div>
       </div>
       </div>
-
       <!-- Tab: Portfolio -->
-      <div class="tab-panel" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio" hidden>
+      <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
       <div class="section" id="section-import">
         <div class="section-title">Portfolio import</div>
         <div class="card">
@@ -1273,8 +1269,8 @@
       </div>
       </div>
 
-      <!-- Tab: Market data -->
-      <div class="tab-panel" id="tab-market" role="tabpanel" aria-labelledby="nav-market" hidden>
+      <!-- Data sources -->
+      <div class="tab-panel" id="tab-market" role="tabpanel" aria-labelledby="nav-data" hidden>
       <div class="section" id="section-market">
         <div class="section-title">India (automatic)</div>
         <div class="card card-provider-india">
@@ -1331,9 +1327,8 @@
         </div>
       </div>
       </div>
-
-      <!-- Tab: Optional (crypto) -->
-      <div class="tab-panel" id="tab-optional" role="tabpanel" aria-labelledby="nav-optional" hidden>
+      <!-- Tab: Crypto -->
+      <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
       <div class="section" id="section-crypto">
         <div class="section-title">Crypto (advanced)</div>
         <div class="card crypto-details" id="cryptoDetails">
@@ -1388,9 +1383,18 @@
             </label>
           </div>
           <div class="field">
+            <fieldset class="tape-size-options" aria-describedby="themeHelp">
+              <legend class="field-label">Theme</legend>
+              <label><input type="radio" name="theme" value="system" checked /> System</label>
+              <label><input type="radio" name="theme" value="light" /> Light</label>
+              <label><input type="radio" name="theme" value="dark" /> Dark</label>
+            </fieldset>
+            <div class="field-hint" id="themeHelp">System follows your browser. The live tape uses the same choice.</div>
+          </div>
+          <div class="field">
             <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
             <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
-            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds. Theme follows system light/dark.</div>
+            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
           </div>
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
@@ -1409,8 +1413,8 @@
       </div>
       </div>
 
-      <!-- Tab: Diagnostics -->
-      <div class="tab-panel" id="tab-diagnostics" role="tabpanel" aria-labelledby="nav-diagnostics" hidden>
+      <!-- Diagnostics -->
+      <div class="tab-panel" id="tab-diagnostics" role="tabpanel" aria-labelledby="nav-data" hidden>
         <div class="section">
           <div class="section-title">Diagnostics</div>
           <div class="card" style="padding: 20px;">
@@ -1433,9 +1437,8 @@
           </div>
         </div>
       </div>
-
-      <!-- Tab: Tips (expanded reference) -->
-      <div class="tab-panel" id="tab-tips" role="tabpanel" aria-labelledby="nav-tips" hidden>
+      <!-- Reference notes live with data & diagnostics. -->
+      <div class="tab-panel" id="tab-tips" role="tabpanel" aria-labelledby="nav-data" hidden>
       <div class="section">
         <div class="section-title">Getting started</div>
         <div class="card" style="padding: 20px 24px;">
@@ -1459,7 +1462,7 @@
         </div>
       </div>
       <div class="section">
-        <div class="section-title">How my ticker works</div>
+        <div class="section-title">How MyTicker works</div>
         <div class="card" style="padding: 20px 24px;">
           <ul class="tips-list">
             <li><strong>Service worker</strong> fetches quotes on a <code style="color: var(--text-secondary);">chrome.alarms</code> schedule (not <code style="color: var(--text-secondary);">setInterval</code>), so fetches continue when the worker sleeps.</li>
@@ -1476,14 +1479,14 @@
             <li><strong>File permission / Error reading file:</strong> use <em>Import my holdings</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
             <li><strong>Missing Exchange/Currency columns:</strong> Zerodha-style exports are fine — we default NSE + INR when those columns are absent.</li>
             <li><strong>Empty strip:</strong> confirm holdings on Portfolio, then open any http(s) tab and wait for the next alarm refresh (or re-open the popup).</li>
-            <li>Setup errors appear on the <strong>Setup</strong> tab when something fails mid-import or fetch.</li>
+            <li>Setup errors appear in <strong>Data &amp; diagnostics</strong> when something fails mid-import or fetch.</li>
           </ul>
         </div>
       </div>
       </div>
 
       <div class="page-footer">
-        my ticker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 

@@ -1,12 +1,13 @@
 /**
- * my ticker design system — Graphite Emerald
- * Dark + light themes via system preference (prefers-color-scheme).
+ * MyTicker design system — graphite, slate, and restrained emerald.
+ * System is the default; light and dark can be explicitly selected.
  * 4-pt spacing · rem type ramp · restrained emerald · no decorative gradients
  */
 @import url("motion.css");
 
 :root {
   color-scheme: dark light;
+  font-synthesis: none;
 
   /* ── Dark (default) ── */
   --bg: #111827;
@@ -64,6 +65,11 @@
   --text-label: 0.75rem;
   --text-meta: 0.6875rem;
 
+  --weight-display: 700;
+  --weight-section: 600;
+  --weight-label: 500;
+  --weight-body: 400;
+
   /* Ticker strip (dark) */
   --pts-bg: rgba(17, 24, 39, 0.94);
   --pts-fg: #f5f5f7;
@@ -71,6 +77,61 @@
   --pts-icon-bg: #374151;
   --pts-crypto-accent: #10b981;
   --pts-hairline: rgba(255, 255, 255, 0.08);
+}
+
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --bg-surface: #ffffff;
+  --bg-hover: #eef1f4;
+  --bg-tertiary: #d9dee5;
+  --bg-inset: rgba(15, 23, 42, 0.045);
+  --border: rgba(51, 65, 85, 0.16);
+  --border-focus: rgba(5, 150, 105, 0.7);
+  --text-primary: #172033;
+  --text-secondary: #5f6b7a;
+  --text-tertiary: #7c8796;
+  --accent: #078a62;
+  --accent-hover: #067553;
+  --accent-pressed: #055f44;
+  --accent-muted: rgba(7, 138, 98, 0.12);
+  --accent-ink: #ffffff;
+  --green: #078a62;
+  --red: #cf4d55;
+  --yellow: #9b6d11;
+  --toggle-track: #cbd2dc;
+  --material-fill: #ffffff;
+  --material-elevated-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.9);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+}
+
+@media (prefers-color-scheme: light) {
+  html[data-theme="dark"] {
+    --bg: #111827;
+    --bg-surface: #1f2937;
+    --bg-hover: #374151;
+    --bg-tertiary: #4b5563;
+    --bg-inset: rgba(255, 255, 255, 0.06);
+    --border: rgba(148, 163, 184, 0.22);
+    --border-focus: rgba(16, 185, 129, 0.7);
+    --text-primary: #f5f5f7;
+    --text-secondary: #a7adb7;
+    --text-tertiary: #7d8794;
+    --accent: #10b981;
+    --accent-hover: #34d399;
+    --accent-pressed: #059669;
+    --accent-muted: rgba(16, 185, 129, 0.16);
+    --accent-ink: #052e26;
+    --green: #34d399;
+    --red: #ff6259;
+    --yellow: #e7bd61;
+    --toggle-track: #3a3a3c;
+    --material-fill: #1f2937;
+    --material-elevated-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  }
 }
 
 /* ── Light theme (system) ── */
@@ -137,4 +198,57 @@
       --material-fill: #1c1c1e;
     }
   }
+}
+
+/* Explicit choice wins over the browser preference. Kept last deliberately. */
+html[data-theme="light"] {
+  color-scheme: light;
+  --bg: #f6f7f9;
+  --bg-surface: #ffffff;
+  --bg-hover: #eef1f4;
+  --bg-tertiary: #d9dee5;
+  --bg-inset: rgba(15, 23, 42, 0.045);
+  --border: rgba(51, 65, 85, 0.16);
+  --text-primary: #172033;
+  --text-secondary: #5f6b7a;
+  --text-tertiary: #7c8796;
+  --accent: #078a62;
+  --accent-hover: #067553;
+  --accent-pressed: #055f44;
+  --accent-ink: #ffffff;
+  --green: #078a62;
+  --red: #cf4d55;
+  --yellow: #9b6d11;
+  --toggle-track: #cbd2dc;
+  --material-fill: #ffffff;
+  --pts-bg: rgba(255, 255, 255, 0.94);
+  --pts-fg: #172033;
+  --pts-border: rgba(51, 65, 85, 0.16);
+  --pts-hairline: rgba(51, 65, 85, 0.1);
+}
+
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --bg: #111827;
+  --bg-surface: #1f2937;
+  --bg-hover: #374151;
+  --bg-tertiary: #4b5563;
+  --bg-inset: rgba(255, 255, 255, 0.06);
+  --border: rgba(148, 163, 184, 0.22);
+  --text-primary: #f5f5f7;
+  --text-secondary: #a7adb7;
+  --text-tertiary: #7d8794;
+  --accent: #10b981;
+  --accent-hover: #34d399;
+  --accent-pressed: #059669;
+  --accent-ink: #052e26;
+  --green: #34d399;
+  --red: #ff6259;
+  --yellow: #e7bd61;
+  --toggle-track: #3a3a3c;
+  --material-fill: #1f2937;
+  --pts-bg: rgba(17, 24, 39, 0.94);
+  --pts-fg: #f5f5f7;
+  --pts-border: rgba(255, 255, 255, 0.1);
+  --pts-hairline: rgba(255, 255, 255, 0.08);
 }

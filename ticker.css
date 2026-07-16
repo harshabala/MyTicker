@@ -68,6 +68,32 @@
 .pts-ticker-bar[data-tape-size="comfortable"] { --pts-tape-scale: 1.08; }
 .pts-ticker-bar[data-tape-size="large"] { --pts-tape-scale: 1.20; }
 
+/* The tape lives in a closed shadow root, so explicit user selection must be
+   expressed here rather than relying on page tokens. */
+.pts-ticker-bar[data-theme="light"] {
+  color-scheme: light;
+  --pts-bg: #f6f7f9;
+  --pts-fg: #172033;
+  --pts-muted: #5f6b7a;
+  --pts-border: #cbd2dc;
+  --pts-hairline: #dce2e8;
+  --green: #078a62;
+  --red: #cf4d55;
+  --yellow: #9b6d11;
+}
+
+.pts-ticker-bar[data-theme="dark"] {
+  color-scheme: dark;
+  --pts-bg: #17191d;
+  --pts-fg: #e8ebed;
+  --pts-muted: #9ca5ae;
+  --pts-border: #30353b;
+  --pts-hairline: #292d32;
+  --green: #50c878;
+  --red: #f07870;
+  --yellow: #e7bd61;
+}
+
 .pts-ticker-bar.pts-ticker-visible {
   opacity: 1;
   transform: translateY(0);
@@ -177,6 +203,10 @@
 
 .pts-scroll-wrapper:hover .pts-scroll-inner:not(.pts-scroll-static),
 .pts-scroll-inner:hover:not(.pts-scroll-static) {
+  animation-play-state: paused;
+}
+
+.pts-scroll-wrapper:focus-within .pts-scroll-inner:not(.pts-scroll-static) {
   animation-play-state: paused;
 }
 

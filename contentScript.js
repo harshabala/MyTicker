@@ -91,6 +91,7 @@ function init() {
         ensureTickerContainer(false);
         applyTickerSpeed(settings);
         applyTapeSize(settings);
+        applyTickerTheme(settings);
       }
     } catch (error) {
       reportFatal(error);
@@ -106,6 +107,7 @@ function init() {
           ensureTickerContainer(true);
           applyTickerSpeed(newSettings);
           applyTapeSize(newSettings);
+          applyTickerTheme(newSettings);
         } else {
           removeTickerContainer();
         }
@@ -197,6 +199,7 @@ function ensureTickerContainer(animate = false) {
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
   applyTapeSize(tickerSettings);
+  applyTickerTheme(tickerSettings);
   setBodyMarginTop(originalPx + getTapeBarHeight(tickerSettings), animate, false);
 
   if (!prefersReducedMotion() && animate) {
@@ -337,8 +340,8 @@ function updateAggregate(parts, state) {
   aggregate.dataset.ptsSign = newSign;
 
   aggregate.textContent = currency
-    ? `my ticker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
-    : "my ticker · today mixed currencies";
+    ? `MyTicker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
+    : "MyTicker · today mixed currencies";
 }
 
 function buildItemElement(pos) {
@@ -537,6 +540,13 @@ function applyTapeSize(settings) {
     const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
     setBodyMarginTop(originalPx + getTapeBarHeight(settings), false);
   }
+}
+
+function applyTickerTheme(settings) {
+  const theme = ["light", "dark"].includes(settings?.tickerStyleConfig?.theme)
+    ? settings.tickerStyleConfig.theme
+    : "system";
+  if (tickerBar) tickerBar.setAttribute("data-theme", theme);
 }
 
 function normalizeTapeScale(value) {

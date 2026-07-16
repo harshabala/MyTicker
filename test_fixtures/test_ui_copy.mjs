@@ -31,12 +31,15 @@ const visibleCopy = `${popupHtml}\n${popupJs}\n${optionsHtml}\n${optionsJs}`;
 const visibleText = visibleCopy.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
 
 console.log("\n📝 UI copy");
-assert(popupHtml.includes("<h1>my ticker</h1>"), "uses lowercase product name in the popup");
-assert(optionsHtml.includes("<h1>my ticker settings</h1>"), "uses lowercase product name in settings");
-assert(manifest.name === "my ticker", "uses lowercase product name in the extension manifest");
-assert(manifest.action?.default_title === "my ticker", "uses lowercase product name in the extension action title");
+assert(popupHtml.includes("<h1>MyTicker</h1>"), "uses canonical MyTicker name in the popup");
+assert(optionsHtml.includes("<h1>MyTicker settings</h1>"), "uses canonical MyTicker name in settings");
+assert(manifest.name === "MyTicker", "uses canonical MyTicker name in the extension manifest");
+assert(manifest.action?.default_title === "MyTicker", "uses canonical MyTicker name in the extension action title");
 assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
-assert(optionsHtml.includes('data-tab="diagnostics"'), "includes a Diagnostics settings tab");
+for (const tab of ["portfolio", "watchlist", "crypto", "data", "appearance"]) {
+  assert(optionsHtml.includes(`data-tab="${tab}"`), `includes ${tab} in the task-based settings navigation`);
+}
+assert(!optionsHtml.includes('data-tab="setup"') && !optionsHtml.includes('data-tab="market"') && !optionsHtml.includes('data-tab="optional"'), "replaces implementation-oriented settings tabs with task-based navigation");
 assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
 assert(optionsHtml.includes('id="refreshDiagnosticsButton"'), "includes a refresh diagnostics button");
 assert(/<button[^>]*id="refreshDiagnosticsButton"[^>]*>Refresh<\/button>/.test(optionsHtml), "Diagnostics Refresh control is a visible button labelled Refresh");
@@ -72,6 +75,9 @@ assert(!visibleText.includes("Finnhub quotes via BINANCE:SYMBOL"), "removes the 
 assert(!visibleText.includes("US equities and crypto need a free Finnhub key"), "removes the obsolete shared Finnhub requirement");
 assert(brandCss.includes("--accent: #10b981"), "uses emerald as the shared accent");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
+assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
+assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");
+assert(brandCss.includes("--weight-display: 700") && brandCss.includes("--weight-section: 600") && brandCss.includes("--weight-label: 500") && brandCss.includes("--weight-body: 400"), "defines the intended type-weight hierarchy");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
