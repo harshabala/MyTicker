@@ -1448,6 +1448,76 @@
       .data-section-panel > .section + .section { margin-top: 14px; }
       .data-section-panel > .section .section-title { margin-bottom: 8px; }
       .data-section-panel > .section .card { border-color: var(--border); }
+      #tab-data.is-active {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+      #tab-data > #tab-setup,
+      #tab-data > #tab-market,
+      #tab-data > #tab-diagnostics,
+      #tab-data > #tab-tips,
+      #tab-data > #section-error-log { grid-column: 1 / -1; }
+      #tab-data > #tab-setup,
+      #tab-data > #tab-market,
+      #tab-data > #tab-diagnostics,
+      #tab-data > #tab-tips { margin: 0; }
+      #tab-data .data-disclosure { margin: 0; }
+      #section-setup .card { border: 0; border-radius: 0; }
+      #section-setup .setup-status {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 10px;
+        padding: 16px 20px;
+      }
+      #section-setup .status-pill {
+        min-height: 64px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+      #section-setup .setup-wizard {
+        padding: 0 20px 16px;
+      }
+      #section-market {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 0 16px;
+      }
+      #section-market > summary,
+      #section-market > .section-title:first-of-type,
+      #section-market > .field-hint:last-child { grid-column: 1 / -1; }
+      #section-market > summary { margin: 0 -0px; }
+      #section-market > .section-title {
+        margin: 18px 0 8px !important;
+        font-size: .875rem;
+      }
+      #section-market > .section-title:nth-of-type(2),
+      #section-market .card-provider-us { grid-column: 2; }
+      #section-market .card-provider-india,
+      #section-market .card-provider-us { margin: 0; min-height: 100%; }
+      #tab-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; }
+      #tab-diagnostics .section { margin: 0; }
+      #tab-diagnostics .section:first-child { grid-column: 1 / -1; }
+      #tab-diagnostics #diagnosticsOutput { max-height: 250px !important; }
+      #tab-tips { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+      #tab-tips .section { margin: 0; }
+      #tab-tips .section:last-child { grid-column: 1 / -1; }
+      #tab-tips .tips-list { columns: 1; }
+      @media (max-width: 760px) {
+        #tab-data.is-active,
+        #section-market,
+        #tab-diagnostics,
+        #tab-tips { display: block; }
+        #tab-data > * + *,
+        #tab-diagnostics .section + .section,
+        #tab-tips .section + .section { margin-top: 14px; }
+        #section-setup .setup-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      }
       #tab-portfolio .section-title { margin-bottom: 12px; }
       .portfolio-surface-summary {
         display: grid;
