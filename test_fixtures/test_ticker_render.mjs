@@ -111,6 +111,8 @@ let documentObserver;
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
 globalThis.location = { hostname: "chatgpt.com", origin: "https://chatgpt.com" };
+globalThis.innerWidth = 1200;
+globalThis.innerHeight = 800;
 globalThis.ResizeObserver = class {
   constructor(callback) { this.callback = callback; this.disconnected = false; resizeObserver = this; }
   observe(target) { this.target = target; }
@@ -181,6 +183,10 @@ document.chatgptDialog.style.setProperty("position", "fixed");
 document.chatgptDialog.style.setProperty("top", "2px", "important");
 document.chatgptDialog.style.setProperty("inset", "1px", "important");
 document.chatgptDialog.style.setProperty("height", "90vh", "important");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 20, left: 20, width: 400, height: 300, right: 420, bottom: 320 });
+documentObserver?.callback();
+assert(!document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "1px", "leaves a small fixed open dialog entirely untouched");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 0, left: 0, width: 1200, height: 800, right: 1200, bottom: 800 });
 documentObserver?.callback();
 assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "53px 0 0", "offsets only the open full-screen ChatGPT dialog once");
 assert(document.chatgptDialog.style.getPropertyPriority("inset") === "important" && document.chatgptDialog.style.getPropertyPriority("height") === "important", "owns active dialog offsets with important priority");

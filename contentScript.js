@@ -189,7 +189,16 @@ function getOriginalBodyMarginPx(body) {
 function isFullScreenDialog(dialog) {
   if (!dialog?.hasAttribute("open")) return false;
   const position = dialog.style.getPropertyValue("position") || globalThis.getComputedStyle?.(dialog).position;
-  return position === "fixed";
+  if (position !== "fixed") return false;
+  const rect = dialog.getBoundingClientRect?.();
+  const viewportWidth = globalThis.innerWidth || document.documentElement?.clientWidth || 0;
+  const viewportHeight = globalThis.innerHeight || document.documentElement?.clientHeight || 0;
+  const tolerance = 2;
+  return Boolean(
+    rect && viewportWidth && viewportHeight &&
+    rect.top <= tolerance && rect.left <= tolerance &&
+    rect.width >= viewportWidth - tolerance && rect.height >= viewportHeight - tolerance
+  );
 }
 
 function applyChatGptReservation(height) {
