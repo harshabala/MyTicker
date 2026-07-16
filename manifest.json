@@ -40,9 +40,9 @@
         "<all_urls>"
       ],
       "js": [
+        "contentShared.js",
         "contentScript.js"
       ],
-      "type": "module",
       "run_at": "document_start",
       "all_frames": false
     }

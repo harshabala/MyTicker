@@ -1,6 +1,7 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
 
-import { STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } from "./shared.js";
+const { STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } =
+  globalThis.__MYTICKER_CONTENT_SHARED__;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";

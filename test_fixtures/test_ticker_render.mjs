@@ -1,6 +1,9 @@
 // Regression harness for delayed page-body mounting in the content script.
 // Run with: node test_fixtures/test_ticker_render.mjs
 
+import { readFile } from "node:fs/promises";
+import vm from "node:vm";
+
 let passed = 0;
 let failed = 0;
 function assert(condition, message) {
@@ -95,6 +98,9 @@ globalThis.chrome = {
     onChanged: { addListener() {} }
   }
 };
+
+const contentSharedSource = await readFile(new URL("../contentShared.js", import.meta.url), "utf8");
+vm.runInThisContext(contentSharedSource, { filename: "contentShared.js" });
 
 await import(`../contentScript.js?test=${Date.now()}`);
 document.body = new Element("body");
