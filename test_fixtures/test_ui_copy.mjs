@@ -50,6 +50,29 @@ function mediaRuleBody(css, mediaQuery, selector) {
   const ruleBlockEnd = mediaBody.indexOf("}", ruleBlockStart);
   return mediaBody.slice(ruleBlockStart + 1, ruleBlockEnd);
 }
+function cssRuleBodyAt(css, selector, startAt = 0) {
+  const ruleStart = css.indexOf(selector, startAt);
+  if (ruleStart < 0) return "";
+  const blockStart = css.indexOf("{", ruleStart);
+  let depth = 0;
+  for (let index = blockStart; index < css.length; index++) {
+    if (css[index] === "{") depth++;
+    if (css[index] === "}" && --depth === 0) return css.slice(blockStart + 1, index);
+  }
+  return "";
+}
+function tokenMap(cssBlock) {
+  return Object.fromEntries([...cssBlock.matchAll(/--([\w-]+):\s*(#[\da-fA-F]{6})/g)].map(([, name, value]) => [name, value]));
+}
+function contrastRatio(first, second) {
+  const luminance = (hex) => {
+    const channels = hex.slice(1).match(/../g).map((value) => parseInt(value, 16) / 255)
+      .map((value) => value <= 0.04045 ? value / 12.92 : ((value + 0.055) / 1.055) ** 2.4);
+    return 0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+  };
+  const [firstLuminance, secondLuminance] = [luminance(first), luminance(second)].sort((a, b) => b - a);
+  return (firstLuminance + 0.05) / (secondLuminance + 0.05);
+}
 const manifest = JSON.parse(manifestSource);
 const visibleCopy = `${popupHtml}\n${popupJs}\n${optionsHtml}\n${optionsJs}`;
 const visibleText = visibleCopy.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
@@ -112,10 +135,26 @@ assert(!visibleText.includes("US equities and crypto need a free Finnhub key"), 
 assert(brandCss.includes("--accent: #9fb0c3") && brandCss.includes("--green: #34d399"), "reserves emerald for positive market state and uses a neutral interaction accent");
 assert(optionsHtml.includes("background: var(--accent);") && !popupHtml.includes("background: var(--accent);"), "keeps existing settings interaction neutral while the popup uses its brand accent");
 assert(brandCss.includes("--brand-gold:") && brandCss.includes("--brand-gold-hover:") && brandCss.includes("--brand-gold-muted:"), "defines shared MyTicker gold, hover, and muted interaction tokens");
+const systemDarkTokens = tokenMap(cssRuleBodyAt(brandCss, ":root {"));
+const systemLightStart = brandCss.indexOf("/* ── Light theme (system) ── */");
+const systemLightTokens = tokenMap(cssRuleBodyAt(brandCss, ":root {", systemLightStart));
+const explicitLightTokens = tokenMap(cssRuleBodyAt(brandCss, 'html[data-theme="light"] {', brandCss.lastIndexOf('html[data-theme="light"] {')));
+const explicitDarkTokens = tokenMap(cssRuleBodyAt(brandCss, 'html[data-theme="dark"] {', brandCss.lastIndexOf('html[data-theme="dark"] {')));
+const goldThemes = [
+  ["system dark", systemDarkTokens],
+  ["system light", systemLightTokens],
+  ["explicit light", explicitLightTokens],
+  ["explicit dark", explicitDarkTokens]
+];
+const hasGoldTokens = (tokens) => ["brand-gold", "brand-gold-hover", "brand-gold-ink", "bg-surface"].every((name) => tokens[name]);
+assert(goldThemes.every(([, tokens]) => hasGoldTokens(tokens)), "resolves a complete gold token set for system and explicit light/dark themes");
+assert(goldThemes.every(([, tokens]) => hasGoldTokens(tokens) && contrastRatio(tokens["brand-gold"], tokens["bg-surface"]) >= 4.5 && contrastRatio(tokens["brand-gold-hover"], tokens["bg-surface"]) >= 4.5), "keeps gold link and hover text at WCAG AA contrast in every resolved theme");
+assert(goldThemes.every(([, tokens]) => hasGoldTokens(tokens) && contrastRatio(tokens["brand-gold"], tokens["brand-gold-ink"]) >= 4.5 && contrastRatio(tokens["brand-gold-hover"], tokens["brand-gold-ink"]) >= 4.5), "keeps primary gold control text at WCAG AA contrast in normal and hover states");
+assert((brandCss.match(/--brand-gold:/g) || []).length === 4 && (brandCss.match(/--brand-gold-hover:/g) || []).length === 4, "declares gold tokens once per canonical theme layer without overridden duplicates");
 assert(/\.tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the selected popup tab underline");
 assert(/\.icon-btn:focus-visible\s*\{[\s\S]*?var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the Settings gear focus ring");
 assert(/\.help-row a\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml) && /\.section-head \.link-quiet\s*\{[\s\S]*?color:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for explanatory and action links");
-assert(/\.btn-setup\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the popup primary action");
+assert(/\.btn-setup\s*\{[\s\S]*?background:\s*var\(--brand-gold\)[\s\S]*?color:\s*var\(--brand-gold-ink\)/.test(popupHtml), "uses the paired MyTicker gold and ink tokens for the popup primary action");
 assert(/\.pnl-positive\s*\{\s*color:\s*var\(--green\);\s*\}/.test(popupHtml) && /\.pnl-negative\s*\{\s*color:\s*var\(--red\);\s*\}/.test(popupHtml), "keeps green and red reserved for positive and negative market values");
 assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--accent);"), "uses the neutral interaction accent for completed wizard steps");
 assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
