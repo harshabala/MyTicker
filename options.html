@@ -1137,6 +1137,7 @@
         <button type="button" class="settings-tab" role="tab" id="nav-setup" data-tab="setup" aria-selected="true" aria-controls="tab-setup" tabindex="0">Setup</button>
         <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="false" aria-controls="tab-portfolio" tabindex="-1">Portfolio</button>
         <button type="button" class="settings-tab" role="tab" id="nav-market" data-tab="market" aria-selected="false" aria-controls="tab-market" tabindex="-1">Market data</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-watchlist" data-tab="watchlist" aria-selected="false" aria-controls="tab-watchlist" tabindex="-1">Watchlist</button>
         <button type="button" class="settings-tab" role="tab" id="nav-optional" data-tab="optional" aria-selected="false" aria-controls="tab-optional" tabindex="-1">Optional</button>
         <button type="button" class="settings-tab" role="tab" id="nav-appearance" data-tab="appearance" aria-selected="false" aria-controls="tab-appearance" tabindex="-1">Appearance</button>
         <button type="button" class="settings-tab" role="tab" id="nav-diagnostics" data-tab="diagnostics" aria-selected="false" aria-controls="tab-diagnostics" tabindex="-1">Diagnostics</button>
@@ -1169,6 +1170,20 @@
             <p class="wizard-hint" id="wizardHint">
               Start by importing a Zerodha / Groww / Upstox holdings CSV. NSE/BSE prices load without Finnhub.
             </p>
+          </div>
+        </div>
+      </div>
+
+      <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
+        <div class="section">
+          <div class="section-title">Watchlist</div>
+          <div class="card">
+            <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
+            <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
+            <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
+            <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
+            <div class="btn-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
+            <div id="watchlistConfigured" class="field-hint"></div>
           </div>
         </div>
       </div>
@@ -1326,7 +1341,7 @@
           <div class="card-item">
             <div class="item-left">
               <div class="item-label" id="labelIncludeCrypto">Include crypto in the strip</div>
-              <div class="item-desc">CoinGecko first for supported canonical crypto, then Binance for mapped liquid assets. No Finnhub key is required for crypto quotes.</div>
+              <div class="item-desc">CoinGecko first for supported canonical crypto, then Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes.</div>
             </div>
             <label class="toggle-switch">
               <input type="checkbox" id="includeCrypto" aria-labelledby="labelIncludeCrypto" />
@@ -1347,9 +1362,9 @@
             <textarea
               id="cryptoHoldingsText"
               rows="3"
-              placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
+              placeholder="BTC, 0.5&#10;ETH, 2"
             ></textarea>
-            <div class="field-hint">One per line: coin ID or BINANCE:PAIR, quantity. The top-five option is a market watchlist; manual uses your quantities. Crypto becomes the third strip group, after holdings and watchlist.</div>
+            <div class="field-hint">Search/add: BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. One per line with quantity; unsupported coins stay visible with a correction. Top 5: BTC, ETH, BNB, XRP, SOL. Crypto becomes the third strip group, after holdings and watchlist.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>

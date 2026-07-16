@@ -130,6 +130,36 @@ const DEFAULT_SETTINGS = {
 
 const TAPE_SCALES = new Set(["compact", "comfortable", "large"]);
 
+// The only crypto assets exposed by the settings controls. Keep this catalog
+// canonical so storage, quote fetching, and UI labels share one identity.
+const CRYPTO_CATALOG = Object.freeze([
+  { id: "bitcoin", symbol: "BTC", name: "Bitcoin" },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum" },
+  { id: "binancecoin", symbol: "BNB", name: "BNB" },
+  { id: "ripple", symbol: "XRP", name: "XRP" },
+  { id: "solana", symbol: "SOL", name: "Solana" }
+]);
+
+const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
+  [coin.id, coin], [coin.symbol.toLowerCase(), coin], [coin.name.toLowerCase(), coin]
+]));
+
+function resolveCryptoCatalogEntry(input) {
+  return CRYPTO_LOOKUP.get(String(input || "").trim().toLowerCase()) || null;
+}
+
+function normalizeWatchlistSymbol(input, assetType, exchange = "NSE") {
+  const raw = String(input || "").trim().toUpperCase();
+  if (!raw || assetType === "crypto" || !/^[A-Z0-9&.-]{1,24}$/.test(raw)) return null;
+  if (assetType === "india") {
+    const base = raw.replace(/\.(NS|BO)$/, "");
+    const suffix = exchange === "BSE" ? ".BO" : ".NS";
+    return { symbol: `${base}${suffix}`, displayName: base, exchange: exchange === "BSE" ? "BSE" : "NSE", currency: "INR", assetClass: "watchlist" };
+  }
+  if (!["us", "index", "etf"].includes(assetType)) return null;
+  return { symbol: raw, displayName: raw, exchange: assetType === "us" ? "US" : assetType.toUpperCase(), currency: "USD", assetClass: "watchlist" };
+}
+
 /** Return a supported named tape density, safely defaulting legacy settings. */
 function normalizeTapeScale(value) {
   return TAPE_SCALES.has(value) ? value : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
@@ -439,6 +469,9 @@ export {
   sanitizeDiagnosticEntry,
   appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
+  CRYPTO_CATALOG,
+  resolveCryptoCatalogEntry,
+  normalizeWatchlistSymbol,
   normalizeTapeScale,
   ACTIVATION_EVENT,
   isActivated,

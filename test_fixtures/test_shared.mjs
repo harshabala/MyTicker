@@ -16,6 +16,9 @@ import {
   formatSignedCurrency,
   inferDisplayCurrency,
   normalizeTapeScale,
+  CRYPTO_CATALOG,
+  normalizeWatchlistSymbol,
+  resolveCryptoCatalogEntry,
   normalizeTickerItem,
   formatQuotePrice,
   buildTickerItems,
@@ -107,6 +110,16 @@ assert(normalizeTapeScale("compact") === "compact", "accepts compact tape size")
 assert(normalizeTapeScale("large") === "large", "accepts large tape size");
 assert(normalizeTapeScale("unknown") === "comfortable", "falls back to comfortable tape size");
 assert(normalizeTapeScale() === "comfortable", "uses comfortable tape size when unset");
+
+// ── Test Suite: explicit watchlist and crypto catalog controls ──
+console.log("\n🔭 Watchlist and crypto controls");
+assert(normalizeWatchlistSymbol(" reliance ", "india", "NSE")?.symbol === "RELIANCE.NS", "normalizes NSE watchlist symbols with .NS");
+assert(normalizeWatchlistSymbol("reliance.bo", "india", "BSE")?.symbol === "RELIANCE.BO", "replaces an Indian suffix for the selected BSE exchange");
+assert(normalizeWatchlistSymbol("spy", "index")?.symbol === "SPY", "normalizes index and ETF symbols without an exchange suffix");
+assert(normalizeWatchlistSymbol("BTC", "crypto") === null, "keeps crypto out of the equity watchlist normalizer");
+assert(resolveCryptoCatalogEntry("Bitcoin")?.id === "bitcoin", "finds canonical crypto by full name");
+assert(resolveCryptoCatalogEntry("ETH")?.id === "ethereum", "finds canonical crypto by ticker");
+assert(resolveCryptoCatalogEntry("dogecoin") === null, "rejects unsupported crypto with no silent substitution");
 
 // ── Test Suite: formatSigned ──
 console.log("\n🔢 formatSigned");

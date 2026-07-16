@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
 import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
 import {
   getSetupStatus,
@@ -28,6 +28,12 @@ const cryptoModeEl = document.getElementById("cryptoMode");
 const cryptoHoldingsTextEl = document.getElementById("cryptoHoldingsText");
 const cryptoStatusEl = document.getElementById("cryptoStatus");
 const cryptoManualField = document.getElementById("cryptoManualField");
+const watchlistTypeEl = document.getElementById("watchlistType");
+const watchlistExchangeEl = document.getElementById("watchlistExchange");
+const watchlistInputEl = document.getElementById("watchlistInput");
+const watchlistErrorEl = document.getElementById("watchlistError");
+const watchlistStatusEl = document.getElementById("watchlistStatus");
+const watchlistConfiguredEl = document.getElementById("watchlistConfigured");
 
 const showStocksEl = document.getElementById("showStocks");
 const showCryptoEl = document.getElementById("showCrypto");
@@ -131,6 +137,7 @@ function init() {
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
   document.getElementById("saveAppearanceButton").addEventListener("click", handleSaveAppearance);
   document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
+  document.getElementById("addWatchlistButton")?.addEventListener("click", handleAddWatchlist);
   refreshPreviewButton.addEventListener("click", handleRefreshPreview);
   testConnectionButton.addEventListener("click", handleTestConnection);
   copyDiagnosticsButton?.addEventListener("click", copyDiagnostics);
@@ -166,6 +173,8 @@ function init() {
 
   // Crypto mode toggle
   cryptoModeEl.addEventListener("change", updateCryptoManualVisibility);
+  watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
+  watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
   // Drag-and-drop / file pick — pass File objects directly (avoid double-read races)
   dropZone.addEventListener("click", (e) => {
@@ -223,6 +232,52 @@ function init() {
   refreshSetupUI();
   renderImportStats();
   renderDiagnostics();
+  updateWatchlistHint();
+  renderConfiguredWatchlist();
+}
+
+function updateWatchlistHint() {
+  if (!watchlistTypeEl) return;
+  const crypto = watchlistTypeEl.value === "crypto";
+  document.getElementById("watchlistExchangeField")?.toggleAttribute("hidden", watchlistTypeEl.value !== "india");
+  watchlistInputEl.placeholder = crypto ? "BTC or Bitcoin" : watchlistTypeEl.value === "india" ? "RELIANCE" : "AAPL or SPY";
+  document.getElementById("watchlistHint").textContent = crypto
+    ? "Supported: BTC/Bitcoin, ETH/Ethereum, BNB, XRP, SOL/Solana."
+    : watchlistTypeEl.value === "india" ? "India symbols are normalized to the selected NSE/BSE suffix."
+    : "Use the canonical symbol. Live US prices require Finnhub.";
+}
+
+async function handleAddWatchlist() {
+  const type = watchlistTypeEl.value;
+  const raw = watchlistInputEl.value;
+  const crypto = type === "crypto" ? resolveCryptoCatalogEntry(raw) : null;
+  const item = crypto
+    ? { symbol: crypto.id, canonicalKey: `crypto:${crypto.id}`, displayName: `${crypto.symbol} / ${crypto.name}`, currency: "USD", assetClass: "crypto" }
+    : normalizeWatchlistSymbol(raw, type, watchlistExchangeEl.value);
+  if (!item) {
+    watchlistErrorEl.textContent = type === "crypto"
+      ? "Unsupported crypto. Search BTC/Bitcoin, ETH/Ethereum, BNB, XRP, or SOL/Solana."
+      : type === "india" ? "Enter an Indian symbol such as RELIANCE, then select NSE or BSE." : "Enter a canonical US, index, or ETF symbol (for example AAPL or SPY).";
+    return;
+  }
+  item.canonicalKey ||= `equity:${item.symbol}`;
+  const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
+  const current = Array.isArray(data[STORAGE_KEYS.watchlist]) ? data[STORAGE_KEYS.watchlist] : [];
+  if (!current.some((entry) => (entry.canonicalKey || `equity:${entry.symbol}`) === item.canonicalKey)) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: [...current, item] });
+    requestImmediatePoll();
+  }
+  watchlistInputEl.value = "";
+  watchlistErrorEl.textContent = "";
+  watchlistStatusEl.textContent = `${item.displayName} added`;
+  renderConfiguredWatchlist();
+}
+
+async function renderConfiguredWatchlist() {
+  if (!watchlistConfiguredEl) return;
+  const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
+  const items = data[STORAGE_KEYS.watchlist] || [];
+  watchlistConfiguredEl.textContent = items.length ? `Watching: ${items.map((item) => item.displayName || item.symbol).join(" · ")}` : "No watchlist symbols configured yet.";
 }
 
 function setPlatformShortcut(el) {
@@ -884,6 +939,12 @@ function handleSaveCrypto() {
   const includeCrypto = includeCryptoEl.checked;
   const mode = cryptoModeEl.value || "top5";
   const text = cryptoHoldingsTextEl.value || "";
+  const unsupported = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).find((line) => !resolveCryptoCatalogEntry(line.split(",")[0]?.trim()));
+  if (mode === "manual" && unsupported) {
+    cryptoStatusEl.textContent = `Unsupported crypto “${unsupported.split(",")[0]}”. Use BTC, ETH, BNB, XRP, or SOL.`;
+    cryptoStatusEl.className = "status-badge error";
+    return;
+  }
   const manualHoldings = parseCryptoHoldings(text);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -936,24 +997,16 @@ function parseCryptoHoldings(text) {
     if (!symbolRaw) continue;
     const qty = Number((qtyRaw || "0").trim());
     if (!qty || Number.isNaN(qty)) continue;
-    const sym = normalizeCryptoSymbol(symbolRaw.trim());
-    if (!sym) continue;
+    const coin = resolveCryptoCatalogEntry(symbolRaw.trim());
+    if (!coin) continue;
     result.push({
-      symbol: sym,
+      symbol: coin.id,
       quantity: qty
     });
   }
   return result;
 }
 
-/** Finnhub crypto quotes use BINANCE:PAIR format (e.g. BINANCE:BTCUSDT). */
-function normalizeCryptoSymbol(raw) {
-  const s = String(raw).trim().toUpperCase();
-  if (!s || s.length > 40) return "";
-  const normalized = s.includes(":") ? s : `BINANCE:${s}`;
-  // Allow only alphanumeric and colon — reject anything unexpected.
-  return /^[A-Z0-9:]{1,40}$/.test(normalized) ? normalized : "";
-}
 
 function handleRefreshPreview() {
   if (holdingsPreviewEl) {

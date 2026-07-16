@@ -744,14 +744,14 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
       row.className = "watchlist-item";
       const sym = document.createElement("span");
       sym.className = "watch-symbol";
-      sym.textContent = item.displayName;
+      sym.textContent = item.displayName || item.symbol;
       const priceEl = document.createElement("span");
       priceEl.className = "watch-price";
       const changeEl = document.createElement("span");
       changeEl.className = "watch-change";
       const pd = priceMap[item.symbol];
       if (pd?.lastPrice != null) {
-        const isInr = item.symbol.endsWith(".NS") || item.symbol.endsWith(".BO");
+        const isInr = (pd.currency || item.currency) === "INR";
         priceEl.textContent = isInr
           ? `₹${pd.lastPrice.toFixed(2)}`
           : `$${pd.lastPrice.toFixed(2)}`;
@@ -771,7 +771,7 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
       removeBtn.addEventListener("click", async () => {
         const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
         const updated = (data[STORAGE_KEYS.watchlist] || []).filter(
-          (w) => w.symbol !== item.symbol
+          (w) => (w.canonicalKey || `equity:${w.symbol}`) !== (item.canonicalKey || `equity:${item.symbol}`)
         );
         await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: updated });
       });

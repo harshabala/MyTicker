@@ -246,18 +246,21 @@ async function handlePricePoll() {
       baseUrl: "https://finnhub.io/api/v1"
     };
 
-    const equitySymbols = [...new Set([...holdings, ...watchlist].map((h) => h.symbol))];
+    const equityWatchlist = watchlist.filter((item) => item.assetClass !== "crypto");
+    const cryptoWatchlist = watchlist.filter((item) => item.assetClass === "crypto");
+    const equitySymbols = [...new Set([...holdings, ...equityWatchlist].map((h) => h.symbol))];
+    const cryptoSymbols = [...new Set([...crypto, ...cryptoWatchlist].map((item) => item.symbol))];
     await recordDiagnostic({
       ...diagnosticCounts,
       timestamp: Date.now(),
       event: "eligible-symbols",
       equitySymbols: equitySymbols.length,
-      totalSymbols: equitySymbols.length + crypto.length
+      totalSymbols: equitySymbols.length + cryptoSymbols.length
     });
 
     const [equityQuotes, cryptoQuotes] = await Promise.all([
       getAllQuotes(equitySymbols, apiConfig),
-      getCryptoQuotes(crypto.map((item) => item.symbol))
+      getCryptoQuotes(cryptoSymbols)
     ]);
     const quotes = [...equityQuotes, ...cryptoQuotes];
     const now = Date.now();
@@ -369,8 +372,9 @@ function normalizeWatchlist(items) {
       symbol,
       displayName: item.displayName || symbol,
       quantity: 0,
-      assetClass: "watchlist",
-      currency: item.currency || "USD"
+      assetClass: item.assetClass === "crypto" ? "crypto" : "watchlist",
+      currency: item.currency || (symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD"),
+      canonicalKey: item.canonicalKey || `equity:${symbol}`
     }];
   });
 }

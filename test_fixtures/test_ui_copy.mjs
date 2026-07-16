@@ -44,6 +44,10 @@ assert(visibleText.includes("CoinGecko:") && visibleText.includes("Binance:") &&
 assert(visibleText.includes("Recent refresh lifecycle"), "diagnostics copy includes the bounded change-log lifecycle");
 assert(visibleText.includes("CoinGecko first for supported canonical crypto"), "explains CoinGecko as the primary crypto source");
 assert(visibleText.includes("Binance for mapped liquid assets"), "explains the Binance fallback");
+assert(visibleText.includes("CoinGecko is primary; Binance is a fallback for mapped liquid pairs."), "uses truthful crypto provider copy");
+assert(!/Coinbase (?:is |as )?(?:primary|fallback|provider)/i.test(visibleText) && !/DefiLlama (?:is |as )?(?:primary|fallback|provider)/i.test(visibleText), "does not claim unsupported crypto providers");
+assert(visibleText.includes("Live US prices require Finnhub"), "makes the US live-price provider requirement explicit");
+assert(visibleText.includes("BTC / Bitcoin") && visibleText.includes("SOL / Solana"), "lists the supported canonical crypto catalog");
 assert(visibleText.includes("No Finnhub key is required for crypto quotes"), "states crypto quotes do not require a Finnhub key");
 assert(visibleText.includes("Finnhub key is still required for US equities"), "keeps the US-equity Finnhub requirement distinct");
 assert(visibleText.includes("third strip group, after holdings and watchlist"), "explains crypto strip placement");
