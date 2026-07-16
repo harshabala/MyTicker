@@ -112,7 +112,7 @@
     --brand-gold-ink: #ffffff;
     --brand-gold-muted: rgba(165, 111, 0, 0.14);
 
-    --green: #248a3d;
+    --green: #237f3a;
     --red: #d70015;
     --yellow: #b25000;
 
@@ -175,7 +175,7 @@ html[data-theme="light"] {
   --brand-gold-hover: #875b00;
   --brand-gold-ink: #ffffff;
   --brand-gold-muted: rgba(165, 111, 0, 0.14);
-  --green: #078a62;
+  --green: #087b58;
   --red: #cf4d55;
   --yellow: #9b6d11;
   --toggle-track: #cbd2dc;
