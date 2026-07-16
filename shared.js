@@ -145,7 +145,21 @@ const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
 ]));
 
 function resolveCryptoCatalogEntry(input) {
-  return CRYPTO_LOOKUP.get(String(input || "").trim().toLowerCase()) || null;
+  const raw = String(input || "").trim().toLowerCase();
+  return CRYPTO_LOOKUP.get(raw) || CRYPTO_LOOKUP.get(raw.replace(/^binance:/, "").replace(/usdt$/, "")) || null;
+}
+
+/** Convert legacy aliases to one canonical ID, retaining the first positive quantity. */
+function normalizeManualCryptoHoldings(holdings) {
+  const selected = new Map();
+  for (const holding of Array.isArray(holdings) ? holdings : []) {
+    const coin = resolveCryptoCatalogEntry(holding?.symbol);
+    const quantity = Number(holding?.quantity);
+    if (coin && Number.isFinite(quantity) && quantity > 0 && !selected.has(coin.id)) {
+      selected.set(coin.id, { symbol: coin.id, quantity });
+    }
+  }
+  return [...selected.values()];
 }
 
 /** Migrate legacy includeCrypto settings into one unambiguous mode field. */
@@ -154,7 +168,7 @@ function normalizeCryptoConfig(config = {}) {
   const mode = config.includeCrypto === false ? "off"
     : ["off", "top5", "manual"].includes(requested) ? requested
     : config.includeCrypto ? "top5" : "off";
-  return { ...config, mode, includeCrypto: mode !== "off", manualHoldings: Array.isArray(config.manualHoldings) ? config.manualHoldings : [] };
+  return { ...config, mode, includeCrypto: mode !== "off", manualHoldings: normalizeManualCryptoHoldings(config.manualHoldings) };
 }
 
 function normalizeWatchlistSymbol(input, assetType, exchange = "NSE") {
@@ -481,6 +495,7 @@ export {
   CRYPTO_CATALOG,
   resolveCryptoCatalogEntry,
   normalizeCryptoConfig,
+  normalizeManualCryptoHoldings,
   normalizeWatchlistSymbol,
   normalizeTapeScale,
   ACTIVATION_EVENT,

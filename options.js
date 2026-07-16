@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
 import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
 import {
   getSetupStatus,
@@ -592,6 +592,8 @@ function setPill(el, ok, label) {
 function updateCryptoManualVisibility() {
   if (cryptoManualField) {
     const open = cryptoModeEl.value === "manual";
+    cryptoManualField.hidden = !open;
+    cryptoManualField.inert = !open;
     cryptoManualField.classList.toggle("is-open", open);
     cryptoManualField.setAttribute("aria-hidden", open ? "false" : "true");
   }
@@ -953,7 +955,7 @@ function handleSaveAppearance() {
 
 function handleSaveCrypto() {
   const mode = cryptoModeEl.value || "off";
-  const manualHoldings = selectedCrypto;
+  const manualHoldings = normalizeManualCryptoHoldings(selectedCrypto);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };

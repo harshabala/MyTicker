@@ -57,6 +57,8 @@ assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.i
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
+assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
+assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");
 assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider header describes the implemented crypto providers");
 for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {
   assert(source.includes("CoinGecko") && source.includes("Binance") && !/US\/crypto|for US stocks and crypto|Finnhub\/Binance/i.test(source), `${name} describes CoinGecko/Binance crypto sourcing without Finnhub crypto`);
