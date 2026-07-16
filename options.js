@@ -23,9 +23,11 @@ const tickerSpeedEl = document.getElementById("tickerSpeed");
 const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
 const themeEls = document.querySelectorAll('input[name="theme"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
+const saveAppearanceButton = document.getElementById("saveAppearanceButton");
 
 const cryptoModeEl = document.getElementById("cryptoMode");
 const cryptoStatusEl = document.getElementById("cryptoStatus");
+const saveCryptoButton = document.getElementById("saveCryptoButton");
 const cryptoManualField = document.getElementById("cryptoManualField");
 const cryptoSearchEl = document.getElementById("cryptoSearch");
 const cryptoSearchResultsEl = document.getElementById("cryptoSearchResults");
@@ -138,8 +140,8 @@ function init() {
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
-  document.getElementById("saveAppearanceButton").addEventListener("click", handleSaveAppearance);
-  document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
+  saveAppearanceButton.addEventListener("click", handleSaveAppearance);
+  saveCryptoButton.addEventListener("click", handleSaveCrypto);
   document.getElementById("addWatchlistButton")?.addEventListener("click", handleAddWatchlist);
   refreshPreviewButton.addEventListener("click", handleRefreshPreview);
   testConnectionButton.addEventListener("click", handleTestConnection);
@@ -175,8 +177,15 @@ function init() {
   });
 
   // Crypto mode toggle
-  cryptoModeEl.addEventListener("change", updateCryptoManualVisibility);
+  cryptoModeEl.addEventListener("change", () => {
+    updateCryptoManualVisibility();
+    markSettingsSaveDirty("crypto");
+  });
   cryptoSearchEl?.addEventListener("input", renderCryptoSelector);
+  [showStocksEl, showCryptoEl].forEach((input) => input?.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  tickerSpeedEl?.addEventListener("input", () => markSettingsSaveDirty("appearance"));
   watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
@@ -637,7 +646,14 @@ function renderCryptoSelector() {
   resultList.className = "crypto-result-list";
   resultList.append(...matches.map((coin) => {
     const button = document.createElement("button"); button.type = "button"; button.className = "crypto-result-action"; button.textContent = `Add ${coin.symbol} / ${coin.name}`;
-    button.addEventListener("click", () => { if (!selectedCrypto.some((item) => item.symbol === coin.id)) selectedCrypto.push({ symbol: coin.id, quantity: 1 }); cryptoSearchEl.value = ""; renderCryptoSelector(); });
+    button.addEventListener("click", () => {
+      if (!selectedCrypto.some((item) => item.symbol === coin.id)) {
+        selectedCrypto.push({ symbol: coin.id, quantity: 1 });
+        markSettingsSaveDirty("crypto");
+      }
+      cryptoSearchEl.value = "";
+      renderCryptoSelector();
+    });
     return button;
   }));
   cryptoSearchResultsEl.replaceChildren(resultList);
@@ -651,7 +667,11 @@ function renderCryptoSelector() {
     remove.className = "crypto-chip-remove";
     remove.setAttribute("aria-label", `Remove ${coin?.symbol || item.symbol}`);
     remove.textContent = "×";
-    remove.addEventListener("click", () => { selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol); renderCryptoSelector(); });
+    remove.addEventListener("click", () => {
+      selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol);
+      markSettingsSaveDirty("crypto");
+      renderCryptoSelector();
+    });
     chip.appendChild(remove);
     return chip;
   }));
@@ -968,6 +988,33 @@ async function handleTestIndia() {
   }
 }
 
+function saveFeedbackElements(scope) {
+  return scope === "crypto"
+    ? { button: saveCryptoButton, status: cryptoStatusEl, label: "Crypto settings" }
+    : { button: saveAppearanceButton, status: appearanceStatusEl, label: "Appearance" };
+}
+
+function setSettingsSaveFeedback(scope, saved, message = "") {
+  const { button, status, label } = saveFeedbackElements(scope);
+  if (button) {
+    button.textContent = saved ? "Saved ✓" : "Save";
+    button.classList.toggle("is-saved", saved);
+    button.setAttribute("aria-label", saved ? `${label} saved` : `Save ${label}`);
+  }
+  if (status) {
+    status.textContent = message;
+    status.className = `status-badge${message ? (saved ? " success" : " error") : ""}`;
+  }
+}
+
+function markSettingsSaveDirty(scope) {
+  setSettingsSaveFeedback(scope, false);
+}
+
+function storageSaveSucceeded() {
+  return !chrome.runtime.lastError;
+}
+
 function handleSaveAppearance() {
   const tickerSpeed = Math.min(300, Math.max(
     5,
@@ -993,7 +1040,13 @@ function handleSaveAppearance() {
     };
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+      if (!storageSaveSucceeded()) {
+        setSettingsSaveFeedback("appearance", false, "Could not save");
+        showToast("Appearance could not be saved. Try again.", "error");
+        return;
+      }
       applyDocumentTheme(theme);
+      setSettingsSaveFeedback("appearance", true);
       showToast("Appearance saved", "success");
     });
   });
@@ -1012,6 +1065,12 @@ function handleSaveCrypto() {
     };
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+      if (!storageSaveSucceeded()) {
+        setSettingsSaveFeedback("crypto", false, "Could not save");
+        showToast("Crypto settings could not be saved. Try again.", "error");
+        return;
+      }
+      setSettingsSaveFeedback("crypto", true);
       showToast("Crypto settings saved", "success");
       requestImmediatePoll();
       refreshSetupUI();

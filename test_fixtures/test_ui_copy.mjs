@@ -209,6 +209,10 @@ assert(/\.configured-list\.field-hint\s*\{[^}]*margin-top:\s*16px/.test(optionsH
 assert(/\.btn-row\.form-action-row\s*\{[^}]*padding:\s*0/.test(optionsHtml), "Watchlist action-row padding explicitly overrides the base button row");
 const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || "";
 assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, symbol/hint, error, action, then configured-list order");
+assert(optionsJs.includes('button.textContent = saved ? "Saved ✓" : "Save"') && optionsJs.includes('function setSettingsSaveFeedback(scope, saved, message = "")'), "Crypto and Appearance Save controls provide persistent saved feedback");
+assert(optionsJs.includes('if (!storageSaveSucceeded())') && optionsJs.includes('setSettingsSaveFeedback("appearance", true)') && optionsJs.includes('setSettingsSaveFeedback("crypto", true)'), "only marks settings saved after each storage write succeeds");
+assert(optionsJs.includes('markSettingsSaveDirty("appearance")') && optionsJs.includes('markSettingsSaveDirty("crypto")'), "returns saved controls to Save when their relevant settings change");
+assert(optionsJs.includes('selectedCrypto.push({ symbol: coin.id, quantity: 1 });\n        markSettingsSaveDirty("crypto")') && optionsJs.includes('selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol);\n      markSettingsSaveDirty("crypto")'), "manual crypto additions and removals reset the saved acknowledgement");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);
