@@ -150,7 +150,13 @@ assert(/<section class="crypto-selector" aria-label="Manual crypto selection">[\
 assert(["crypto-result-list", "crypto-result-action", "crypto-selected-chip", "crypto-chip-remove"].every((className) => optionsHtml.includes(`.${className}`)), "styles add results as compact actions and selections as removable chips");
 const cryptoSelectedRegionRule = cssRuleBodyAt(optionsHtml, ".crypto-selected-region {");
 assert(/padding:\s*10px 12px;/.test(cryptoSelectedRegionRule) && /border:\s*1px solid var\(--border\);/.test(cryptoSelectedRegionRule) && /background:\s*var\(--bg-surface\);/.test(cryptoSelectedRegionRule), "gives selected crypto chips their own padded inset region");
-assert(/#cryptoManualField\.is-open\s*\{[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/.test(optionsHtml), "allows the open manual crypto selector to grow without clipping its results or guidance");
+const setupWelcomeRule = cssRuleBodyAt(optionsHtml, ".setup-welcome {");
+const warnBannerRule = cssRuleBodyAt(optionsHtml, ".warn-banner {");
+const cryptoManualFieldRule = cssRuleBodyAt(optionsHtml, "#cryptoManualField {");
+assert(!/transition\s*:/.test(setupWelcomeRule) && !/max-height|padding:\s*0/.test(setupWelcomeRule), "shows setup guidance instantly instead of animating layout properties");
+assert(!/transition\s*:/.test(warnBannerRule) && !/max-height|padding:\s*0/.test(warnBannerRule), "shows rate-limit guidance instantly instead of animating layout properties");
+assert(!/transition\s*:/.test(cryptoManualFieldRule) && !/max-height|padding-(?:top|bottom)\s*:/.test(cryptoManualFieldRule), "shows the manual crypto selector instantly without clipping or layout animation");
+assert(optionsJs.includes("setupWelcomeEl.hidden = !showWelcome") && optionsJs.includes("rateLimitWarnEl.hidden = !status.rateLimitRisk"), "uses native hidden state for instantaneous setup disclosures");
 const cryptoResultActionRule = cssRuleBodyAt(optionsHtml, ".crypto-result-action {");
 const cryptoChipRemoveRule = cssRuleBodyAt(optionsHtml, ".crypto-chip-remove {");
 assert(/min-height:\s*32px;/.test(cryptoResultActionRule) && /width:\s*32px;/.test(cryptoChipRemoveRule) && /height:\s*32px;/.test(cryptoChipRemoveRule), "keeps crypto add and remove controls at a 32px minimum target");
@@ -183,6 +189,8 @@ assert(/\btransition\s*:\s*none\s*;/.test(reducedMotionTickerExit), "reduced-mot
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
 assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");
+const reducedMotionOptions = mediaRuleBody(optionsHtml, "prefers-reduced-motion: reduce", ".toggle-slider::before");
+assert(/transition\s*:\s*none\s*!important\s*;/.test(reducedMotionOptions), "reduced-motion preferences make toggle-thumb position changes immediate");
 assert(optionsJs.includes('resultList.className = "crypto-result-list"') && optionsJs.includes('button.className = "crypto-result-action"') && optionsJs.includes('chip.className = "crypto-selected-chip"') && optionsJs.includes('remove.className = "crypto-chip-remove"'), "renders the manual crypto controls with their contained selector semantics");
 assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider header describes the implemented crypto providers");
 for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {

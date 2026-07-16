@@ -513,7 +513,7 @@ async function refreshSetupUI() {
 
   if (setupWelcomeEl) {
     const showWelcome = status.firstInstall || !status.complete;
-    setupWelcomeEl.hidden = false;
+    setupWelcomeEl.hidden = !showWelcome;
     setupWelcomeEl.classList.toggle("is-visible", showWelcome);
   }
 
@@ -532,6 +532,7 @@ async function refreshSetupUI() {
   }
 
   if (rateLimitWarnEl) {
+    rateLimitWarnEl.hidden = !status.rateLimitRisk;
     rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
   }
 
