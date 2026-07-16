@@ -2,6 +2,7 @@
 
 const STORAGE_KEYS = {
   settings: "pts_settings",
+  settingsSchema: "pts_settings_schema_version",
   holdings: "pts_holdings",
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",

@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, migrateSettings, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
 import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
 import {
   getSetupStatus,
@@ -861,7 +861,7 @@ function handleSaveProvider() {
       refreshMinutes
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       chrome.storage.local.set({ pts_price_api_key: apiKey }, () => {
         chrome.alarms.clear("price-poll", () => {
           chrome.alarms.create("price-poll", {
@@ -1039,7 +1039,7 @@ function handleSaveAppearance() {
       showCrypto: showCryptoEl.checked
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
         setSettingsSaveFeedback("appearance", false, "Could not save");
         showToast("Appearance could not be saved. Try again.", "error");
@@ -1064,7 +1064,7 @@ function handleSaveCrypto() {
       manualHoldings
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
         setSettingsSaveFeedback("crypto", false, "Could not save");
         showToast("Crypto settings could not be saved. Try again.", "error");

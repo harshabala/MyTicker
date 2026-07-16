@@ -55,6 +55,7 @@ function assertApprox(actual, expected, epsilon, message) {
 // ── Test Suite: STORAGE_KEYS ──
 console.log("\n🔑 STORAGE_KEYS");
 assert(STORAGE_KEYS.settings === "pts_settings", "settings key correct");
+assert(STORAGE_KEYS.settingsSchema === "pts_settings_schema_version", "settings schema marker key correct");
 assert(STORAGE_KEYS.holdings === "pts_holdings", "holdings key correct");
 assert(STORAGE_KEYS.priceHistory === "pts_price_history", "priceHistory key correct");
 assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState key correct");
