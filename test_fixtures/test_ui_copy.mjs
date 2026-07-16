@@ -13,12 +13,13 @@ function assert(condition, message) {
   }
 }
 
-const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, manifestSource, priceProvidersSource, backgroundSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
+const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
   readFile(new URL("../popup.html", import.meta.url), "utf8"),
   readFile(new URL("../popup.js", import.meta.url), "utf8"),
   readFile(new URL("../options.html", import.meta.url), "utf8"),
   readFile(new URL("../options.js", import.meta.url), "utf8"),
   readFile(new URL("../brand.css", import.meta.url), "utf8"),
+  readFile(new URL("../ticker.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.json", import.meta.url), "utf8"),
   readFile(new URL("../priceProviders.js", import.meta.url), "utf8"),
   readFile(new URL("../background.js", import.meta.url), "utf8"),
@@ -26,6 +27,29 @@ const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, manifestSource, pri
   readFile(new URL("../PRIVACY.md", import.meta.url), "utf8"),
   readFile(new URL("../STORE_LISTING.md", import.meta.url), "utf8")
 ]);
+
+function mediaRuleBody(css, mediaQuery, selector) {
+  const mediaStart = css.indexOf(`@media (${mediaQuery})`);
+  if (mediaStart < 0) return "";
+
+  const blockStart = css.indexOf("{", mediaStart);
+  let depth = 0;
+  let blockEnd = -1;
+  for (let index = blockStart; index < css.length; index++) {
+    if (css[index] === "{") depth++;
+    if (css[index] === "}" && --depth === 0) {
+      blockEnd = index;
+      break;
+    }
+  }
+
+  const mediaBody = css.slice(blockStart + 1, blockEnd);
+  const ruleStart = mediaBody.indexOf(selector);
+  if (ruleStart < 0) return "";
+  const ruleBlockStart = mediaBody.indexOf("{", ruleStart);
+  const ruleBlockEnd = mediaBody.indexOf("}", ruleBlockStart);
+  return mediaBody.slice(ruleBlockStart + 1, ruleBlockEnd);
+}
 const manifest = JSON.parse(manifestSource);
 const visibleCopy = `${popupHtml}\n${popupJs}\n${optionsHtml}\n${optionsJs}`;
 const visibleText = visibleCopy.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ");
@@ -63,7 +87,8 @@ assert(popupHtml.includes('id="panelHoldings" role="tabpanel" aria-labelledby="t
 assert(popupJs.includes('event.key === "ArrowRight"') && popupJs.includes('event.key === "ArrowLeft"') && popupJs.includes('event.key === "Home"') && popupJs.includes('event.key === "End"'), "popup tabs support roving Arrow, Home, and End keyboard navigation");
 assert(popupJs.includes('setAttribute("tabindex", selected ? "0" : "-1")'), "popup tab selection maintains a roving tabindex");
 assert(optionsHtml.includes('@media (prefers-reduced-transparency: reduce)') && optionsHtml.includes('backdrop-filter: none') && optionsHtml.includes('background: var(--bg-surface);'), "reduced transparency replaces the settings-nav blur with a solid semantic surface");
-assert(/\.pts-ticker-bar\.pts-ticker-exiting\s*\{[\s\S]*?transition:\s*none;/.test(await readFile(new URL("../ticker.css", import.meta.url), "utf8")), "reduced-motion ticker exit removes its transition entirely");
+const reducedMotionTickerExit = mediaRuleBody(tickerCss, "prefers-reduced-motion: reduce", ".pts-ticker-bar.pts-ticker-exiting");
+assert(/\btransition\s*:\s*none\s*;/.test(reducedMotionTickerExit), "reduced-motion ticker exit removes its transition entirely");
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
 assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");
