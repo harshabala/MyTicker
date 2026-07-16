@@ -18,18 +18,18 @@
   --bg-preview-head: #141416;
 
   --border: rgba(148, 163, 184, 0.22);
-  --border-focus: rgba(16, 185, 129, 0.7);
+  --border-focus: rgba(159, 176, 195, 0.82);
 
   --text-primary: #f5f5f7;
   --text-secondary: #98989d;
   --text-tertiary: #636366;
 
-  /* Emerald accent — CTA + focus only */
-  --accent: #10b981;
-  --accent-hover: #34d399;
-  --accent-pressed: #059669;
-  --accent-muted: rgba(16, 185, 129, 0.16);
-  --accent-ink: #052e26; /* text on emerald buttons */
+  /* Cool slate handles interaction; emerald is reserved for market state. */
+  --accent: #9fb0c3;
+  --accent-hover: #c1cedd;
+  --accent-pressed: #7e91a7;
+  --accent-muted: rgba(159, 176, 195, 0.16);
+  --accent-ink: #172033;
 
   --green: #34d399;
   --red: #ff453a;
@@ -45,7 +45,7 @@
   --material-fill: #1f2937;
   --material-elevated-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
   --material-blur: none;
-  --focus-ring: 0 0 0 3px rgba(16, 185, 129, 0.25);
+  --focus-ring: 0 0 0 3px rgba(159, 176, 195, 0.3);
 
   --space-1: 4px;
   --space-2: 8px;
@@ -87,14 +87,14 @@ html[data-theme="light"] {
   --bg-tertiary: #d9dee5;
   --bg-inset: rgba(15, 23, 42, 0.045);
   --border: rgba(51, 65, 85, 0.16);
-  --border-focus: rgba(5, 150, 105, 0.7);
+  --border-focus: rgba(66, 86, 110, 0.75);
   --text-primary: #172033;
   --text-secondary: #5f6b7a;
   --text-tertiary: #7c8796;
-  --accent: #078a62;
-  --accent-hover: #067553;
-  --accent-pressed: #055f44;
-  --accent-muted: rgba(7, 138, 98, 0.12);
+  --accent: #42566e;
+  --accent-hover: #34485f;
+  --accent-pressed: #2a3d52;
+  --accent-muted: rgba(66, 86, 110, 0.12);
   --accent-ink: #ffffff;
   --green: #078a62;
   --red: #cf4d55;
@@ -116,15 +116,15 @@ html[data-theme="dark"] {
     --bg-tertiary: #4b5563;
     --bg-inset: rgba(255, 255, 255, 0.06);
     --border: rgba(148, 163, 184, 0.22);
-    --border-focus: rgba(16, 185, 129, 0.7);
+    --border-focus: rgba(159, 176, 195, 0.82);
     --text-primary: #f5f5f7;
     --text-secondary: #a7adb7;
     --text-tertiary: #7d8794;
-    --accent: #10b981;
-    --accent-hover: #34d399;
-    --accent-pressed: #059669;
-    --accent-muted: rgba(16, 185, 129, 0.16);
-    --accent-ink: #052e26;
+    --accent: #9fb0c3;
+    --accent-hover: #c1cedd;
+    --accent-pressed: #7e91a7;
+    --accent-muted: rgba(159, 176, 195, 0.16);
+    --accent-ink: #172033;
     --green: #34d399;
     --red: #ff6259;
     --yellow: #e7bd61;
@@ -145,16 +145,16 @@ html[data-theme="dark"] {
     --bg-preview-head: #f0f0f2;
 
     --border: rgba(0, 0, 0, 0.1);
-    --border-focus: rgba(5, 150, 105, 0.65);
+    --border-focus: rgba(66, 86, 110, 0.75);
 
     --text-primary: #1d1d1f;
     --text-secondary: #6e6e73;
     --text-tertiary: #86868b;
 
-    --accent: #059669;
-    --accent-hover: #047857;
-    --accent-pressed: #065f46;
-    --accent-muted: rgba(5, 150, 105, 0.12);
+    --accent: #42566e;
+    --accent-hover: #34485f;
+    --accent-pressed: #2a3d52;
+    --accent-muted: rgba(66, 86, 110, 0.12);
     --accent-ink: #ffffff;
 
     --green: #248a3d;
@@ -167,7 +167,7 @@ html[data-theme="dark"] {
 
     --material-fill: #ffffff;
     --material-elevated-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-    --focus-ring: 0 0 0 3px rgba(5, 150, 105, 0.22);
+    --focus-ring: 0 0 0 3px rgba(66, 86, 110, 0.24);
 
     --pts-bg: rgba(255, 255, 255, 0.92);
     --pts-fg: #1d1d1f;
@@ -212,9 +212,9 @@ html[data-theme="light"] {
   --text-primary: #172033;
   --text-secondary: #5f6b7a;
   --text-tertiary: #7c8796;
-  --accent: #078a62;
-  --accent-hover: #067553;
-  --accent-pressed: #055f44;
+  --accent: #42566e;
+  --accent-hover: #34485f;
+  --accent-pressed: #2a3d52;
   --accent-ink: #ffffff;
   --green: #078a62;
   --red: #cf4d55;
@@ -238,10 +238,10 @@ html[data-theme="dark"] {
   --text-primary: #f5f5f7;
   --text-secondary: #a7adb7;
   --text-tertiary: #7d8794;
-  --accent: #10b981;
-  --accent-hover: #34d399;
-  --accent-pressed: #059669;
-  --accent-ink: #052e26;
+  --accent: #9fb0c3;
+  --accent-hover: #c1cedd;
+  --accent-pressed: #7e91a7;
+  --accent-ink: #172033;
   --green: #34d399;
   --red: #ff6259;
   --yellow: #e7bd61;

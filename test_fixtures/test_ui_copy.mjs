@@ -73,7 +73,12 @@ assert(visibleText.includes("third strip group, after holdings and watchlist"), 
 assert(visibleText.includes("second strip group, after holdings"), "explains watchlist strip order");
 assert(!visibleText.includes("Finnhub quotes via BINANCE:SYMBOL"), "removes the obsolete Finnhub-only crypto claim");
 assert(!visibleText.includes("US equities and crypto need a free Finnhub key"), "removes the obsolete shared Finnhub requirement");
-assert(brandCss.includes("--accent: #10b981"), "uses emerald as the shared accent");
+assert(brandCss.includes("--accent: #9fb0c3") && brandCss.includes("--green: #34d399"), "reserves emerald for positive market state and uses a neutral interaction accent");
+assert(optionsHtml.includes("background: var(--accent);") && popupHtml.includes("background: var(--accent);"), "uses the neutral interaction accent for settings and popup tabs");
+assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color: var(--accent);"), "uses the neutral interaction accent for completed wizard steps");
+assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
+assert(optionsJs.includes('switchSettingsTab(tabId, { updateHash: false })') && optionsJs.includes('location.hash !== `#${tabId}`'), "handles location-driven tabs without a hash event loop");
+assert(optionsJs.includes('return ["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested;'), "maps legacy settings hashes to the consolidated Data tab");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");

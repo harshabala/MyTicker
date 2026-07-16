@@ -81,12 +81,9 @@ function init() {
   setPlatformShortcut(document.getElementById("tipsShortcut"));
   wireSettingsTabs();
   wireWizardSteps();
-  // Legacy setup/market/diagnostics URLs resolve to the consolidated data task.
-  const requestedHash = (location.hash || "").replace(/^#/, "").toLowerCase();
-  const hashTab = ["setup", "market", "diagnostics", "tips"].includes(requestedHash) ? "data" : requestedHash;
-  if (hashTab && document.querySelector(`.settings-tab[data-tab="${hashTab}"]`)) {
-    switchSettingsTab(hashTab);
-  }
+  applyLocationHash();
+  window.addEventListener("hashchange", () => applyLocationHash());
+  window.addEventListener("popstate", () => applyLocationHash());
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
@@ -325,7 +322,19 @@ function wireSettingsTabs() {
   });
 }
 
-function switchSettingsTab(tabId) {
+function resolveSettingsHash(hash = location.hash) {
+  const requested = String(hash || "").replace(/^#/, "").toLowerCase();
+  return ["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested;
+}
+
+function applyLocationHash() {
+  const tabId = resolveSettingsHash();
+  if (tabId && document.querySelector(`.settings-tab[data-tab="${tabId}"]`)) {
+    switchSettingsTab(tabId, { updateHash: false });
+  }
+}
+
+function switchSettingsTab(tabId, { updateHash = true } = {}) {
   if (!tabId) return;
   const tabs = document.querySelectorAll(".settings-tab[data-tab]");
   const panels = document.querySelectorAll(".tab-panel[id^='tab-']");
@@ -347,10 +356,12 @@ function switchSettingsTab(tabId) {
       panel.setAttribute("hidden", "");
     }
   });
-  try {
-    history.replaceState(null, "", `#${tabId}`);
-  } catch {
-    /* ignore */
+  if (updateHash && location.hash !== `#${tabId}`) {
+    try {
+      history.replaceState(null, "", `#${tabId}`);
+    } catch {
+      /* ignore */
+    }
   }
   // Refresh tab-specific live data when opened
   if (tabId === "portfolio") {
