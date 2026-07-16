@@ -15,6 +15,7 @@ import {
   formatCurrency,
   formatSignedCurrency,
   inferDisplayCurrency,
+  normalizeTickerItem,
   formatQuotePrice,
   buildTickerItems,
   withTickerItems,
@@ -121,6 +122,10 @@ console.log("\n📟 Live market tape helpers");
 assert(formatQuotePrice(123.4, "USD").includes("123.40"), "USD quotes at 100+ use two decimals");
 assert(formatQuotePrice(12.3456, "INR").includes("12.3456"), "INR quotes below 100 use four decimals");
 assert(formatQuotePrice(undefined, "USD") === "—", "missing USD quote is unavailable");
+assert(inferDisplayCurrency({ symbol: "RELIANCE.NS" }) === "INR", "NSE symbols infer INR");
+assert(inferDisplayCurrency({ symbol: "AAPL" }) === "USD", "US symbols infer USD");
+assert(inferDisplayCurrency({ assetClass: "crypto", symbol: "BTC" }) === "USD", "crypto infers USD");
+assert(inferDisplayCurrency({ symbol: "AAPL", currency: "INR" }) === "INR", "supplied holding currency wins");
 
 const holdingTickerItem = { symbol: "HOLD", dayPnl: 42.5 };
 const watchlistTickerItem = { symbol: "WATCH", dayPnl: 10 };
@@ -137,12 +142,14 @@ assert(
 assert(tickerItems[0].kind === "holding" && tickerItems[0].dayPnl === 42.5, "holding preserves day P&L");
 assert(tickerItems[1].kind === "watchlist" && tickerItems[1].dayPnl === null, "watchlist has no day P&L");
 assert(tickerItems[2].kind === "crypto" && tickerItems[2].dayPnl === null, "crypto has no day P&L");
+assert(normalizeTickerItem({ symbol: "RELIANCE.NS" }, "holding").currency === "INR", "normalized Indian ticker item retains INR");
 
 const holdingOnlyState = computePositionsState(
-  [{ symbol: "HOLD", displayName: "Holding", quantity: 2, assetClass: "stock" }],
+  [{ symbol: "HOLD", displayName: "Holding", quantity: 2, assetClass: "stock", currency: "INR" }],
   { HOLD: [{ t: 1, p: 110, prevClose: 100 }] },
   1
 );
+assert(holdingOnlyState.positions[0].currency === "INR", "position state retains supplied holding currency");
 const tapeState = withTickerItems({
   positionsState: holdingOnlyState,
   watchlist: [{ symbol: "WATCH", displayName: "Watch", quantity: 0, assetClass: "watchlist" }],
@@ -258,8 +265,9 @@ assert(noHistState.positions[0].window5mPnl === 0, "no-history position has 0 wi
 // ── Currency formatting ──
 assert(formatSignedCurrency(1000, "INR").includes("1"), "INR signed format includes digits");
 assert(formatSignedCurrency(-50, "USD").startsWith("-"), "USD negative has minus");
-assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "INR" }]) === "INR", "infer INR majority");
-assert(inferDisplayCurrency([{ currency: "USD" }]) === "USD", "infer USD");
+assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "INR" }]) === "INR", "infer homogeneous INR aggregate");
+assert(inferDisplayCurrency([{ currency: "USD" }]) === "USD", "infer homogeneous USD aggregate");
+assert(inferDisplayCurrency([{ currency: "INR" }, { currency: "USD" }]) === null, "mixed holdings have no aggregate currency");
 
 // ── Test Suite: isActivated (India-first — no Finnhub key required) ──
 console.log("\n🎯 isActivated / ACTIVATION_EVENT");

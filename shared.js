@@ -197,6 +197,7 @@ function computePositionsState(holdings, priceHistory, now) {
         dayPnl: 0,
         dayPnlPct: 0,
         assetClass: h.assetClass || "stock",
+        currency: inferDisplayCurrency(h),
         brokerId: h.brokerId
       };
     }
@@ -252,6 +253,7 @@ function computePositionsState(holdings, priceHistory, now) {
       dayPnl,
       dayPnlPct,
       assetClass: h.assetClass || "stock",
+      currency: inferDisplayCurrency(h),
       brokerId: h.brokerId
     };
   });
@@ -329,13 +331,37 @@ function formatQuotePrice(value, currency = "USD") {
 }
 
 /**
+ * Infer a quote currency without changing a source-supplied INR or USD value.
+ * Arrays are supported for aggregate displays: a mixed set has no aggregate
+ * currency because combining native-currency P&L values would be misleading.
+ */
+function inferDisplayCurrency(item = {}) {
+  if (Array.isArray(item)) {
+    const currencies = new Set(item.map((entry) => inferDisplayCurrency(entry)));
+    return currencies.size === 1 ? [...currencies][0] : null;
+  }
+  if (item.currency === "INR" || item.currency === "USD") return item.currency;
+  if (item.assetClass === "crypto") return "USD";
+  return /\.(NS|BO)$/i.test(item.symbol || "") ? "INR" : "USD";
+}
+
+/** Normalise sources for ticker rendering while keeping holdings P&L intact. */
+function normalizeTickerItem(item = {}, kind) {
+  return {
+    ...item,
+    ...(kind ? { kind } : {}),
+    currency: inferDisplayCurrency(item)
+  };
+}
+
+/**
  * Normalise sources for ticker rendering while keeping holdings P&L intact.
  */
 function buildTickerItems({ positions = [], watchlist = [], crypto = [] } = {}) {
   return [
-    ...positions.map((item) => ({ ...item, kind: "holding" })),
-    ...watchlist.map((item) => ({ ...item, kind: "watchlist", dayPnl: null })),
-    ...crypto.map((item) => ({ ...item, kind: "crypto", dayPnl: null }))
+    ...positions.map((item) => normalizeTickerItem(item, "holding")),
+    ...watchlist.map((item) => ({ ...normalizeTickerItem(item, "watchlist"), dayPnl: null })),
+    ...crypto.map((item) => ({ ...normalizeTickerItem(item, "crypto"), dayPnl: null }))
   ];
 }
 
@@ -368,7 +394,7 @@ function hydrateTickerQuoteItems(items = [], quotes = [], priceHistory = {}) {
         ? ((price - prevClose) / prevClose) * 100
         : null;
 
-    return {
+    return normalizeTickerItem({
       ...item,
       lastPrice: price,
       prevClose,
@@ -377,7 +403,7 @@ function hydrateTickerQuoteItems(items = [], quotes = [], priceHistory = {}) {
       source: quote?.source || item.source,
       updatedAt: quote?.updatedAt ?? snapshot?.t ?? item.updatedAt,
       stale: !quote && !!snapshot
-    };
+    }, item.kind);
   });
 }
 
@@ -390,13 +416,6 @@ function formatSignedCurrency(value, currency = "INR") {
   if (num > 0) return `+${abs}`;
   if (num < 0) return `-${abs}`;
   return abs;
-}
-
-/** Pick INR when most holdings are Indian brokers. */
-function inferDisplayCurrency(holdings) {
-  if (!holdings?.length) return "INR";
-  const inrCount = holdings.filter((h) => (h.currency || "INR") === "INR").length;
-  return inrCount >= holdings.length / 2 ? "INR" : "USD";
 }
 
 function getStartOfDayTimestamp(now) {
@@ -421,6 +440,7 @@ export {
   formatSigned,
   formatCurrency,
   formatQuotePrice,
+  normalizeTickerItem,
   buildTickerItems,
   withTickerItems,
   hydrateTickerQuoteItems,

@@ -83,8 +83,10 @@ const state = {
   displayCurrency: "USD",
   aggregate: { dayPnl: 0, dayPnlPct: 0 },
   tickerItems: [
+    { kind: "holding", symbol: "RELIANCE.NS", displayName: "Reliance", lastPrice: 1450, dayPnl: 25, dayPnlPct: 0.5, currency: "INR" },
     { kind: "holding", symbol: "MSFT", displayName: "Microsoft", lastPrice: 480, dayPnl: 25, dayPnlPct: -0.5, currency: "USD", stale: true },
-    { kind: "watchlist", symbol: "AAPL", displayName: "Apple", lastPrice: 210, changePct: 1.5, currency: "USD" }
+    { kind: "watchlist", symbol: "AAPL", displayName: "Apple", lastPrice: 210, changePct: 1.5, currency: "USD" },
+    { kind: "crypto", symbol: "bitcoin", displayName: "Bitcoin", lastPrice: 65000, changePct: 1.5, currency: "USD", assetClass: "crypto" }
   ]
 };
 const lifecycleMessages = [];
@@ -117,6 +119,8 @@ console.log("\n📟 delayed ticker mount");
 assert(Boolean(host), "mounts after the body becomes available");
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
+assert(rendered.includes("₹1,450.00"), "renders Indian holdings in rupees");
+assert(rendered.includes("$480.00") && rendered.includes("$65,000.00"), "renders US and crypto items in dollars");
 assert(rendered.includes("holdings") && rendered.includes("watchlist"), "marks ticker group boundaries");
 assert(rendered.includes("p&l") && !rendered.includes("p&l $0.00"), "shows personal P&L only for holdings");
 assert(rendered.includes("stale"), "shows an item-level stale indicator");

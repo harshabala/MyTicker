@@ -321,7 +321,7 @@ function updateAggregate(parts, state) {
   const aggregate = parts.aggregate;
   const aggPnl = Number(state?.aggregate?.dayPnl) || 0;
   const aggPct = Number(state?.aggregate?.dayPnlPct) || 0;
-  const currency = state?.displayCurrency || "INR";
+  const currency = state?.displayCurrency;
   const dirClass = aggPnl > 0 ? "pts-up" : aggPnl < 0 ? "pts-down" : "pts-flat";
   const newSign = aggPnl > 0 ? "up" : aggPnl < 0 ? "down" : "flat";
 
@@ -330,7 +330,9 @@ function updateAggregate(parts, state) {
 
   aggregate.dataset.ptsSign = newSign;
 
-  aggregate.textContent = `my ticker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`;
+  aggregate.textContent = currency
+    ? `my ticker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
+    : "my ticker · today mixed currencies";
 }
 
 function buildItemElement(pos) {

@@ -345,7 +345,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   }
   if (!state?.positions?.length) return;
 
-  const currency = state.displayCurrency || "INR";
+  const currency = state.displayCurrency;
   const agg = state.aggregate || {};
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
@@ -363,15 +363,15 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   const footerMeta = viewEl.querySelector(".footer-meta");
   const stripToggle = viewEl.querySelector("#enabledToggle");
 
-  if (pnlValue) {
+  if (pnlValue && currency) {
     pnlValue.className = `pnl-value ${pnlClass}`;
     pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
-  }
+  } else if (pnlValue) pnlValue.textContent = "Mixed currencies";
   if (pnlPct) {
     pnlPct.className = `pnl-pct ${pnlClass}`;
     pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
   }
-  if (fiveValue) {
+  if (fiveValue && currency) {
     fiveValue.innerHTML = "";
     const main = document.createElement("span");
     main.className = fiveClass;
@@ -380,7 +380,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
     sub.className = `sub ${fiveClass}`;
     sub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
     fiveValue.append(main, sub);
-  }
+  } else if (fiveValue) fiveValue.textContent = "Mixed currencies";
   if (holdingsCount) {
     holdingsCount.textContent = String(state.positions.length);
   }
@@ -527,7 +527,7 @@ function renderHoldingsPanel(container, state, status, settings) {
     return;
   }
 
-  const currency = state.displayCurrency || "INR";
+  const currency = state.displayCurrency;
   const agg = state.aggregate || {};
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
@@ -547,7 +547,7 @@ function renderHoldingsPanel(container, state, status, settings) {
   live.className = "sr-only";
   live.dataset.pnlLive = "1";
   live.setAttribute("aria-live", "polite");
-  live.textContent = `Today ${formatSignedCurrency(dayPnl, currency)}`;
+  live.textContent = currency ? `Today ${formatSignedCurrency(dayPnl, currency)}` : "Today, mixed currencies";
 
   const heroTop = document.createElement("div");
   heroTop.className = "hero-top";
@@ -564,7 +564,7 @@ function renderHoldingsPanel(container, state, status, settings) {
   pnlRow.className = "pnl-row";
   const pnlValue = document.createElement("span");
   pnlValue.className = `pnl-value ${pnlClass}`;
-  pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
+  pnlValue.textContent = currency ? formatSignedCurrency(dayPnl, currency) : "Mixed currencies";
   const pnlPct = document.createElement("span");
   pnlPct.className = `pnl-pct ${pnlClass}`;
   pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
@@ -580,7 +580,7 @@ function renderHoldingsPanel(container, state, status, settings) {
   fiveVal.dataset.fiveValue = "1";
   const fiveMain = document.createElement("span");
   fiveMain.className = fiveClass;
-  fiveMain.textContent = formatSignedCurrency(window5mPnl, currency);
+  fiveMain.textContent = currency ? formatSignedCurrency(window5mPnl, currency) : "Mixed currencies";
   const fiveSub = document.createElement("span");
   fiveSub.className = `sub ${fiveClass}`;
   fiveSub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
