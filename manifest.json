@@ -1,6 +1,6 @@
 {
   "manifest_version": 3,
-  "name": "MyTicker",
+  "name": "my ticker",
   "description": "MyTicker shows a live running strip of your stock holdings across brokers with 5-minute and daily P&L.",
   "version": "0.4.1",
   "icons": {
@@ -10,7 +10,7 @@
     "128": "icons/icon128.png"
   },
   "action": {
-    "default_title": "MyTicker",
+    "default_title": "my ticker",
     "default_popup": "popup.html",
     "default_icon": {
       "16": "icons/icon16.png",
