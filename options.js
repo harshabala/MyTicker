@@ -129,6 +129,8 @@ function init() {
   // Show existing holdings count on load
   chrome.storage.local.get([STORAGE_KEYS.holdings], (localData) => {
     const count = (localData[STORAGE_KEYS.holdings] || []).length;
+    const portfolioSummaryCount = document.getElementById("portfolioSummaryCount");
+    if (portfolioSummaryCount) portfolioSummaryCount.textContent = String(count);
     if (count > 0) {
       csvStatusEl.textContent = `${count} holdings`;
     }

@@ -1283,6 +1283,46 @@
         letter-spacing: -0.015em;
       }
       .section-title::after { display: none; }
+      .section-intro {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 12px;
+        align-items: start;
+        margin: 0 0 18px;
+      }
+      .section-intro-mark {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--brand-gold);
+        font-size: 18px;
+      }
+      .section-intro h2 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-weight: 650;
+        letter-spacing: -0.015em;
+      }
+      .section-intro p {
+        margin: 3px 0 0;
+        color: var(--text-secondary);
+        font-size: .875rem;
+      }
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        min-height: 56px;
+        padding: 0 24px;
+        border-bottom: 1px solid var(--border);
+        font-size: .9375rem;
+        font-weight: 600;
+      }
+      .panel-heading span { color: var(--text-secondary); font-weight: 500; }
       .card {
         border-color: var(--border);
         background: var(--bg-surface);
@@ -1309,6 +1349,7 @@
         background: var(--bg-inset);
       }
       .form-action-row .btn-primary { min-width: 190px; justify-content: center; }
+      .watchlist-action { width: 100%; min-width: 0 !important; }
       .configured-list {
         margin: 0;
         padding: 18px 24px;
@@ -1336,6 +1377,39 @@
       }
       .btn-secondary { min-height: 40px; }
       .preview-container { border-color: var(--border); }
+      #tab-appearance > .section > .card,
+      #tab-crypto > .section > .card,
+      .data-section-panel > .section > .card {
+        overflow: hidden;
+      }
+      #tab-appearance .card-item,
+      #tab-appearance .field {
+        padding: 20px 24px;
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-appearance .btn-row { padding: 18px 24px; }
+      #tab-portfolio .section-title { margin-bottom: 12px; }
+      .portfolio-surface-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        margin-bottom: 22px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .portfolio-surface-summary > div {
+        min-width: 0;
+        padding: 16px 20px;
+        border-right: 1px solid var(--border);
+      }
+      .portfolio-surface-summary > div:last-child { border-right: 0; }
+      .portfolio-surface-summary span { display: block; color: var(--text-secondary); font-size: .75rem; }
+      .portfolio-surface-summary strong { display: block; margin-top: 2px; font-size: 1rem; }
+      @media (max-width: 680px) {
+        .portfolio-surface-summary { grid-template-columns: repeat(2, 1fr); }
+        .portfolio-surface-summary > div:nth-child(2) { border-right: 0; }
+        .portfolio-surface-summary > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+      }
       .page-footer {
         display: flex;
         justify-content: center;
@@ -1412,15 +1486,19 @@
 
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
         <div class="section">
-          <div class="section-title">Watchlist</div>
+          <div class="section-intro">
+            <div class="section-intro-mark" aria-hidden="true">+</div>
+            <div><h2>Add to watchlist</h2><p>Choose a market and exchange, then add symbols to track.</p></div>
+          </div>
           <div class="card settings-card">
+            <div class="panel-heading">Add a symbol <span>Market data stays local</span></div>
             <div class="form-stack">
               <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
               <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
               <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
               <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
             </div>
-            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
+            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable watchlist-action" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
             <div id="watchlistConfigured" class="configured-list field-hint"></div>
           </div>
         </div>
@@ -1438,8 +1516,14 @@
       </div>
       <!-- Tab: Portfolio -->
       <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
+      <div class="portfolio-surface-summary" aria-label="Portfolio status">
+        <div><span>Holdings imported</span><strong id="portfolioSummaryCount">—</strong></div>
+        <div><span>Broker</span><strong>Zerodha</strong></div>
+        <div><span>Exchange</span><strong>NSE / BSE</strong></div>
+        <div><span>Storage</span><strong>Local only</strong></div>
+      </div>
       <div class="section" id="section-import">
-        <div class="section-title">Portfolio import</div>
+        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">↑</div><div><h2>Import holdings</h2><p>Zerodha holdings export is recommended.</p></div></div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
@@ -1619,7 +1703,7 @@
       <!-- Tab: Appearance -->
       <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="nav-appearance" hidden>
       <div class="section">
-        <div class="section-title">Appearance</div>
+        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">◌</div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the live tape behaves.</p></div></div>
         <div class="card">
           <div class="card-item">
             <div class="item-left">
@@ -1673,7 +1757,7 @@
       <!-- Diagnostics -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
         <div class="section">
-          <div class="section-title">Diagnostics</div>
+          <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">•</div><div><h2>Diagnostics</h2><p>Operational snapshot of providers, counts, and the latest refresh.</p></div></div>
           <div class="card" style="padding: 20px;">
             <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
             <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
