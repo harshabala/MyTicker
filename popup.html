@@ -225,6 +225,11 @@
         color: var(--brand-gold-hover);
         text-decoration: underline;
       }
+      .help-row a:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+        border-radius: 2px;
+      }
 
       /* ── Movers ── */
       .section-head {
@@ -246,10 +251,16 @@
         border: none;
         cursor: pointer;
         font-family: inherit;
-        padding: 0;
+        min-width: 32px;
+        min-height: 32px;
+        padding: 0 4px;
       }
       .section-head .link-quiet:hover {
         color: var(--brand-gold-hover);
+      }
+      .section-head .link-quiet:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
       }
 
       .movers-section {
@@ -326,6 +337,11 @@
         opacity: 0.6;
       }
       .watch-remove:hover { opacity: 1; color: var(--red); }
+      .watch-remove:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+        opacity: 1;
+      }
       .watchlist-empty {
         padding: 28px 12px;
         text-align: center;
@@ -358,6 +374,10 @@
       }
       button.checklist-item { cursor: pointer; border-radius: 8px; }
       button.checklist-item:hover { background: var(--bg-hover); }
+      button.checklist-item:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
       .checklist-item.done { opacity: 0.65; min-height: 0; padding: 6px 0; }
       .checklist-item.done .check-hint { display: none; }
       .check-icon {
@@ -373,8 +393,8 @@
         flex-shrink: 0;
       }
       .checklist-item.done .check-icon {
-        background: var(--accent-muted);
-        color: var(--accent);
+        background: color-mix(in srgb, var(--green) 18%, transparent);
+        color: var(--green);
       }
       .check-label { font-size: 13px; font-weight: 600; }
       .check-hint {
