@@ -129,6 +129,10 @@ assert(/transition:[\s\S]*?transform/.test(popupCogRule) && /transform:\s*scale\
 assert(/transform:\s*none/.test(popupReducedMotionCogRule), "popup Settings cog keeps press feedback without transform when reduced motion is requested");
 assert(/@media \(prefers-contrast: more\)/.test(brandCss) && /--bg-surface:\s*#(?:ffffff|18181a)/.test(brandCss) && /--border:\s*#(?:1d1d1f|f5f5f7)/.test(brandCss), "high-contrast mode uses near-solid MyTicker surfaces with clear borders");
 assert(/@media \(prefers-contrast: more\)[\s\S]*?var\(--brand-gold\)/.test(optionsHtml + popupHtml), "high-contrast extension controls preserve gold focus and selection cues");
+const settingsTabBaseStart = optionsHtml.indexOf(".settings-tab {", optionsHtml.indexOf("/* Settings tabs"));
+const settingsTabContrastStart = optionsHtml.indexOf("@media (prefers-contrast: more)");
+const settingsTabContrastRuleStart = optionsHtml.indexOf(".settings-tab {", settingsTabContrastStart);
+assert(settingsTabContrastStart > settingsTabBaseStart && settingsTabContrastRuleStart > settingsTabBaseStart && /border:\s*1px solid var\(--border\)/.test(cssRuleBodyAt(optionsHtml, ".settings-tab {", settingsTabContrastRuleStart)), "high-contrast Settings tab borders override the base border reset by source order");
 assert(popupHtml.includes('id="panelHoldings" role="tabpanel" aria-labelledby="tabHoldings"') && popupHtml.includes('id="panelWatchlist" role="tabpanel" aria-labelledby="tabWatchlist"'), "popup tabs control stable labelled tabpanels");
 assert(popupJs.includes('event.key === "ArrowRight"') && popupJs.includes('event.key === "ArrowLeft"') && popupJs.includes('event.key === "Home"') && popupJs.includes('event.key === "End"'), "popup tabs support roving Arrow, Home, and End keyboard navigation");
 assert(popupJs.includes('setAttribute("tabindex", selected ? "0" : "-1")'), "popup tab selection maintains a roving tabindex");

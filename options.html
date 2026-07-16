@@ -61,27 +61,6 @@
           background: var(--bg-surface);
         }
       }
-      @media (prefers-contrast: more) {
-        .settings-tabs {
-          background: var(--bg-surface);
-          border-bottom: 2px solid var(--border);
-        }
-        .settings-tab {
-          border: 1px solid var(--border);
-        }
-        .settings-tab[aria-selected="true"]::after {
-          background: var(--brand-gold);
-        }
-        .settings-tab:focus-visible::before {
-          border-color: var(--brand-gold);
-        }
-        .card,
-        .btn,
-        input,
-        select {
-          border-color: var(--border);
-        }
-      }
       .settings-tab {
         flex: 0 0 auto;
         min-width: 0;
@@ -133,6 +112,27 @@
         border: 1px solid var(--brand-gold);
         border-radius: 2px;
         pointer-events: none;
+      }
+      @media (prefers-contrast: more) {
+        .settings-tabs {
+          background: var(--bg-surface);
+          border-bottom: 2px solid var(--border);
+        }
+        .settings-tab {
+          border: 1px solid var(--border);
+        }
+        .settings-tab[aria-selected="true"]::after {
+          background: var(--brand-gold);
+        }
+        .settings-tab:focus-visible::before {
+          border-color: var(--brand-gold);
+        }
+        .card,
+        .btn,
+        input,
+        select {
+          border-color: var(--border);
+        }
       }
       .tab-panel {
         display: none;
