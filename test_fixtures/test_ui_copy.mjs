@@ -110,6 +110,10 @@ assert(["crypto-result-list", "crypto-result-action", "crypto-selected-chip", "c
 const cryptoSelectedRegionRule = cssRuleBodyAt(optionsHtml, ".crypto-selected-region {");
 assert(/padding:\s*10px 12px;/.test(cryptoSelectedRegionRule) && /border:\s*1px solid var\(--border\);/.test(cryptoSelectedRegionRule) && /background:\s*var\(--bg-surface\);/.test(cryptoSelectedRegionRule), "gives selected crypto chips their own padded inset region");
 assert(/#cryptoManualField\.is-open\s*\{[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/.test(optionsHtml), "allows the open manual crypto selector to grow without clipping its results or guidance");
+const cryptoResultActionRule = cssRuleBodyAt(optionsHtml, ".crypto-result-action {");
+const cryptoChipRemoveRule = cssRuleBodyAt(optionsHtml, ".crypto-chip-remove {");
+assert(/min-height:\s*32px;/.test(cryptoResultActionRule) && /width:\s*32px;/.test(cryptoChipRemoveRule) && /height:\s*32px;/.test(cryptoChipRemoveRule), "keeps crypto add and remove controls at a 32px minimum target");
+assert(optionsJs.includes('!selectedCrypto.some((item) => item.symbol === coin.id)') && optionsJs.includes('CRYPTO_CATALOG.filter((coin) => !selectedCrypto.some((item) => item.symbol === coin.id))'), "omits selected coins from manual crypto add results");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
 assert(!/id="addWatchBtn"/.test(popupHtml), "popup has no quick-add header action");
 assert(!/quickAddInput|quickAddExchange|quickAddBtn/.test(popupHtml), "popup has no quick-add sheet inputs");

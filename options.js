@@ -631,7 +631,8 @@ function updateCryptoManualVisibility() {
 function renderCryptoSelector() {
   if (!cryptoSearchResultsEl || !cryptoSelectedChipsEl) return;
   const query = (cryptoSearchEl?.value || "").trim().toLowerCase();
-  const matches = CRYPTO_CATALOG.filter((coin) => !query || [coin.id, coin.symbol, coin.name].some((value) => value.toLowerCase().includes(query)));
+  const matches = CRYPTO_CATALOG.filter((coin) => !selectedCrypto.some((item) => item.symbol === coin.id))
+    .filter((coin) => !query || [coin.id, coin.symbol, coin.name].some((value) => value.toLowerCase().includes(query)));
   const resultList = document.createElement("div");
   resultList.className = "crypto-result-list";
   resultList.append(...matches.map((coin) => {
