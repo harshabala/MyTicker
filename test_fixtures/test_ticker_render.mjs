@@ -31,6 +31,13 @@ class EventTarget {
   }
 }
 
+class StyleDeclaration {
+  constructor() { this.properties = new Map(); }
+  setProperty(name, value) { this.properties.set(name, String(value)); }
+  getPropertyValue(name) { return this.properties.get(name) || ""; }
+  removeProperty(name) { const value = this.getPropertyValue(name); this.properties.delete(name); return value; }
+}
+
 class Element extends EventTarget {
   constructor(tagName) {
     super();
@@ -39,7 +46,7 @@ class Element extends EventTarget {
     this.parentNode = null;
     this.attributes = new Map();
     this.dataset = {};
-    this.style = { setProperty() {} };
+    this.style = new StyleDeclaration();
     this.className = "";
     this.classList = {
       add: (...names) => { this.className = `${this.className} ${names.join(" ")}`.trim(); },
@@ -63,7 +70,7 @@ class Element extends EventTarget {
   hasAttribute(name) { return this.attributes.has(name); }
   removeAttribute(name) { this.attributes.delete(name); }
   attachShadow() { this.shadowRootForTest = new Element("shadow-root"); return this.shadowRootForTest; }
-  getBoundingClientRect() { return { top: 0 }; }
+  getBoundingClientRect() { return { top: 0, height: 0 }; }
   get offsetHeight() { return 0; }
   get offsetWidth() { return 0; }
   get textContent() { return this._textContent || this.children.map((child) => child.textContent).join(""); }
@@ -77,6 +84,7 @@ class TestDocument extends EventTarget {
     this.body = null;
   }
   createElement(tagName) { return new Element(tagName); }
+  querySelector(selector) { return selector === "main" ? this.chatgptShell : null; }
 }
 
 const state = {
@@ -90,11 +98,17 @@ const state = {
   ]
 };
 const requestedTapeSize = process.env.TAPE_SCALE === "compact" ? "compact" : "large";
-const expectedTapeOffset = requestedTapeSize === "compact" ? 31.28 : 40.8;
 const lifecycleMessages = [];
 let settingsChangeListener;
+let resizeObserver;
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
+globalThis.location = { hostname: "chatgpt.com", origin: "https://chatgpt.com" };
+globalThis.ResizeObserver = class {
+  constructor(callback) { this.callback = callback; this.disconnected = false; resizeObserver = this; }
+  observe(target) { this.target = target; }
+  disconnect() { this.disconnected = true; }
+};
 globalThis.requestAnimationFrame = (callback) => callback();
 globalThis.chrome = {
   runtime: {
@@ -121,6 +135,11 @@ assert(tickerCss.includes('.pts-ticker-bar[data-theme="light"]') && tickerCss.in
 await import(`../contentScript.js?test=${Date.now()}`);
 document.body = new Element("body");
 document.body.getBoundingClientRect = () => ({ top: 12 });
+document.body.style.marginTop = "12px";
+document.documentElement.style.setProperty("scroll-padding-top", "7px");
+document.documentElement.style.setProperty("--myticker-tape-reservation", "18px");
+document.chatgptShell = new Element("main");
+document.chatgptShell.id = "myticker-chatgpt-shell";
 document.documentElement.appendChild(document.body);
 document.dispatchEvent({ type: "DOMContentLoaded" });
 
@@ -131,8 +150,25 @@ assert(Boolean(host), "mounts after the body becomes available");
 assert(host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"))?.getAttribute("data-tape-size") === requestedTapeSize, `applies the selected ${requestedTapeSize} tape size to the tape root`);
 const tickerBar = host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"));
 const tickerParts = tickerBar?._ptsParts;
+tickerBar.getBoundingClientRect = () => ({ top: 0, height: 53 });
+resizeObserver?.callback();
 assert(tickerParts?.scrollWrapper?.getAttribute("tabindex") === "0" && tickerParts.scrollWrapper.getAttribute("role") === "group" && tickerParts.scrollWrapper.getAttribute("aria-label"), "provides a labelled focusable tape strip so keyboard focus pauses the marquee");
-assert(Math.abs(Number.parseFloat(document.body.style.marginTop) - (12 + expectedTapeOffset)) < 0.001, `uses the selected ${requestedTapeSize} tape height for the initial body offset`);
+assert(document.body.style.marginTop === "65px", "reserves the measured tape height in addition to the original body margin");
+assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "53px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "53px", "publishes the measured reservation to browser scrolling and the document custom property");
+assert(document.chatgptShell.className.includes("myticker-chatgpt-tape-reserved"), "marks only the known ChatGPT shell while the tape is active");
+assert(!document.documentElement.className.includes("myticker-chatgpt-tape-reserved"), "does not apply the ChatGPT adapter to the document root");
+assert(Boolean(resizeObserver?.target), "observes the rendered tape for measured size changes");
+tickerBar.getBoundingClientRect = () => ({ top: 0, height: 61 });
+resizeObserver?.callback();
+assert(document.body.style.marginTop === "73px" && document.documentElement.style.getPropertyValue("scroll-padding-top") === "61px", "reconciles the layout reservation when the measured tape height changes");
+const previousBody = document.body;
+const previousResizeObserver = resizeObserver;
+document.body = new Element("body");
+document.body.getBoundingClientRect = () => ({ top: 9 });
+document.body.style.marginTop = "9px";
+document.documentElement.appendChild(document.body);
+settingsChangeListener({ pts_settings: { newValue: { enabled: true, tickerStyleConfig: { tapeScale: requestedTapeSize } } } }, "sync");
+assert(previousBody.style.marginTop === "12px" && document.body.style.marginTop === "70px" && previousResizeObserver.disconnected, "restores the replaced body and moves reservation ownership to the new body");
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
 assert(rendered.includes("₹1,450.00"), "renders Indian holdings in rupees");
@@ -152,7 +188,9 @@ assert(contentStages.includes("render-success"), "reports successful ticker rend
 
 settingsChangeListener({ pts_settings: { newValue: { enabled: false } } }, "sync");
 document.body.dispatchEvent({ type: "transitionend", propertyName: "margin-top" });
-assert(document.body.style.marginTop === "12px", "restores the original page offset after the tape is disabled");
+assert(document.body.style.marginTop === "9px", "restores the original page offset after the tape is disabled");
+assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "7px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "18px", "restores original document inline reservation values exactly");
+assert(!document.chatgptShell.className.includes("myticker-chatgpt-tape-reserved") && Boolean(resizeObserver?.disconnected), "cleans up the ChatGPT adapter and tape observer when disabled");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

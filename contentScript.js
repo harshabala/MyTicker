@@ -8,6 +8,8 @@ let formatSignedCurrency;
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 const BODY_TRANSITION_ATTR = "data-pts-body-transition";
+const TAPE_RESERVATION_PROPERTY = "--myticker-tape-reservation";
+const CHATGPT_SHELL_SELECTOR = "main";
 
 /** Closed shadow root kept in-module so host pages cannot scrape holdings DOM. */
 let tickerHost = null;
@@ -17,6 +19,9 @@ let latestState;
 let latestStateResolved = false;
 let tickerSettings = null;
 let reducedMotionMq = { matches: false, addEventListener() {} };
+let tapeReservation = null;
+let tapeResizeObserver = null;
+let chatgptShell = null;
 
 function reportLifecycle(stage, error) {
   try {
@@ -151,8 +156,90 @@ function setBodyMarginTop(px, animate, isExit = false) {
   document.body.style.marginTop = px > 0 ? `${px}px` : "";
 }
 
+function snapshotInlineValue(style, property) {
+  return style.getPropertyValue ? style.getPropertyValue(property) : style[property] || "";
+}
+
+function restoreInlineValue(style, property, value) {
+  if (style.setProperty && property.includes("-")) {
+    if (value) style.setProperty(property, value);
+    else style.removeProperty?.(property);
+    return;
+  }
+  style[property] = value;
+}
+
+function isChatGptPage() {
+  const hostname = globalThis.location?.hostname;
+  return hostname === "chatgpt.com" || hostname === "chat.openai.com";
+}
+
+function applyChatGptReservation() {
+  if (!isChatGptPage()) return;
+  chatgptShell = document.querySelector?.(CHATGPT_SHELL_SELECTOR) || null;
+  chatgptShell?.classList.add("myticker-chatgpt-tape-reserved");
+}
+
+function clearChatGptReservation() {
+  chatgptShell?.classList.remove("myticker-chatgpt-tape-reserved");
+  chatgptShell = null;
+}
+
+function applyTapeReservation() {
+  if (!tickerBar || !document.body) return;
+  if (tapeReservation?.body && tapeReservation.body !== document.body) clearTapeReservation();
+
+  if (!tapeReservation) {
+    tapeReservation = {
+      body: document.body,
+      bodyMarginTop: document.body.style.marginTop || "",
+      rootScrollPaddingTop: snapshotInlineValue(document.documentElement.style, "scroll-padding-top"),
+      rootReservation: snapshotInlineValue(document.documentElement.style, TAPE_RESERVATION_PROPERTY),
+      originalPx: Math.max(0, document.body.getBoundingClientRect().top)
+    };
+    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(tapeReservation.originalPx));
+  }
+
+  const height = Math.max(0, Number(tickerBar.getBoundingClientRect?.().height) || 0);
+  setBodyMarginTop(tapeReservation.originalPx + height, false);
+  document.documentElement.style.setProperty("scroll-padding-top", `${height}px`);
+  document.documentElement.style.setProperty(TAPE_RESERVATION_PROPERTY, `${height}px`);
+  applyChatGptReservation();
+}
+
+function observeTapeReservation() {
+  tapeResizeObserver?.disconnect();
+  tapeResizeObserver = null;
+  if (typeof ResizeObserver !== "function" || !tickerBar) return;
+  tapeResizeObserver = new ResizeObserver(() => runSafely(applyTapeReservation));
+  tapeResizeObserver.observe(tickerBar);
+}
+
+function clearTapeReservation() {
+  tapeResizeObserver?.disconnect();
+  tapeResizeObserver = null;
+  clearChatGptReservation();
+  if (!tapeReservation) return;
+
+  const { body, bodyMarginTop, rootScrollPaddingTop, rootReservation } = tapeReservation;
+  if (body) {
+    body.style.marginTop = bodyMarginTop;
+    body.removeAttribute(ORIGINAL_MARGIN_ATTR);
+  }
+  restoreInlineValue(document.documentElement.style, "scroll-padding-top", rootScrollPaddingTop);
+  restoreInlineValue(document.documentElement.style, TAPE_RESERVATION_PROPERTY, rootReservation);
+  tapeReservation = null;
+}
+
 function ensureTickerContainer(animate = false) {
-  if (tickerHost && document.documentElement.contains(tickerHost) && tickerBar) return;
+  const hostMounted = document.documentElement.contains?.(tickerHost) ?? tickerHost?.parentNode === document.documentElement;
+  if (tickerHost && hostMounted && tickerBar) {
+    if (tapeReservation?.body !== document.body) {
+      applyTapeReservation();
+      observeTapeReservation();
+    }
+    return;
+  }
 
   if (!document.body) {
     document.addEventListener(
@@ -192,15 +279,10 @@ function ensureTickerContainer(animate = false) {
   document.documentElement.appendChild(tickerHost);
   reportLifecycle("mount-success");
 
-  if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
-    const rect = document.body.getBoundingClientRect();
-    const offset = Math.max(0, rect.top);
-    document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
-  }
-  const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
   applyTapeSize(tickerSettings);
   applyTickerTheme(tickerSettings);
-  setBodyMarginTop(originalPx + getTapeBarHeight(tickerSettings), animate, false);
+  applyTapeReservation();
+  observeTapeReservation();
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {
@@ -214,25 +296,7 @@ function ensureTickerContainer(animate = false) {
 }
 
 function restoreBodyMargin(animate) {
-  if (!document.body || !document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) return;
-  const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-  
-  if (!animate || prefersReducedMotion()) {
-    setBodyMarginTop(originalPx, false);
-    document.body.removeAttribute(ORIGINAL_MARGIN_ATTR);
-    return;
-  }
-
-  setBodyMarginTop(originalPx, true, true);
-
-  const cleanup = () => {
-    document.body.style.transition = "";
-    document.body.removeAttribute(BODY_TRANSITION_ATTR);
-    document.body.removeAttribute(ORIGINAL_MARGIN_ATTR);
-  };
-
-  document.body.addEventListener("transitionend", cleanup, { once: true });
-  setTimeout(cleanup, 200);
+  clearTapeReservation();
 }
 
 function removeTickerContainer() {
@@ -527,10 +591,6 @@ function getTapeScale(settings) {
   return { compact: 0.92, comfortable: 1.08, large: 1.20 }[size];
 }
 
-function getTapeBarHeight(settings) {
-  return 34 * getTapeScale(settings);
-}
-
 function applyTapeSize(settings) {
   const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
   const scale = getTapeScale(settings);
@@ -539,10 +599,7 @@ function applyTapeSize(settings) {
     tickerBar.setAttribute("data-tape-size", size);
     tickerBar.style.setProperty("--pts-tape-scale", String(scale));
   }
-  if (document.body?.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
-    const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-    setBodyMarginTop(originalPx + getTapeBarHeight(settings), false);
-  }
+  if (tapeReservation) applyTapeReservation();
 }
 
 function applyTickerTheme(settings) {
