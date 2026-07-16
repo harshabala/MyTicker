@@ -79,7 +79,14 @@ assert(optionsHtml.includes(".wizard-step.done") && optionsHtml.includes("color:
 assert(optionsJs.includes('window.addEventListener("hashchange", () => applyLocationHash())') && optionsJs.includes('window.addEventListener("popstate", () => applyLocationHash())'), "applies valid settings hashes after Back and Forward navigation");
 assert(optionsJs.includes('switchSettingsTab(tabId, { updateHash: false })') && optionsJs.includes('location.hash !== `#${tabId}`'), "handles location-driven tabs without a hash event loop");
 assert(optionsJs.includes('history.pushState(null, "", `#${tabId}`)'), "user-selected settings tabs create browser history entries for Back and Forward navigation");
-assert(optionsJs.includes('return ["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested;'), "maps legacy settings hashes to the consolidated Data tab");
+assert(optionsJs.includes('["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested'), "maps legacy settings hashes to the consolidated Data tab");
+assert(optionsJs.includes('return requested ? (["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested) : "portfolio";'), "maps an empty settings hash to Portfolio for browser Back navigation");
+assert(optionsHtml.includes('id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-data"'), "Data tab controls its single composite panel");
+assert((optionsHtml.match(/role="tabpanel" aria-labelledby="nav-data"/g) || []).length === 1, "Data tab is the label for exactly one tabpanel");
+assert(optionsHtml.includes('id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden'), "Data sections are wrapped by the composite Data tabpanel");
+assert(optionsJs.includes('["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"]') && optionsJs.includes('dataPanel.append(section)'), "moves all Data sections into the composite panel before tab activation");
+assert(/\.toggle-switch\s*\{[\s\S]*?height: 32px;/.test(optionsHtml), "toggle controls provide a 32px minimum hit area");
+assert(optionsHtml.includes('<legend class="field-label">Tape size</legend>'), "uses the concise Tape size label");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");

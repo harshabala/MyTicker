@@ -79,6 +79,7 @@ init();
 
 function init() {
   setPlatformShortcut(document.getElementById("tipsShortcut"));
+  consolidateDataPanels();
   wireSettingsTabs();
   wireWizardSteps();
   applyLocationHash();
@@ -298,6 +299,17 @@ const WIZARD_STEP_TO_TAB = {
 
 const DATA_PANEL_IDS = new Set(["setup", "market", "diagnostics", "tips"]);
 
+function consolidateDataPanels() {
+  const dataPanel = document.getElementById("tab-data");
+  if (!dataPanel) return;
+  ["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.removeAttribute("hidden");
+    dataPanel.append(section);
+  });
+}
+
 function wireSettingsTabs() {
   const tabs = document.querySelectorAll(".settings-tab[data-tab]");
   tabs.forEach((tab) => {
@@ -324,7 +336,7 @@ function wireSettingsTabs() {
 
 function resolveSettingsHash(hash = location.hash) {
   const requested = String(hash || "").replace(/^#/, "").toLowerCase();
-  return ["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested;
+  return requested ? (["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested) : "portfolio";
 }
 
 function applyLocationHash() {
@@ -348,7 +360,7 @@ function switchSettingsTab(tabId, { updateHash = true } = {}) {
   if (!matched) return;
   panels.forEach((panel) => {
     const panelId = panel.id.replace(/^tab-/, "");
-    const active = tabId === "data" ? DATA_PANEL_IDS.has(panelId) : panelId === tabId;
+    const active = panelId === tabId;
     panel.classList.toggle("is-active", active);
     if (active) {
       panel.removeAttribute("hidden");

@@ -622,7 +622,7 @@
         position: relative;
         display: inline-block;
         width: 42px;
-        height: 26px;
+        height: 32px;
         flex-shrink: 0;
         cursor: pointer;
         margin: 0;
@@ -639,7 +639,7 @@
 
       .toggle-slider {
         position: absolute;
-        inset: 0;
+        inset: 3px 0;
         background: var(--toggle-track, var(--bg-tertiary));
         border-radius: 999px;
         transition: background var(--motion-medium, 220ms) var(--ease-out, ease);
@@ -1137,12 +1137,13 @@
         <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="true" aria-controls="tab-portfolio" tabindex="0">Portfolio</button>
         <button type="button" class="settings-tab" role="tab" id="nav-watchlist" data-tab="watchlist" aria-selected="false" aria-controls="tab-watchlist" tabindex="-1">Watchlist</button>
         <button type="button" class="settings-tab" role="tab" id="nav-crypto" data-tab="crypto" aria-selected="false" aria-controls="tab-crypto" tabindex="-1">Crypto</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-setup" tabindex="-1">Data &amp; diagnostics</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-data" tabindex="-1">Data &amp; diagnostics</button>
         <button type="button" class="settings-tab" role="tab" id="nav-appearance" data-tab="appearance" aria-selected="false" aria-controls="tab-appearance" tabindex="-1">Appearance</button>
       </nav>
 
-      <!-- Data & diagnostics panels are presented together by the Data tab. -->
-      <div class="tab-panel" id="tab-setup" role="tabpanel" aria-labelledby="nav-data" hidden>
+      <!-- Data & diagnostics sections are presented together by the Data tab. -->
+      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden></div>
+      <div class="data-section-panel" id="tab-setup" hidden>
       <div class="section" id="section-setup">
         <div class="section-title">Setup status</div>
         <div class="card">
@@ -1170,6 +1171,7 @@
           </div>
         </div>
       </div>
+      </div>
 
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
         <div class="section">
@@ -1194,7 +1196,6 @@
           </div>
           <div id="errorLogList" class="error-log-list"></div>
         </div>
-      </div>
       </div>
       <!-- Tab: Portfolio -->
       <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
@@ -1270,7 +1271,7 @@
       </div>
 
       <!-- Data sources -->
-      <div class="tab-panel" id="tab-market" role="tabpanel" aria-labelledby="nav-data" hidden>
+      <div class="data-section-panel" id="tab-market" hidden>
       <div class="section" id="section-market">
         <div class="section-title">India (automatic)</div>
         <div class="card card-provider-india">
@@ -1398,7 +1399,7 @@
           </div>
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
-              <legend class="field-label">Market tape size</legend>
+              <legend class="field-label">Tape size</legend>
               <label><input type="radio" name="tapeScale" value="compact" /> Compact (0.92×)</label>
               <label><input type="radio" name="tapeScale" value="comfortable" checked /> Comfortable (1.08×)</label>
               <label><input type="radio" name="tapeScale" value="large" /> Large (1.20×)</label>
@@ -1414,7 +1415,7 @@
       </div>
 
       <!-- Diagnostics -->
-      <div class="tab-panel" id="tab-diagnostics" role="tabpanel" aria-labelledby="nav-data" hidden>
+      <div class="data-section-panel" id="tab-diagnostics" hidden>
         <div class="section">
           <div class="section-title">Diagnostics</div>
           <div class="card" style="padding: 20px;">
@@ -1438,7 +1439,7 @@
         </div>
       </div>
       <!-- Reference notes live with data & diagnostics. -->
-      <div class="tab-panel" id="tab-tips" role="tabpanel" aria-labelledby="nav-data" hidden>
+      <div class="data-section-panel" id="tab-tips" hidden>
       <div class="section">
         <div class="section-title">Getting started</div>
         <div class="card" style="padding: 20px 24px;">
