@@ -1413,6 +1413,13 @@
         color: var(--text-secondary);
         font-size: 1.125rem;
       }
+      .data-summary-status {
+        margin-left: auto;
+        margin-right: 22px;
+        color: var(--text-secondary);
+        font-size: .75rem;
+        font-weight: 500;
+      }
       .settings-disclosure[open] > summary {
         border-bottom: 1px solid var(--border);
         color: var(--brand-gold);
@@ -1448,11 +1455,7 @@
       .data-section-panel > .section + .section { margin-top: 14px; }
       .data-section-panel > .section .section-title { margin-bottom: 8px; }
       .data-section-panel > .section .card { border-color: var(--border); }
-      #tab-data.is-active {
-        display: grid;
-        grid-template-columns: repeat(2, minmax(0, 1fr));
-        gap: 14px;
-      }
+      #tab-data.is-active { display: block; }
       #tab-data > #tab-setup,
       #tab-data > #tab-market,
       #tab-data > #tab-diagnostics,
@@ -1483,6 +1486,25 @@
       #section-setup .setup-wizard {
         padding: 0 20px 16px;
       }
+      #section-setup .wizard-steps {
+        display: grid;
+        grid-template-columns: 1.7fr repeat(2, 1fr);
+        gap: 10px;
+      }
+      #section-setup .wizard-step {
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        font-size: .8125rem;
+      }
+      #section-setup .wizard-step.active {
+        border-color: var(--brand-gold);
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
+      }
+      #section-setup .wizard-hint { display: none; }
       #section-market {
         display: grid;
         grid-template-columns: 1fr 1fr;
@@ -1500,19 +1522,15 @@
       #section-market .card-provider-us { grid-column: 2; }
       #section-market .card-provider-india,
       #section-market .card-provider-us { margin: 0; min-height: 100%; }
-      #tab-diagnostics { display: grid; grid-template-columns: minmax(0, 1fr) 280px; gap: 14px; }
-      #tab-diagnostics .section { margin: 0; }
-      #tab-diagnostics .section:first-child { grid-column: 1 / -1; }
+      #section-market .card { box-shadow: none; }
+      #tab-diagnostics { display: block; }
+      #tab-diagnostics .section { margin: 0 0 14px; }
       #tab-diagnostics #diagnosticsOutput { max-height: 250px !important; }
-      #tab-tips { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
-      #tab-tips .section { margin: 0; }
-      #tab-tips .section:last-child { grid-column: 1 / -1; }
+      #tab-tips { display: block; }
+      #tab-tips .section { margin: 0 0 14px; }
       #tab-tips .tips-list { columns: 1; }
       @media (max-width: 760px) {
-        #tab-data.is-active,
-        #section-market,
-        #tab-diagnostics,
-        #tab-tips { display: block; }
+        #section-market { display: block; }
         #tab-data > * + *,
         #tab-diagnostics .section + .section,
         #tab-tips .section + .section { margin-top: 14px; }
@@ -1791,6 +1809,12 @@
           </div>
         </div>
       </details>
+      <details class="settings-disclosure data-disclosure">
+        <summary>Crypto prices <span class="data-summary-status">CoinGecko · Binance fallback</span></summary>
+        <div class="settings-disclosure-body">
+          <div class="field-hint" style="padding: 16px 20px;">Crypto quotes use CoinGecko first and Binance only for mapped liquid pairs. No Finnhub key is required.</div>
+        </div>
+      </details>
       </div>
       <!-- Tab: Crypto -->
       <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
@@ -1907,8 +1931,8 @@
 
       <!-- Diagnostics -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
-        <div class="section">
-          <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">•</div><div><h2>Diagnostics</h2><p>Operational snapshot of providers, counts, and the latest refresh.</p></div></div>
+        <details class="settings-disclosure data-disclosure" open>
+          <summary>Diagnostics <span class="data-summary-status">Privacy-safe operational snapshot</span></summary>
           <div class="card" style="padding: 20px;">
             <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
             <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
@@ -1917,9 +1941,9 @@
               <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
             </div>
           </div>
-        </div>
-        <div class="section">
-          <div class="section-title">What changed</div>
+        </details>
+        <details class="settings-disclosure data-disclosure">
+          <summary>What changed</summary>
           <div class="card" style="padding: 20px 24px;">
             <ul class="tips-list">
               <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
@@ -1927,7 +1951,7 @@
               <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
             </ul>
           </div>
-        </div>
+        </details>
       </div>
       <!-- Reference notes live with data & diagnostics. -->
       <div class="data-section-panel" id="tab-tips" hidden>
