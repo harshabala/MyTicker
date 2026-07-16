@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
 import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
 import {
   getSetupStatus,
@@ -20,13 +20,25 @@ const providerStatusEl = document.getElementById("providerStatus");
 const testConnectionButton = document.getElementById("testConnectionButton");
 
 const tickerSpeedEl = document.getElementById("tickerSpeed");
+const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
+const themeEls = document.querySelectorAll('input[name="theme"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
+const saveAppearanceButton = document.getElementById("saveAppearanceButton");
 
-const includeCryptoEl = document.getElementById("includeCrypto");
 const cryptoModeEl = document.getElementById("cryptoMode");
-const cryptoHoldingsTextEl = document.getElementById("cryptoHoldingsText");
 const cryptoStatusEl = document.getElementById("cryptoStatus");
+const saveCryptoButton = document.getElementById("saveCryptoButton");
 const cryptoManualField = document.getElementById("cryptoManualField");
+const cryptoSearchEl = document.getElementById("cryptoSearch");
+const cryptoSearchResultsEl = document.getElementById("cryptoSearchResults");
+const cryptoSelectedChipsEl = document.getElementById("cryptoSelectedChips");
+let selectedCrypto = [];
+const watchlistTypeEl = document.getElementById("watchlistType");
+const watchlistExchangeEl = document.getElementById("watchlistExchange");
+const watchlistInputEl = document.getElementById("watchlistInput");
+const watchlistErrorEl = document.getElementById("watchlistError");
+const watchlistStatusEl = document.getElementById("watchlistStatus");
+const watchlistConfiguredEl = document.getElementById("watchlistConfigured");
 
 const showStocksEl = document.getElementById("showStocks");
 const showCryptoEl = document.getElementById("showCrypto");
@@ -46,12 +58,15 @@ const rateLimitWarnEl = document.getElementById("rateLimitWarn");
 const wizardHintEl = document.getElementById("wizardHint");
 const sectionMarket = document.getElementById("section-market");
 const sectionImport = document.getElementById("section-import");
+const diagnosticsOutputEl = document.getElementById("diagnosticsOutput");
+const copyDiagnosticsButton = document.getElementById("copyDiagnosticsButton");
+const refreshDiagnosticsButton = document.getElementById("refreshDiagnosticsButton");
 
 const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
 const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
 
 const WIZARD_HINTS = {
-  1: "Optional: add a Finnhub key only if you hold US stocks or crypto.",
+  1: "Optional: add a Finnhub key if you hold US equities. Crypto quotes do not need it.",
   2: "Import your holdings (Zerodha CSV). Indian stocks price automatically — no API key.",
   3: "Open any tab — the strip and today's P&L appear when prices load."
 };
@@ -66,13 +81,12 @@ init();
 
 function init() {
   setPlatformShortcut(document.getElementById("tipsShortcut"));
+  consolidateDataPanels();
   wireSettingsTabs();
   wireWizardSteps();
-  // Deep-link: options.html#portfolio | #market | #appearance | etc.
-  const hashTab = (location.hash || "").replace(/^#/, "").toLowerCase();
-  if (hashTab && document.getElementById(`tab-${hashTab}`)) {
-    switchSettingsTab(hashTab);
-  }
+  applyLocationHash();
+  window.addEventListener("hashchange", () => applyLocationHash());
+  window.addEventListener("popstate", () => applyLocationHash());
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
@@ -93,13 +107,18 @@ function init() {
       settings.tickerStyleConfig?.tickerSpeed ||
         DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
     );
+    const tapeScale = normalizeTapeScale(settings.tickerStyleConfig?.tapeScale);
+    tapeScaleEls.forEach((input) => {
+      input.checked = input.value === tapeScale;
+    });
+    const theme = normalizeTheme(settings.tickerStyleConfig?.theme);
+    themeEls.forEach((input) => { input.checked = input.value === theme; });
+    applyDocumentTheme(theme);
 
-    const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
-    includeCryptoEl.checked = !!cryptoConfig.includeCrypto;
-    cryptoModeEl.value = cryptoConfig.mode || "top5";
-    cryptoHoldingsTextEl.value = (cryptoConfig.manualHoldings || [])
-      .map((c) => `${c.symbol}, ${c.quantity}`)
-      .join("\n");
+    const cryptoConfig = normalizeCryptoConfig(settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig);
+    cryptoModeEl.value = cryptoConfig.mode;
+    selectedCrypto = cryptoConfig.manualHoldings || [];
+    renderCryptoSelector();
 
     const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
     showStocksEl.checked = filters.showStocks !== false;
@@ -121,10 +140,13 @@ function init() {
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
-  document.getElementById("saveAppearanceButton").addEventListener("click", handleSaveAppearance);
-  document.getElementById("saveCryptoButton").addEventListener("click", handleSaveCrypto);
+  saveAppearanceButton.addEventListener("click", handleSaveAppearance);
+  saveCryptoButton.addEventListener("click", handleSaveCrypto);
+  document.getElementById("addWatchlistButton")?.addEventListener("click", handleAddWatchlist);
   refreshPreviewButton.addEventListener("click", handleRefreshPreview);
   testConnectionButton.addEventListener("click", handleTestConnection);
+  copyDiagnosticsButton?.addEventListener("click", copyDiagnostics);
+  refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics);
 
   // Eye-toggle for API key visibility
   document.getElementById("toggleApiKeyVisibility").addEventListener("click", () => {
@@ -155,7 +177,17 @@ function init() {
   });
 
   // Crypto mode toggle
-  cryptoModeEl.addEventListener("change", updateCryptoManualVisibility);
+  cryptoModeEl.addEventListener("change", () => {
+    updateCryptoManualVisibility();
+    markSettingsSaveDirty("crypto");
+  });
+  cryptoSearchEl?.addEventListener("input", renderCryptoSelector);
+  [showStocksEl, showCryptoEl].forEach((input) => input?.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  tickerSpeedEl?.addEventListener("input", () => markSettingsSaveDirty("appearance"));
+  watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
+  watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
   // Drag-and-drop / file pick — pass File objects directly (avoid double-read races)
   dropZone.addEventListener("click", (e) => {
@@ -212,6 +244,53 @@ function init() {
   handleRefreshPreview();
   refreshSetupUI();
   renderImportStats();
+  renderDiagnostics();
+  updateWatchlistHint();
+  renderConfiguredWatchlist();
+}
+
+function updateWatchlistHint() {
+  if (!watchlistTypeEl) return;
+  const crypto = watchlistTypeEl.value === "crypto";
+  document.getElementById("watchlistExchangeField")?.toggleAttribute("hidden", watchlistTypeEl.value !== "india");
+  watchlistInputEl.placeholder = crypto ? "BTC or Bitcoin" : watchlistTypeEl.value === "india" ? "RELIANCE" : "AAPL or SPY";
+  document.getElementById("watchlistHint").textContent = crypto
+    ? "Supported: BTC/Bitcoin, ETH/Ethereum, BNB, XRP, SOL/Solana."
+    : watchlistTypeEl.value === "india" ? "India symbols are normalized to the selected NSE/BSE suffix."
+    : "Use the canonical symbol. Live US prices require Finnhub.";
+}
+
+async function handleAddWatchlist() {
+  const type = watchlistTypeEl.value;
+  const raw = watchlistInputEl.value;
+  const crypto = type === "crypto" ? resolveCryptoCatalogEntry(raw) : null;
+  const item = crypto
+    ? { symbol: crypto.id, canonicalKey: `crypto:${crypto.id}`, displayName: `${crypto.symbol} / ${crypto.name}`, currency: "USD", assetClass: "crypto" }
+    : normalizeWatchlistSymbol(raw, type, watchlistExchangeEl.value);
+  if (!item) {
+    watchlistErrorEl.textContent = type === "crypto"
+      ? "Unsupported crypto. Search BTC/Bitcoin, ETH/Ethereum, BNB, XRP, or SOL/Solana."
+      : type === "india" ? "Enter an Indian symbol such as RELIANCE, then select NSE or BSE." : "Enter a canonical US, index, or ETF symbol (for example AAPL or SPY).";
+    return;
+  }
+  item.canonicalKey ||= `equity:${item.symbol}`;
+  const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
+  const current = Array.isArray(data[STORAGE_KEYS.watchlist]) ? data[STORAGE_KEYS.watchlist] : [];
+  if (!current.some((entry) => (entry.canonicalKey || `equity:${entry.symbol}`) === item.canonicalKey)) {
+    await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: [...current, item] });
+    requestImmediatePoll();
+  }
+  watchlistInputEl.value = "";
+  watchlistErrorEl.textContent = "";
+  watchlistStatusEl.textContent = `${item.displayName} added`;
+  renderConfiguredWatchlist();
+}
+
+async function renderConfiguredWatchlist() {
+  if (!watchlistConfiguredEl) return;
+  const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
+  const items = data[STORAGE_KEYS.watchlist] || [];
+  watchlistConfiguredEl.textContent = items.length ? `Watching: ${items.map((item) => item.displayName || item.symbol).join(" · ")}` : "No watchlist symbols configured yet.";
 }
 
 function setPlatformShortcut(el) {
@@ -222,10 +301,23 @@ function setPlatformShortcut(el) {
 
 /** Map wizard steps → settings tabs (sections live on different panels). */
 const WIZARD_STEP_TO_TAB = {
-  1: "market", // optional US Finnhub key
+  1: "data", // optional US Finnhub key
   2: "portfolio", // import holdings
-  3: "setup" // go live / status
+  3: "data" // go live / status
 };
+
+const DATA_PANEL_IDS = new Set(["setup", "market", "diagnostics", "tips"]);
+
+function consolidateDataPanels() {
+  const dataPanel = document.getElementById("tab-data");
+  if (!dataPanel) return;
+  ["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
+    const section = document.getElementById(id);
+    if (!section) return;
+    section.removeAttribute("hidden");
+    dataPanel.append(section);
+  });
+}
 
 function wireSettingsTabs() {
   const tabs = document.querySelectorAll(".settings-tab[data-tab]");
@@ -251,7 +343,19 @@ function wireSettingsTabs() {
   });
 }
 
-function switchSettingsTab(tabId) {
+function resolveSettingsHash(hash = location.hash) {
+  const requested = String(hash || "").replace(/^#/, "").toLowerCase();
+  return requested ? (["setup", "market", "diagnostics", "tips"].includes(requested) ? "data" : requested) : "portfolio";
+}
+
+function applyLocationHash() {
+  const tabId = resolveSettingsHash();
+  if (tabId && document.querySelector(`.settings-tab[data-tab="${tabId}"]`)) {
+    switchSettingsTab(tabId, { updateHash: false });
+  }
+}
+
+function switchSettingsTab(tabId, { updateHash = true } = {}) {
   if (!tabId) return;
   const tabs = document.querySelectorAll(".settings-tab[data-tab]");
   const panels = document.querySelectorAll(".tab-panel[id^='tab-']");
@@ -264,7 +368,8 @@ function switchSettingsTab(tabId) {
   });
   if (!matched) return;
   panels.forEach((panel) => {
-    const active = panel.id === `tab-${tabId}`;
+    const panelId = panel.id.replace(/^tab-/, "");
+    const active = panelId === tabId;
     panel.classList.toggle("is-active", active);
     if (active) {
       panel.removeAttribute("hidden");
@@ -272,18 +377,96 @@ function switchSettingsTab(tabId) {
       panel.setAttribute("hidden", "");
     }
   });
-  try {
-    history.replaceState(null, "", `#${tabId}`);
-  } catch {
-    /* ignore */
+  if (updateHash && location.hash !== `#${tabId}`) {
+    try {
+      history.pushState(null, "", `#${tabId}`);
+    } catch {
+      /* ignore */
+    }
   }
   // Refresh tab-specific live data when opened
   if (tabId === "portfolio") {
     handleRefreshPreview();
     renderImportStats();
   }
-  if (tabId === "setup") {
+  if (tabId === "data") {
     refreshSetupUI();
+    renderDiagnostics();
+  }
+}
+
+function formatDiagnosticTime(timestamp) {
+  const time = Number(timestamp);
+  return time ? new Date(time).toLocaleString() : "Never";
+}
+
+function providerResultLine(lastProviderResults, key, label) {
+  const count = Number(lastProviderResults?.[key]) || 0;
+  return `${label}: ${count} quote${count === 1 ? "" : "s"} in last provider result`;
+}
+
+async function renderDiagnostics() {
+  if (!diagnosticsOutputEl) return;
+  const [syncData, localData] = await Promise.all([
+    chrome.storage.sync.get([STORAGE_KEYS.settings]),
+    chrome.storage.local.get([
+      STORAGE_KEYS.holdings,
+      STORAGE_KEYS.watchlist,
+      STORAGE_KEYS.positionsState,
+      STORAGE_KEYS.pollHealth,
+      STORAGE_KEYS.diagnosticsLog,
+      STORAGE_KEYS.contentScriptStatus,
+      "pts_price_api_key"
+    ])
+  ]);
+  const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+  const holdings = Array.isArray(localData[STORAGE_KEYS.holdings]) ? localData[STORAGE_KEYS.holdings] : [];
+  const watchlist = Array.isArray(localData[STORAGE_KEYS.watchlist]) ? localData[STORAGE_KEYS.watchlist] : [];
+  const state = localData[STORAGE_KEYS.positionsState] || {};
+  const health = localData[STORAGE_KEYS.pollHealth] || {};
+  const log = Array.isArray(localData[STORAGE_KEYS.diagnosticsLog]) ? localData[STORAGE_KEYS.diagnosticsLog] : [];
+  const providerResults = [...log].reverse().find((entry) => entry.event === "provider-results");
+  const contentStatus = localData[STORAGE_KEYS.contentScriptStatus] || {};
+  const cryptoEnabled = !!settings.cryptoConfig?.includeCrypto && settings.portfolioFilters?.showCrypto !== false;
+  const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
+  const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
+  const lines = [
+    `MyTicker diagnostics · build v${buildVersion}`,
+    `Ticker enabled: ${settings.enabled ? "yes" : "no"}`,
+    `Holdings: ${holdings.length} · Watchlist: ${watchlist.length} · Ticker items: ${(state.tickerItems || state.positions || []).length}`,
+    `Last state update: ${formatDiagnosticTime(state.updatedAt)}`,
+    `Poll health: ${Number(health.consecutiveFailures) || 0} consecutive failure(s) · last successful fetch ${formatDiagnosticTime(health.lastSuccessfulFetch)}`,
+    `Content script: ${contentStatus.stage || "never reported"} · ${contentStatus.origin || "no page origin"} · ${formatDiagnosticTime(contentStatus.timestamp)}${contentStatus.error ? ` · ${contentStatus.error.name}: ${contentStatus.error.message || ""}` : ""}`,
+    "",
+    "Provider availability and latest result:",
+    `CoinGecko: primary crypto source · ${cryptoEnabled ? "eligible when supported crypto is enabled" : "crypto disabled"} · ${providerResultLine(providerResults, "coinGeckoQuotes", "result")}`,
+    `Binance: fallback for mapped liquid crypto only · ${cryptoEnabled ? "available" : "crypto disabled"} · ${providerResultLine(providerResults, "binanceQuotes", "result")}`,
+    `Yahoo Finance: automatic for .NS/.BO · available · ${providerResultLine(providerResults, "yahooQuotes", "result")}`,
+    `Finnhub: US equities · ${finnhubConfigured ? "API key configured" : "no API key configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
+    "",
+    "Recent refresh lifecycle (safe operational counts only):"
+  ];
+  if (!log.length) {
+    lines.push("No refresh diagnostics recorded yet.");
+  } else {
+    for (const entry of log.slice(-12)) {
+      const details = ["holdingsCount", "watchlistCount", "cryptoCount", "equitySymbols", "totalSymbols", "equityQuotes", "cryptoQuotes", "quoteCount"]
+        .filter((key) => Number.isFinite(entry[key]))
+        .map((key) => `${key.replace("Count", "")}=${entry[key]}`);
+      lines.push(`${formatDiagnosticTime(entry.timestamp)} · ${entry.event}${details.length ? ` · ${details.join(", ")}` : ""}${entry.error ? " · Refresh failed" : ""}`);
+    }
+  }
+  diagnosticsOutputEl.textContent = lines.join("\n");
+}
+
+async function copyDiagnostics() {
+  const text = diagnosticsOutputEl?.textContent || "";
+  if (!text) return;
+  try {
+    await navigator.clipboard.writeText(text);
+    showToast("Diagnostics copied", "success");
+  } catch {
+    showToast("Could not copy diagnostics. Select the text and copy it manually.", "error");
   }
 }
 
@@ -378,7 +561,7 @@ async function refreshSetupUI() {
   if (wizardHintEl) {
     if (status.complete) {
       wizardHintEl.textContent =
-        "You're live. Indian prices load automatically. US stocks need a Finnhub key under Market Data (optional).";
+        "You're live. Indian prices load automatically. US equities need a Finnhub key under Market Data; crypto quotes do not.";
     } else if (!status.hasHoldings) {
       wizardHintEl.textContent = WIZARD_HINTS[2];
     } else {
@@ -447,9 +630,51 @@ function setPill(el, ok, label) {
 function updateCryptoManualVisibility() {
   if (cryptoManualField) {
     const open = cryptoModeEl.value === "manual";
+    cryptoManualField.hidden = !open;
+    cryptoManualField.inert = !open;
     cryptoManualField.classList.toggle("is-open", open);
     cryptoManualField.setAttribute("aria-hidden", open ? "false" : "true");
   }
+}
+
+function renderCryptoSelector() {
+  if (!cryptoSearchResultsEl || !cryptoSelectedChipsEl) return;
+  const query = (cryptoSearchEl?.value || "").trim().toLowerCase();
+  const matches = CRYPTO_CATALOG.filter((coin) => !selectedCrypto.some((item) => item.symbol === coin.id))
+    .filter((coin) => !query || [coin.id, coin.symbol, coin.name].some((value) => value.toLowerCase().includes(query)));
+  const resultList = document.createElement("div");
+  resultList.className = "crypto-result-list";
+  resultList.append(...matches.map((coin) => {
+    const button = document.createElement("button"); button.type = "button"; button.className = "crypto-result-action"; button.textContent = `Add ${coin.symbol} / ${coin.name}`;
+    button.addEventListener("click", () => {
+      if (!selectedCrypto.some((item) => item.symbol === coin.id)) {
+        selectedCrypto.push({ symbol: coin.id, quantity: 1 });
+        markSettingsSaveDirty("crypto");
+      }
+      cryptoSearchEl.value = "";
+      renderCryptoSelector();
+    });
+    return button;
+  }));
+  cryptoSearchResultsEl.replaceChildren(resultList);
+  cryptoSelectedChipsEl.replaceChildren(...selectedCrypto.map((item) => {
+    const coin = resolveCryptoCatalogEntry(item.symbol);
+    const chip = document.createElement("span");
+    chip.className = "crypto-selected-chip";
+    chip.textContent = coin?.symbol || item.symbol;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "crypto-chip-remove";
+    remove.setAttribute("aria-label", `Remove ${coin?.symbol || item.symbol}`);
+    remove.textContent = "×";
+    remove.addEventListener("click", () => {
+      selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol);
+      markSettingsSaveDirty("crypto");
+      renderCryptoSelector();
+    });
+    chip.appendChild(remove);
+    return chip;
+  }));
 }
 
 function detectPresetFromRows(rows) {
@@ -763,17 +988,49 @@ async function handleTestIndia() {
   }
 }
 
+function saveFeedbackElements(scope) {
+  return scope === "crypto"
+    ? { button: saveCryptoButton, status: cryptoStatusEl, label: "Crypto settings" }
+    : { button: saveAppearanceButton, status: appearanceStatusEl, label: "Appearance" };
+}
+
+function setSettingsSaveFeedback(scope, saved, message = "") {
+  const { button, status, label } = saveFeedbackElements(scope);
+  if (button) {
+    button.textContent = saved ? "Saved ✓" : "Save";
+    button.classList.toggle("is-saved", saved);
+    button.setAttribute("aria-label", saved ? `${label} saved` : `Save ${label}`);
+  }
+  if (status) {
+    status.textContent = message;
+    status.className = `status-badge${message ? (saved ? " success" : " error") : ""}`;
+  }
+}
+
+function markSettingsSaveDirty(scope) {
+  setSettingsSaveFeedback(scope, false);
+}
+
+function storageSaveSucceeded() {
+  return !chrome.runtime.lastError;
+}
+
 function handleSaveAppearance() {
   const tickerSpeed = Math.min(300, Math.max(
     5,
     Number(tickerSpeedEl.value) || DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
   ));
+  const selectedTapeScale = document.querySelector('input[name="tapeScale"]:checked')?.value;
+  const tapeScale = normalizeTapeScale(selectedTapeScale);
+  const theme = normalizeTheme(document.querySelector('input[name="theme"]:checked')?.value);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
     settings.tickerStyleConfig = {
       ...(settings.tickerStyleConfig || {}),
-      tickerSpeed
+      tickerSpeed,
+      tapeScale,
+      theme
     };
 
     settings.portfolioFilters = {
@@ -783,26 +1040,37 @@ function handleSaveAppearance() {
     };
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+      if (!storageSaveSucceeded()) {
+        setSettingsSaveFeedback("appearance", false, "Could not save");
+        showToast("Appearance could not be saved. Try again.", "error");
+        return;
+      }
+      applyDocumentTheme(theme);
+      setSettingsSaveFeedback("appearance", true);
       showToast("Appearance saved", "success");
     });
   });
 }
 
 function handleSaveCrypto() {
-  const includeCrypto = includeCryptoEl.checked;
-  const mode = cryptoModeEl.value || "top5";
-  const text = cryptoHoldingsTextEl.value || "";
-  const manualHoldings = parseCryptoHoldings(text);
+  const mode = cryptoModeEl.value || "off";
+  const manualHoldings = normalizeManualCryptoHoldings(selectedCrypto);
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
     settings.cryptoConfig = {
-      includeCrypto,
+      includeCrypto: mode !== "off",
       mode,
       manualHoldings
     };
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+      if (!storageSaveSucceeded()) {
+        setSettingsSaveFeedback("crypto", false, "Could not save");
+        showToast("Crypto settings could not be saved. Try again.", "error");
+        return;
+      }
+      setSettingsSaveFeedback("crypto", true);
       showToast("Crypto settings saved", "success");
       requestImmediatePoll();
       refreshSetupUI();
@@ -821,6 +1089,22 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   }
 });
 
+function normalizeTapeScale(value) {
+  return ["compact", "comfortable", "large"].includes(value)
+    ? value
+    : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
+
+function normalizeTheme(value) {
+  return ["system", "light", "dark"].includes(value) ? value : "system";
+}
+
+function applyDocumentTheme(theme) {
+  if (!document.documentElement) return;
+  if (theme === "system") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", theme);
+}
+
 function requestImmediatePoll() {
   chrome.runtime.sendMessage({ action: "poll-now" }, () => {
     void chrome.runtime.lastError;
@@ -838,24 +1122,16 @@ function parseCryptoHoldings(text) {
     if (!symbolRaw) continue;
     const qty = Number((qtyRaw || "0").trim());
     if (!qty || Number.isNaN(qty)) continue;
-    const sym = normalizeCryptoSymbol(symbolRaw.trim());
-    if (!sym) continue;
+    const coin = resolveCryptoCatalogEntry(symbolRaw.trim());
+    if (!coin) continue;
     result.push({
-      symbol: sym,
+      symbol: coin.id,
       quantity: qty
     });
   }
   return result;
 }
 
-/** Finnhub crypto quotes use BINANCE:PAIR format (e.g. BINANCE:BTCUSDT). */
-function normalizeCryptoSymbol(raw) {
-  const s = String(raw).trim().toUpperCase();
-  if (!s || s.length > 40) return "";
-  const normalized = s.includes(":") ? s : `BINANCE:${s}`;
-  // Allow only alphanumeric and colon — reject anything unexpected.
-  return /^[A-Z0-9:]{1,40}$/.test(normalized) ? normalized : "";
-}
 
 function handleRefreshPreview() {
   if (holdingsPreviewEl) {

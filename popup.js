@@ -1,6 +1,5 @@
 import {
   STORAGE_KEYS,
-  DEFAULT_SETTINGS,
   formatSignedCurrency
 } from "./shared.js";
 import { getSetupStatus, markWizardStep, setOnboarding } from "./onboarding.js";
@@ -20,16 +19,12 @@ let lastPnlPayload = null; // for tab switches without full re-fetch
 document.addEventListener("DOMContentLoaded", () => {
   const openOptions = document.getElementById("openOptions");
   const mainContent = document.getElementById("mainContent");
-  const shortcutHint = document.getElementById("shortcutHint");
   const tabHoldings = document.getElementById("tabHoldings");
   const tabWatchlist = document.getElementById("tabWatchlist");
-  const addWatchBtn = document.getElementById("addWatchBtn");
-  const addSheet = document.getElementById("addSheet");
-  const quickAddInput = document.getElementById("quickAddInput");
-  const quickAddExchange = document.getElementById("quickAddExchange");
-  const quickAddBtn = document.getElementById("quickAddBtn");
 
-  setPlatformShortcut(shortcutHint);
+  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+    applyPopupTheme(data[STORAGE_KEYS.settings]?.tickerStyleConfig?.theme);
+  });
 
   openOptions?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -38,46 +33,8 @@ document.addEventListener("DOMContentLoaded", () => {
 
   tabHoldings?.addEventListener("click", () => setTab("holdings", mainContent));
   tabWatchlist?.addEventListener("click", () => setTab("watchlist", mainContent));
-
-  addWatchBtn?.addEventListener("click", () => {
-    const open = addSheet?.classList.toggle("is-open");
-    if (addSheet) {
-      addSheet.hidden = !open;
-      if (open) {
-        setTab("watchlist", mainContent);
-        quickAddInput?.focus();
-      }
-    }
-  });
-
-  const doQuickAdd = async () => {
-    const raw = (quickAddInput?.value || "").trim().toUpperCase().replace(/[^A-Z0-9&-]/g, "");
-    if (!raw) {
-      quickAddInput?.focus();
-      return;
-    }
-    const exchange = quickAddExchange?.value || "NSE";
-    const symbol =
-      exchange === "NSE" ? `${raw}.NS` : exchange === "BSE" ? `${raw}.BO` : raw;
-    const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
-    const current = data[STORAGE_KEYS.watchlist] || [];
-    if (!current.some((w) => w.symbol === symbol)) {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.watchlist]: [...current, { symbol, displayName: raw }]
-      });
-      chrome.runtime.sendMessage({ action: "poll-now" }, () => void chrome.runtime.lastError);
-    }
-    if (quickAddInput) quickAddInput.value = "";
-    if (addSheet) {
-      addSheet.classList.remove("is-open");
-      addSheet.hidden = true;
-    }
-    setTab("watchlist", mainContent);
-  };
-
-  quickAddBtn?.addEventListener("click", doQuickAdd);
-  quickAddInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doQuickAdd();
+  [tabHoldings, tabWatchlist].filter(Boolean).forEach((tabEl) => {
+    tabEl.addEventListener("keydown", (event) => handleTabKeydown(event, mainContent));
   });
 
   refreshPopup(mainContent);
@@ -93,10 +50,18 @@ document.addEventListener("DOMContentLoaded", () => {
       refreshPopup(mainContent);
     }
     if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
+      applyPopupTheme(changes[STORAGE_KEYS.settings].newValue?.tickerStyleConfig?.theme);
       refreshPopup(mainContent);
     }
   });
 });
+
+function applyPopupTheme(theme) {
+  const root = document.documentElement;
+  if (!root) return;
+  if (theme === "light" || theme === "dark") root.setAttribute("data-theme", theme);
+  else root.removeAttribute("data-theme");
+}
 
 function openSettings() {
   if (chrome.runtime.openOptionsPage) {
@@ -110,8 +75,16 @@ function setTab(tab, mainContent) {
   activeTab = tab;
   const tabHoldings = document.getElementById("tabHoldings");
   const tabWatchlist = document.getElementById("tabWatchlist");
-  tabHoldings?.setAttribute("aria-selected", tab === "holdings" ? "true" : "false");
-  tabWatchlist?.setAttribute("aria-selected", tab === "watchlist" ? "true" : "false");
+  const panels = {
+    holdings: document.getElementById("panelHoldings"),
+    watchlist: document.getElementById("panelWatchlist")
+  };
+  [["holdings", tabHoldings], ["watchlist", tabWatchlist]].forEach(([name, tabEl]) => {
+    const selected = name === tab;
+    tabEl?.setAttribute("aria-selected", selected ? "true" : "false");
+    tabEl?.setAttribute("tabindex", selected ? "0" : "-1");
+    if (panels[name]) panels[name].hidden = !selected;
+  });
   if (lastPnlPayload && currentView === VIEW_PNL) {
     renderActiveTab(mainContent, lastPnlPayload);
   } else {
@@ -119,29 +92,19 @@ function setTab(tab, mainContent) {
   }
 }
 
-async function setPlatformShortcut(el) {
-  if (!el) return;
-  try {
-    const commands = await chrome.commands.getAll();
-    const cmd = commands.find((c) => c.name === "toggle-myticker");
-    if (cmd?.shortcut) {
-      el.hidden = false;
-      el.textContent = "";
-      el.append("Toggle strip: ");
-      const parts = cmd.shortcut.split("+");
-      parts.forEach((part, i) => {
-        const kbd = document.createElement("kbd");
-        kbd.textContent =
-          part === "Command" ? "⌘" : part === "MacCtrl" ? "⌃" : part === "Alt" ? "⌥" : part;
-        el.appendChild(kbd);
-        if (i < parts.length - 1) el.append("+");
-      });
-      return;
-    }
-  } catch (_) {
-    /* ignore */
-  }
-  el.hidden = true;
+function handleTabKeydown(event, mainContent) {
+  const tabs = [document.getElementById("tabHoldings"), document.getElementById("tabWatchlist")].filter(Boolean);
+  const currentIndex = tabs.indexOf(event.currentTarget);
+  let nextIndex = currentIndex;
+  if (event.key === "ArrowRight" || event.key === "ArrowDown") nextIndex = (currentIndex + 1) % tabs.length;
+  else if (event.key === "ArrowLeft" || event.key === "ArrowUp") nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+  else if (event.key === "Home") nextIndex = 0;
+  else if (event.key === "End") nextIndex = tabs.length - 1;
+  else return;
+  event.preventDefault();
+  const nextTab = tabs[nextIndex];
+  setTab(nextTab.id === "tabHoldings" ? "holdings" : "watchlist", mainContent);
+  nextTab.focus();
 }
 
 function prefersReducedMotion() {
@@ -165,7 +128,7 @@ async function fadeOutView(viewEl) {
 
 function mountView(container, viewEl, viewName) {
   viewEl.classList.add("popup-view", "view-enter");
-  container.appendChild(viewEl);
+  if (viewEl.parentNode !== container) container.appendChild(viewEl);
   currentView = viewName;
   if (!prefersReducedMotion()) {
     requestAnimationFrame(() => {
@@ -193,30 +156,29 @@ async function refreshPopup(container) {
 async function _refreshPopupInner(container) {
   const showLoading = !popupHasRendered;
   const outgoing = container.querySelector(".popup-view");
+  const holdingsPanel = document.getElementById("panelHoldings");
+  const watchlistPanel = document.getElementById("panelWatchlist");
 
   if (showLoading && !outgoing) {
-    const loading = document.createElement("div");
+    const loading = holdingsPanel;
+    loading.replaceChildren();
     loading.className = "popup-view loading-state view-enter";
     loading.textContent = "Loading…";
-    container.appendChild(loading);
     currentView = VIEW_LOADING;
   }
 
-  const [status, local, sync] = await Promise.all([
+  const [status, local] = await Promise.all([
     getSetupStatus(),
     chrome.storage.local.get([
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.watchlist,
       STORAGE_KEYS.onboarding
-    ]),
-    chrome.storage.sync.get([STORAGE_KEYS.settings])
+    ])
   ]);
 
   const state = local[STORAGE_KEYS.positionsState];
   const watchlistItems = local[STORAGE_KEYS.watchlist] || [];
-  const settings = sync[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
-
-  lastPnlPayload = { state, watchlistItems, status, settings };
+  lastPnlPayload = { state, watchlistItems, status };
 
   let nextView = VIEW_PNL;
   if (!status.complete) {
@@ -227,15 +189,10 @@ async function _refreshPopupInner(container) {
 
   // Show tabs only when fully set up with data
   const tabs = document.querySelector(".tabs");
-  const headerActions = document.querySelector(".header-actions");
   if (tabs) tabs.style.display = nextView === VIEW_PNL ? "flex" : "none";
-  if (headerActions) {
-    const addBtn = document.getElementById("addWatchBtn");
-    if (addBtn) addBtn.style.display = nextView === VIEW_PNL ? "flex" : "none";
-  }
 
   if (currentView === nextView && outgoing && nextView === VIEW_PNL) {
-    updatePnlInPlace(outgoing, state, watchlistItems, settings);
+    updatePnlInPlace(outgoing, state, watchlistItems);
     popupHasRendered = true;
     return;
   }
@@ -249,15 +206,19 @@ async function _refreshPopupInner(container) {
   const loadingEl = container.querySelector(".loading-state");
   if (loadingEl) {
     await fadeOutView(loadingEl);
-    loadingEl.remove();
+    loadingEl.className = "";
+    loadingEl.replaceChildren();
   } else if (outgoing) {
     await fadeOutView(outgoing);
-    outgoing.remove();
+    outgoing.className = "";
+    outgoing.replaceChildren();
   }
 
-  container.innerHTML = "";
-
-  const viewEl = document.createElement("div");
+  const viewEl = holdingsPanel;
+  watchlistPanel.replaceChildren();
+  watchlistPanel.hidden = true;
+  holdingsPanel.hidden = false;
+  holdingsPanel.replaceChildren();
   if (nextView === VIEW_CHECKLIST) {
     renderSetupChecklist(viewEl, status);
     if (!checklistStaggered) {
@@ -267,7 +228,9 @@ async function _refreshPopupInner(container) {
   } else if (nextView === VIEW_EMPTY) {
     renderEmptyState(viewEl, status);
   } else {
-    renderActiveTab(viewEl, lastPnlPayload);
+    renderActiveTab(container, lastPnlPayload);
+    popupHasRendered = true;
+    return;
   }
 
   mountView(container, viewEl, nextView);
@@ -275,13 +238,23 @@ async function _refreshPopupInner(container) {
 }
 
 function renderActiveTab(container, payload) {
-  const { state, watchlistItems, status, settings } = payload;
-  container.innerHTML = "";
-  container.className = "popup-view";
+  const { state, watchlistItems, status } = payload;
+  const panel = document.getElementById(activeTab === "watchlist" ? "panelWatchlist" : "panelHoldings");
+  if (!panel) return;
+  ["holdings", "watchlist"].forEach((name) => {
+    const selected = name === activeTab;
+    const tab = document.getElementById(name === "holdings" ? "tabHoldings" : "tabWatchlist");
+    const tabPanel = document.getElementById(name === "holdings" ? "panelHoldings" : "panelWatchlist");
+    tab?.setAttribute("aria-selected", selected ? "true" : "false");
+    tab?.setAttribute("tabindex", selected ? "0" : "-1");
+    if (tabPanel) tabPanel.hidden = !selected;
+  });
+  panel.replaceChildren();
+  panel.className = "popup-view";
   if (activeTab === "watchlist") {
-    renderWatchlistPanel(container, watchlistItems, state?.watchlist || []);
+    renderWatchlistPanel(panel, watchlistItems, state?.watchlist || []);
   } else {
-    renderHoldingsPanel(container, state, status, settings);
+    renderHoldingsPanel(panel, state, status);
   }
   currentView = VIEW_PNL;
 }
@@ -312,7 +285,7 @@ function getSetupSteps(status) {
       done: status.hasApiKey,
       wizardStep: 1,
       label: "Optional: US price key",
-      hint: "Only needed for US stocks or crypto (Finnhub free key)"
+      hint: "Needed for US equities; crypto quotes use CoinGecko with Binance fallback"
     });
   }
   return steps;
@@ -329,57 +302,64 @@ function updateChecklistInPlace(viewEl, status) {
   });
 }
 
-function shortTimeAgo(timestamp) {
-  if (!timestamp) return "just now";
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
+export function getAggregateDisplay(currency, value, percentage) {
+  if (!currency) {
+    return { value: "Mixed currencies", percentage: "", className: "pnl-flat" };
+  }
+  const numericValue = Number(value) || 0;
+  const numericPercentage = Number(percentage) || 0;
+  const className = numericValue > 0 ? "pnl-positive" : numericValue < 0 ? "pnl-negative" : "pnl-flat";
+  return {
+    value: formatSignedCurrency(numericValue, currency),
+    percentage: `${numericPercentage >= 0 ? "+" : ""}${numericPercentage.toFixed(2)}%`,
+    className
+  };
 }
 
-function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
+export function updatePnlInPlace(viewEl, state, watchlistItems) {
   if (activeTab === "watchlist") {
-    renderActiveTab(viewEl, { state, watchlistItems, status: null, settings });
+    renderActiveTab(viewEl, { state, watchlistItems, status: null });
     return;
   }
   if (!state?.positions?.length) return;
 
-  const currency = state.displayCurrency || "INR";
+  const currency = state.displayCurrency;
   const agg = state.aggregate || {};
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
   const window5mPnl = Number(agg.window5mPnl) || 0;
   const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
-  const fiveClass =
-    window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
+  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
+  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
 
   const pnlValue = viewEl.querySelector(".pnl-value");
   const pnlPct = viewEl.querySelector(".pnl-pct");
   const fiveValue = viewEl.querySelector("[data-five-value]");
   const holdingsCount = viewEl.querySelector("[data-holdings-count]");
   const livePill = viewEl.querySelector(".live-pill");
-  const footerMeta = viewEl.querySelector(".footer-meta");
-  const stripToggle = viewEl.querySelector("#enabledToggle");
 
   if (pnlValue) {
-    pnlValue.className = `pnl-value ${pnlClass}`;
-    pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
+    pnlValue.className = `pnl-value ${dayDisplay.className}`;
+    pnlValue.textContent = dayDisplay.value;
   }
   if (pnlPct) {
-    pnlPct.className = `pnl-pct ${pnlClass}`;
-    pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+    pnlPct.className = `pnl-pct ${dayDisplay.className}`;
+    pnlPct.textContent = dayDisplay.percentage;
+    pnlPct.hidden = !currency;
   }
-  if (fiveValue) {
+  if (fiveValue) fiveValue.className = "stat-cell-value";
+  if (fiveValue && currency) {
     fiveValue.innerHTML = "";
     const main = document.createElement("span");
-    main.className = fiveClass;
-    main.textContent = formatSignedCurrency(window5mPnl, currency);
+    main.className = fiveDisplay.className;
+    main.textContent = fiveDisplay.value;
     const sub = document.createElement("span");
-    sub.className = `sub ${fiveClass}`;
-    sub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
+    sub.className = `sub ${fiveDisplay.className}`;
+    sub.textContent = fiveDisplay.percentage;
     fiveValue.append(main, sub);
+  } else if (fiveValue) {
+    fiveValue.className = `stat-cell-value ${fiveDisplay.className}`;
+    fiveValue.textContent = fiveDisplay.value;
   }
   if (holdingsCount) {
     holdingsCount.textContent = String(state.positions.length);
@@ -388,14 +368,6 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
     livePill.classList.toggle("is-stale", !!state.staleWarning);
     const label = livePill.querySelector(".live-label");
     if (label) label.textContent = state.staleWarning ? "Stale" : "Live";
-  }
-  if (footerMeta) {
-    footerMeta.classList.toggle("is-stale", !!state.staleWarning);
-    const t = footerMeta.querySelector(".footer-time");
-    if (t) t.textContent = `Last updated ${shortTimeAgo(state.updatedAt)}`;
-  }
-  if (stripToggle) {
-    stripToggle.checked = settings.enabled !== false;
   }
 
   const moversList = viewEl.querySelector(".movers-list");
@@ -409,11 +381,11 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
       )
       .slice(0, 3);
     for (const pos of movers) {
-      moversList.appendChild(buildMoverItem(pos, currency));
+      moversList.appendChild(buildMoverItem(pos));
     }
   }
 
-  const newSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
+  const newSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
   lastAggregateSign = newSign;
 }
 
@@ -497,9 +469,12 @@ function renderEmptyState(container, status) {
   container.appendChild(empty);
 }
 
-function buildMoverItem(pos, currency = "INR") {
+export function buildMoverItem(pos) {
   const pct = Number(pos.dayPnlPct) || 0;
   const dayPnl = Number(pos.dayPnl) || 0;
+  const currency = pos.currency === "INR" || pos.currency === "USD"
+    ? pos.currency
+    : /\.(NS|BO)$/i.test(pos.symbol || "") ? "INR" : "USD";
   const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
   const item = document.createElement("div");
   item.className = "mover-item";
@@ -521,22 +496,21 @@ function buildMoverItem(pos, currency = "INR") {
   return item;
 }
 
-function renderHoldingsPanel(container, state, status, settings) {
+export function renderHoldingsPanel(container, state, status) {
   if (!state?.positions?.length) {
     renderEmptyState(container, status);
     return;
   }
 
-  const currency = state.displayCurrency || "INR";
+  const currency = state.displayCurrency;
   const agg = state.aggregate || {};
   const dayPnl = Number(agg.dayPnl) || 0;
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
   const window5mPnl = Number(agg.window5mPnl) || 0;
   const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
-  const fiveClass =
-    window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
-  lastAggregateSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
+  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
+  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
+  lastAggregateSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
   const firstValue = status && !status.firstValueSeen;
 
   // Hero
@@ -547,7 +521,7 @@ function renderHoldingsPanel(container, state, status, settings) {
   live.className = "sr-only";
   live.dataset.pnlLive = "1";
   live.setAttribute("aria-live", "polite");
-  live.textContent = `Today ${formatSignedCurrency(dayPnl, currency)}`;
+  live.textContent = currency ? `Today ${formatSignedCurrency(dayPnl, currency)}` : "Today, mixed currencies";
 
   const heroTop = document.createElement("div");
   heroTop.className = "hero-top";
@@ -563,11 +537,12 @@ function renderHoldingsPanel(container, state, status, settings) {
   const pnlRow = document.createElement("div");
   pnlRow.className = "pnl-row";
   const pnlValue = document.createElement("span");
-  pnlValue.className = `pnl-value ${pnlClass}`;
-  pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
+  pnlValue.className = `pnl-value ${dayDisplay.className}`;
+  pnlValue.textContent = dayDisplay.value;
   const pnlPct = document.createElement("span");
-  pnlPct.className = `pnl-pct ${pnlClass}`;
-  pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+  pnlPct.className = `pnl-pct ${dayDisplay.className}`;
+  pnlPct.textContent = dayDisplay.percentage;
+  pnlPct.hidden = !currency;
   pnlRow.append(pnlValue, pnlPct);
 
   const grid = document.createElement("div");
@@ -579,12 +554,15 @@ function renderHoldingsPanel(container, state, status, settings) {
   fiveVal.className = "stat-cell-value";
   fiveVal.dataset.fiveValue = "1";
   const fiveMain = document.createElement("span");
-  fiveMain.className = fiveClass;
-  fiveMain.textContent = formatSignedCurrency(window5mPnl, currency);
-  const fiveSub = document.createElement("span");
-  fiveSub.className = `sub ${fiveClass}`;
-  fiveSub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
-  fiveVal.append(fiveMain, fiveSub);
+  fiveMain.className = fiveDisplay.className;
+  fiveMain.textContent = fiveDisplay.value;
+  fiveVal.append(fiveMain);
+  if (currency) {
+    const fiveSub = document.createElement("span");
+    fiveSub.className = `sub ${fiveDisplay.className}`;
+    fiveSub.textContent = fiveDisplay.percentage;
+    fiveVal.append(fiveSub);
+  }
   cell5.appendChild(fiveVal);
 
   const cellH = document.createElement("div");
@@ -604,12 +582,7 @@ function renderHoldingsPanel(container, state, status, settings) {
   helpLink.target = "_blank";
   helpLink.rel = "noopener noreferrer";
   helpLink.textContent = "How P&L is calculated";
-  const sep = document.createElement("span");
-  sep.className = "sep";
-  sep.textContent = "·";
-  const privacy = document.createElement("span");
-  privacy.textContent = "Local only";
-  help.append(helpLink, sep, privacy);
+  help.append(helpLink);
 
   hero.append(live, heroTop, pnlRow, grid, help);
   container.appendChild(hero);
@@ -646,64 +619,15 @@ function renderHoldingsPanel(container, state, status, settings) {
     list.className = "movers-list";
     list.setAttribute("role", "list");
     for (const pos of movers) {
-      list.appendChild(buildMoverItem(pos, currency));
+      list.appendChild(buildMoverItem(pos));
     }
     section.appendChild(list);
     container.appendChild(section);
   }
 
-  // Strip control card
-  const strip = document.createElement("div");
-  strip.className = "strip-card";
-  const left = document.createElement("div");
-  left.className = "strip-card-left";
-  const icon = document.createElement("div");
-  icon.className = "strip-card-icon";
-  icon.innerHTML =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 12h3l2-6 4 12 2-6h7"/></svg>';
-  const texts = document.createElement("div");
-  const t1 = document.createElement("div");
-  t1.className = "strip-card-title";
-  t1.id = "toggleLabel";
-  t1.textContent = "Ticker strip";
-  const t2 = document.createElement("div");
-  t2.className = "strip-card-sub";
-  t2.textContent = "Live market updates in your browser";
-  texts.append(t1, t2);
-  left.append(icon, texts);
-
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "toggle-switch";
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.id = "enabledToggle";
-  input.checked = settings.enabled !== false;
-  input.setAttribute("aria-labelledby", "toggleLabel");
-  const slider = document.createElement("span");
-  slider.className = "toggle-slider";
-  toggleLabel.append(input, slider);
-  input.addEventListener("change", () => {
-    chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-      const s = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
-      s.enabled = input.checked;
-      chrome.storage.sync.set({ [STORAGE_KEYS.settings]: s });
-    });
-  });
-  strip.append(left, toggleLabel);
-  container.appendChild(strip);
-
-  // Footer meta
-  const footer = document.createElement("div");
-  footer.className = `footer-meta${state.staleWarning ? " is-stale" : ""}`;
-  const time = document.createElement("span");
-  time.innerHTML = `<span class="dot"></span><span class="footer-time">Last updated ${shortTimeAgo(state.updatedAt)}</span>`;
-  const local = document.createElement("span");
-  local.textContent = "Data: Local only";
-  footer.append(time, local);
-  container.appendChild(footer);
 }
 
-function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
+export function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
   const panel = document.createElement("div");
   panel.className = "watchlist-panel";
   const priceMap = Object.fromEntries((watchlistPrices || []).map((w) => [w.symbol, w]));
@@ -712,7 +636,7 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "No symbols yet. Tap + above to add a ticker, or import holdings for full P&L.";
+      "No symbols yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {
@@ -720,14 +644,17 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
       row.className = "watchlist-item";
       const sym = document.createElement("span");
       sym.className = "watch-symbol";
-      sym.textContent = item.displayName;
+      sym.textContent = item.displayName || item.symbol;
+      const asset = document.createElement("span");
+      asset.className = "watch-asset";
+      asset.textContent = formatWatchlistAssetLabel(item);
       const priceEl = document.createElement("span");
       priceEl.className = "watch-price";
       const changeEl = document.createElement("span");
       changeEl.className = "watch-change";
       const pd = priceMap[item.symbol];
       if (pd?.lastPrice != null) {
-        const isInr = item.symbol.endsWith(".NS") || item.symbol.endsWith(".BO");
+        const isInr = (pd.currency || item.currency) === "INR";
         priceEl.textContent = isInr
           ? `₹${pd.lastPrice.toFixed(2)}`
           : `$${pd.lastPrice.toFixed(2)}`;
@@ -736,8 +663,14 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
         changeEl.className = `watch-change ${
           pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat"
         }`;
+        if (pd.stale) {
+          changeEl.textContent = "Stale";
+          changeEl.className = "watch-change pnl-flat";
+        }
       } else {
-        priceEl.textContent = "–";
+        priceEl.textContent = "Unavailable";
+        changeEl.textContent = "Unavailable";
+        changeEl.className = "watch-change pnl-flat";
       }
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";
@@ -747,13 +680,22 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
       removeBtn.addEventListener("click", async () => {
         const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
         const updated = (data[STORAGE_KEYS.watchlist] || []).filter(
-          (w) => w.symbol !== item.symbol
+          (w) => (w.canonicalKey || `equity:${w.symbol}`) !== (item.canonicalKey || `equity:${item.symbol}`)
         );
         await chrome.storage.local.set({ [STORAGE_KEYS.watchlist]: updated });
       });
-      row.append(sym, priceEl, changeEl, removeBtn);
+      row.append(sym, asset, priceEl, changeEl, removeBtn);
       panel.appendChild(row);
     }
   }
   container.appendChild(panel);
+}
+
+function formatWatchlistAssetLabel(item = {}) {
+  if (item.assetClass === "crypto" || String(item.canonicalKey || "").startsWith("crypto:")) return "Crypto · USD";
+  const exchange = item.exchange || (String(item.symbol).endsWith(".NS") ? "NSE" : String(item.symbol).endsWith(".BO") ? "BSE" : "");
+  if (exchange === "NSE" || exchange === "BSE") return `India · ${exchange} · INR`;
+  if (exchange === "INDEX") return "Index · USD";
+  if (exchange === "ETF") return "ETF · USD";
+  return `US${exchange ? ` · ${exchange}` : ""} · USD`;
 }

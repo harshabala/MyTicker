@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "MyTicker",
   "description": "MyTicker shows a live running strip of your stock holdings across brokers with 5-minute and daily P&L.",
-  "version": "0.4.1",
+  "version": "0.5.0",
   "icons": {
     "16": "icons/icon16.png",
     "32": "icons/icon32.png",
@@ -30,7 +30,9 @@
   "host_permissions": [
     "https://finnhub.io/*",
     "https://query1.finance.yahoo.com/*",
-    "https://query2.finance.yahoo.com/*"
+    "https://query2.finance.yahoo.com/*",
+    "https://api.coingecko.com/*",
+    "https://data-api.binance.vision/*"
   ],
   "content_scripts": [
     {
@@ -38,9 +40,9 @@
         "<all_urls>"
       ],
       "js": [
+        "contentShared.js",
         "contentScript.js"
       ],
-      "type": "module",
       "run_at": "document_start",
       "all_frames": false
     }

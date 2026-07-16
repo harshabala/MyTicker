@@ -7,19 +7,34 @@ import {
   computePositionsState,
   mergePriceSnapshots,
   inferDisplayCurrency,
-  isActivated
+  isActivated,
+  withTickerItems,
+  hydrateTickerQuoteItems,
+  appendDiagnosticLogEntry
+  , normalizeCryptoConfig
 } from "./shared.js";
 
-import { getAllQuotes } from "./priceProviders.js";
+import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
 
-const DEFAULT_TOP5_CRYPTO = [
-  "BINANCE:BTCUSDT",
-  "BINANCE:ETHUSDT",
-  "BINANCE:BNBUSDT",
-  "BINANCE:XRPUSDT",
-  "BINANCE:SOLUSDT"
-];
+const DEFAULT_TOP5_CRYPTO = ["bitcoin", "ethereum", "binancecoin", "ripple", "solana"];
+const CRYPTO_ID_BY_SYMBOL = {
+  bitcoin: "bitcoin",
+  btc: "bitcoin",
+  btcusdt: "bitcoin",
+  ethereum: "ethereum",
+  eth: "ethereum",
+  ethusdt: "ethereum",
+  binancecoin: "binancecoin",
+  bnb: "binancecoin",
+  bnbusdt: "binancecoin",
+  ripple: "ripple",
+  xrp: "ripple",
+  xrpusdt: "ripple",
+  solana: "solana",
+  sol: "solana",
+  solusdt: "solana"
+};
 
 // Issue #8: In-flight lock to prevent concurrent poll execution.
 let pollInFlight = false;
@@ -49,6 +64,58 @@ async function savePollHealth() {
 
 let pollHealthLoaded = false;
 
+async function recordDiagnostic(entry) {
+  const data = await chrome.storage.local.get([STORAGE_KEYS.diagnosticsLog]);
+  await chrome.storage.local.set({
+    [STORAGE_KEYS.diagnosticsLog]: appendDiagnosticLogEntry(data[STORAGE_KEYS.diagnosticsLog], entry)
+  });
+}
+
+const CONTENT_LIFECYCLE_STAGES = new Set([
+  "loaded", "storage-settings-read", "mount-success", "render-success", "fatal-error"
+]);
+
+function safeOrigin(value) {
+  try {
+    const origin = new URL(String(value || "")).origin;
+    return origin === "null" ? "" : origin;
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeContentError(error) {
+  if (!error || typeof error !== "object") return undefined;
+  const name = String(error.name || "Error").replace(/[^a-zA-Z0-9_. -]/g, "").slice(0, 80) || "Error";
+  const message = String(error.message || "").replace(/https?:\/\/\S+/g, "[url]").replace(/[\r\n]/g, " ").slice(0, 160);
+  return message ? { name, message } : { name };
+}
+
+async function recordContentLifecycle(message, sender) {
+  if (!CONTENT_LIFECYCLE_STAGES.has(message?.stage)) return;
+  const timestamp = Date.now();
+  const status = {
+    origin: safeOrigin(sender?.url) || safeOrigin(message.origin),
+    stage: message.stage,
+    timestamp
+  };
+  const error = sanitizeContentError(message.error);
+  if (error) status.error = error;
+  await chrome.storage.local.set({ [STORAGE_KEYS.contentScriptStatus]: status });
+  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.stage });
+}
+
+function providerQuoteCounts(quotes) {
+  const counts = { coinGeckoQuotes: 0, binanceQuotes: 0, yahooQuotes: 0, finnhubQuotes: 0 };
+  for (const quote of quotes) {
+    if (quote?.source === "coingecko") counts.coinGeckoQuotes++;
+    if (quote?.source === "binance") counts.binanceQuotes++;
+    if (quote?.source === "yahoo") counts.yahooQuotes++;
+    if (quote?.source === "finnhub") counts.finnhubQuotes++;
+  }
+  return counts;
+}
+
 async function ensurePollHealthLoaded() {
   if (!pollHealthLoaded) {
     await loadPollHealth();
@@ -58,7 +125,13 @@ async function ensurePollHealthLoaded() {
 
 ensurePollHealthLoaded();
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.action === "content-script-lifecycle") {
+    recordContentLifecycle(message, sender).catch((err) => {
+      console.warn("[MyTicker] could not record content lifecycle", err);
+    });
+    return;
+  }
   if (message?.action === "poll-now") {
     handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
       console.error("[MyTicker] poll-now failed", err);
@@ -134,6 +207,7 @@ async function handlePricePoll() {
       chrome.storage.sync.get([STORAGE_KEYS.settings]),
       chrome.storage.local.get([
         STORAGE_KEYS.holdings,
+        STORAGE_KEYS.watchlist,
         STORAGE_KEYS.priceHistory,
         "pts_price_api_key"
       ])
@@ -143,36 +217,63 @@ async function handlePricePoll() {
     if (!settings.enabled) return;
 
     const baseHoldings = localData[STORAGE_KEYS.holdings] || [];
+    const watchlist = normalizeWatchlist(localData[STORAGE_KEYS.watchlist]);
+    const crypto = buildCryptoTickerItems(settings);
+    const diagnosticCounts = {
+      timestamp: Date.now(),
+      holdingsCount: baseHoldings.length,
+      watchlistCount: watchlist.length,
+      cryptoCount: crypto.length
+    };
+    await recordDiagnostic({ ...diagnosticCounts, event: "refresh-start" });
 
-    // Enrich holdings with crypto and apply asset filters depending on settings.
+    // Holdings alone contribute to positions and portfolio P&L.
     const holdings = buildCombinedHoldings(baseHoldings, settings);
-    if (!holdings.length) {
-      // No holdings to track; clear state so UI doesn't show stale data.
+    if (!holdings.length && !watchlist.length && !crypto.length) {
+      // No market items to track; clear state so UI doesn't show stale data.
       chrome.storage.local.set({
         [STORAGE_KEYS.positionsState]: null
       });
+      await recordDiagnostic({ ...diagnosticCounts, event: "state-write" });
       return;
     }
 
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
-    // India (.NS/.BO) quotes via Yahoo without a key. Finnhub only for US/crypto when key present.
+    // India (.NS/.BO) quotes via Yahoo without a key; Finnhub is optional for US symbols. Crypto uses CoinGecko with mapped Binance fallback.
     const apiKeyOverride = (localData["pts_price_api_key"] || "").trim();
     const apiConfig = {
       apiKey: apiKeyOverride,
       baseUrl: "https://finnhub.io/api/v1"
     };
 
-    const symbols = [...new Set(holdings.map((h) => h.symbol))];
-    if (!symbols.length) {
-      chrome.storage.local.set({
-        [STORAGE_KEYS.positionsState]: null
-      });
-      return;
-    }
+    const equityWatchlist = watchlist.filter((item) => item.assetClass !== "crypto");
+    const cryptoWatchlist = watchlist.filter((item) => item.assetClass === "crypto");
+    const equitySymbols = [...new Set([...holdings, ...equityWatchlist].map((h) => h.symbol))];
+    const cryptoSymbols = [...new Set([...crypto, ...cryptoWatchlist].map((item) => item.symbol))];
+    await recordDiagnostic({
+      ...diagnosticCounts,
+      timestamp: Date.now(),
+      event: "eligible-symbols",
+      equitySymbols: equitySymbols.length,
+      totalSymbols: equitySymbols.length + cryptoSymbols.length
+    });
 
-    const quotes = await getAllQuotes(symbols, apiConfig);
+    const [equityQuotes, cryptoQuotes] = await Promise.all([
+      getAllQuotes(equitySymbols, apiConfig),
+      getCryptoQuotes(cryptoSymbols)
+    ]);
+    const quotes = [...equityQuotes, ...cryptoQuotes];
     const now = Date.now();
+    await recordDiagnostic({
+      ...diagnosticCounts,
+      timestamp: now,
+      event: "provider-results",
+      equityQuotes: equityQuotes.length,
+      cryptoQuotes: cryptoQuotes.length,
+      quoteCount: quotes.length,
+      ...providerQuoteCounts(quotes)
+    });
 
     if (quotes.length > 0) {
       consecutiveFailures = 0;
@@ -193,7 +294,12 @@ async function handlePricePoll() {
     await savePollHealth();
 
     const newHistory = mergePriceSnapshots(priceHistory, quotes, now);
-    const positionsState = computePositionsState(holdings, newHistory, now);
+    const holdingsState = computePositionsState(holdings, newHistory, now);
+    const positionsState = withTickerItems({
+      positionsState: holdingsState,
+      watchlist: hydrateTickerQuoteItems(watchlist, quotes, newHistory),
+      crypto: hydrateTickerQuoteItems(crypto, quotes, newHistory)
+    });
 
     positionsState.updatedAt = now;
     positionsState.displayCurrency = inferDisplayCurrency(baseHoldings);
@@ -212,6 +318,7 @@ async function handlePricePoll() {
         [STORAGE_KEYS.priceHistory]: newHistory,
         [STORAGE_KEYS.positionsState]: positionsState
       });
+      await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     } catch (storageErr) {
       console.warn("[MyTicker] Storage quota exceeded, pruning history", storageErr);
       // Aggressive prune: keep only last 5 minutes of history.
@@ -228,11 +335,13 @@ async function handlePricePoll() {
         [STORAGE_KEYS.priceHistory]: newHistory,
         [STORAGE_KEYS.positionsState]: positionsState
       });
+      await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     }
   } catch (err) {
     console.error("Error in handlePricePoll", err);
     consecutiveFailures++;
     await savePollHealth();
+    await recordDiagnostic({ timestamp: Date.now(), event: "refresh-failed", error: true });
   } finally {
     pollInFlight = false;
   }
@@ -240,7 +349,6 @@ async function handlePricePoll() {
 
 function buildCombinedHoldings(baseHoldings, settings) {
   const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
-  const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
 
   const enriched = [];
 
@@ -253,46 +361,48 @@ function buildCombinedHoldings(baseHoldings, settings) {
     }
   }
 
-  if (!filters.showCrypto || !cryptoConfig || !cryptoConfig.includeCrypto) {
-    return enriched;
-  }
-
-  if (cryptoConfig.mode === "manual") {
-    const manual = Array.isArray(cryptoConfig.manualHoldings)
-      ? cryptoConfig.manualHoldings
-      : [];
-    for (const c of manual) {
-      if (!c.symbol) continue;
-      const qty = Number(c.quantity) || 0;
-      if (!qty) continue;
-      const rawSymbol = String(c.symbol).trim();
-      enriched.push({
-        brokerId: "crypto-manual",
-        assetClass: "crypto",
-        symbol: rawSymbol,
-        exchange: "CRYPTO",
-        quantity: qty,
-        avgPrice: 0,
-        currency: "USD",
-        displayName: cleanCryptoDisplayName(rawSymbol)
-      });
-    }
-  } else if (cryptoConfig.mode === "top5") {
-    for (const sym of DEFAULT_TOP5_CRYPTO) {
-      enriched.push({
-        brokerId: "crypto-top5",
-        assetClass: "crypto",
-        symbol: sym,
-        exchange: "CRYPTO",
-        quantity: 1,
-        avgPrice: 0,
-        currency: "USD",
-        displayName: cleanCryptoDisplayName(sym)
-      });
-    }
-  }
-
   return enriched;
+}
+
+function normalizeWatchlist(items) {
+  if (!Array.isArray(items)) return [];
+  return items.flatMap((item) => {
+    const symbol = String(item?.symbol || "").trim();
+    if (!symbol) return [];
+    return [{
+      symbol,
+      displayName: item.displayName || symbol,
+      quantity: 0,
+      assetClass: item.assetClass === "crypto" ? "crypto" : "watchlist",
+      currency: item.currency || (symbol.endsWith(".NS") || symbol.endsWith(".BO") ? "INR" : "USD"),
+      canonicalKey: item.canonicalKey || `equity:${symbol}`
+    }];
+  });
+}
+
+function buildCryptoTickerItems(settings) {
+  const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
+  const cryptoConfig = normalizeCryptoConfig(settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig);
+  if (!filters.showCrypto || cryptoConfig.mode === "off") return [];
+
+  const symbols = cryptoConfig.mode === "manual"
+    ? (Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : [])
+      .map((item) => item?.symbol)
+    : DEFAULT_TOP5_CRYPTO;
+
+  return [...new Set(symbols.map(normalizeCryptoId).filter(Boolean))].map((symbol) => ({
+    symbol,
+    displayName: cleanCryptoDisplayName(symbol),
+    quantity: 0,
+    assetClass: "crypto",
+    currency: "USD"
+  }));
+}
+
+function normalizeCryptoId(symbol) {
+  const raw = String(symbol || "").trim();
+  const pair = raw.split(":").pop().toLowerCase();
+  return CRYPTO_ID_BY_SYMBOL[pair] || (DEFAULT_TOP5_CRYPTO.includes(pair) ? pair : null);
 }
 
 // Strip exchange prefix (e.g. "BINANCE:BTCUSDT" → "BTCUSDT")

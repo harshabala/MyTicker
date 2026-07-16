@@ -8,8 +8,59 @@ const STORAGE_KEYS = {
   pollHealth: "pts_poll_health",
   onboarding: "pts_onboarding",
   watchlist: "pts_watchlist",
-  metrics: "pts_metrics"
+  metrics: "pts_metrics",
+  diagnosticsLog: "pts_diagnostics_log",
+  contentScriptStatus: "pts_content_script_status"
 };
+
+const DIAGNOSTICS_LOG_LIMIT = 40;
+const DIAGNOSTIC_EVENTS = new Set([
+  "refresh-start",
+  "eligible-symbols",
+  "provider-results",
+  "state-write",
+  "refresh-failed",
+  "content-script-lifecycle"
+]);
+const CONTENT_LIFECYCLE_STAGES = new Set([
+  "loaded",
+  "storage-settings-read",
+  "mount-success",
+  "render-success",
+  "fatal-error"
+]);
+
+/**
+ * Keep refresh diagnostics operational and safe to copy. This deliberately
+ * allows only lifecycle names and aggregate counts: no keys, quantities,
+ * symbols, prices, or portfolio values can enter the persisted log.
+ */
+function sanitizeDiagnosticEntry(entry = {}) {
+  const safe = {
+    timestamp: Number(entry.timestamp) || Date.now(),
+    event: DIAGNOSTIC_EVENTS.has(entry.event) ? entry.event : "unknown"
+  };
+  for (const key of [
+    "holdingsCount", "watchlistCount", "cryptoCount", "equitySymbols",
+    "totalSymbols", "equityQuotes", "cryptoQuotes", "quoteCount",
+    "coinGeckoQuotes", "binanceQuotes", "yahooQuotes", "finnhubQuotes"
+  ]) {
+    const value = Number(entry[key]);
+    if (Number.isFinite(value) && value >= 0) safe[key] = Math.floor(value);
+  }
+  if (entry.error && safe.event !== "content-script-lifecycle") safe.error = "Refresh failed";
+  if (safe.event === "content-script-lifecycle" && CONTENT_LIFECYCLE_STAGES.has(entry.stage)) {
+    safe.stage = entry.stage;
+  }
+  return safe;
+}
+
+/** Return a bounded, newest-last diagnostics log without mutating its input. */
+function appendDiagnosticLogEntry(log, entry, limit = DIAGNOSTICS_LOG_LIMIT) {
+  const previous = Array.isArray(log) ? log : [];
+  const boundedLimit = Math.max(1, Number(limit) || DIAGNOSTICS_LOG_LIMIT);
+  return [...previous, sanitizeDiagnosticEntry(entry)].slice(-boundedLimit);
+}
 
 /**
  * Activation event (India-first).
@@ -62,12 +113,14 @@ const DEFAULT_SETTINGS = {
     refreshMinutes: 1
   },
   tickerStyleConfig: {
-    theme: "dark",
-    tickerSpeed: 40
+    // "system" respects the browser; explicit light/dark remain available.
+    theme: "system",
+    tickerSpeed: 40,
+    tapeScale: "comfortable"
   },
   cryptoConfig: {
     includeCrypto: false,
-    mode: "top5", // "top5" | "manual"
+    mode: "off", // "off" | "top5" | "manual"
     manualHoldings: [] // [{ symbol, quantity }]
   },
   portfolioFilters: {
@@ -75,6 +128,66 @@ const DEFAULT_SETTINGS = {
     showCrypto: true
   }
 };
+
+const TAPE_SCALES = new Set(["compact", "comfortable", "large"]);
+
+// The only crypto assets exposed by the settings controls. Keep this catalog
+// canonical so storage, quote fetching, and UI labels share one identity.
+const CRYPTO_CATALOG = Object.freeze([
+  { id: "bitcoin", symbol: "BTC", name: "Bitcoin" },
+  { id: "ethereum", symbol: "ETH", name: "Ethereum" },
+  { id: "binancecoin", symbol: "BNB", name: "BNB" },
+  { id: "ripple", symbol: "XRP", name: "XRP" },
+  { id: "solana", symbol: "SOL", name: "Solana" }
+]);
+
+const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
+  [coin.id, coin], [coin.symbol.toLowerCase(), coin], [coin.name.toLowerCase(), coin]
+]));
+
+function resolveCryptoCatalogEntry(input) {
+  const raw = String(input || "").trim().toLowerCase();
+  return CRYPTO_LOOKUP.get(raw) || CRYPTO_LOOKUP.get(raw.replace(/^binance:/, "").replace(/usdt$/, "")) || null;
+}
+
+/** Convert legacy aliases to one canonical ID, retaining the first positive quantity. */
+function normalizeManualCryptoHoldings(holdings) {
+  const selected = new Map();
+  for (const holding of Array.isArray(holdings) ? holdings : []) {
+    const coin = resolveCryptoCatalogEntry(holding?.symbol);
+    const quantity = Number(holding?.quantity);
+    if (coin && Number.isFinite(quantity) && quantity > 0 && !selected.has(coin.id)) {
+      selected.set(coin.id, { symbol: coin.id, quantity });
+    }
+  }
+  return [...selected.values()];
+}
+
+/** Migrate legacy includeCrypto settings into one unambiguous mode field. */
+function normalizeCryptoConfig(config = {}) {
+  const requested = config.mode;
+  const mode = config.includeCrypto === false ? "off"
+    : ["off", "top5", "manual"].includes(requested) ? requested
+    : config.includeCrypto ? "top5" : "off";
+  return { ...config, mode, includeCrypto: mode !== "off", manualHoldings: normalizeManualCryptoHoldings(config.manualHoldings) };
+}
+
+function normalizeWatchlistSymbol(input, assetType, exchange = "NSE") {
+  const raw = String(input || "").trim().toUpperCase();
+  if (!raw || assetType === "crypto" || !/^[A-Z0-9&.-]{1,24}$/.test(raw)) return null;
+  if (assetType === "india") {
+    const base = raw.replace(/\.(NS|BO)$/, "");
+    const suffix = exchange === "BSE" ? ".BO" : ".NS";
+    return { symbol: `${base}${suffix}`, displayName: base, exchange: exchange === "BSE" ? "BSE" : "NSE", currency: "INR", assetClass: "watchlist" };
+  }
+  if (!["us", "index", "etf"].includes(assetType)) return null;
+  return { symbol: raw, displayName: raw, exchange: assetType === "us" ? "US" : assetType.toUpperCase(), currency: "USD", assetClass: "watchlist" };
+}
+
+/** Return a supported named tape density, safely defaulting legacy settings. */
+function normalizeTapeScale(value) {
+  return TAPE_SCALES.has(value) ? value : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
 
 /**
  * Merge new quote snapshot into existing history.
@@ -146,6 +259,7 @@ function computePositionsState(holdings, priceHistory, now) {
         dayPnl: 0,
         dayPnlPct: 0,
         assetClass: h.assetClass || "stock",
+        currency: inferDisplayCurrency(h),
         brokerId: h.brokerId
       };
     }
@@ -201,6 +315,7 @@ function computePositionsState(holdings, priceHistory, now) {
       dayPnl,
       dayPnlPct,
       assetClass: h.assetClass || "stock",
+      currency: inferDisplayCurrency(h),
       brokerId: h.brokerId
     };
   });
@@ -263,6 +378,98 @@ function formatCurrency(value, currency = "INR") {
 }
 
 /**
+ * Format an individual market quote, preserving precision for lower prices.
+ */
+function formatQuotePrice(value, currency = "USD") {
+  if (!Number.isFinite(value)) return "—";
+
+  const fractionDigits = Math.abs(value) >= 100 ? 2 : 4;
+  return new Intl.NumberFormat(currency === "INR" ? "en-IN" : "en-US", {
+    style: "currency",
+    currency,
+    minimumFractionDigits: fractionDigits,
+    maximumFractionDigits: fractionDigits
+  }).format(value);
+}
+
+/**
+ * Infer a quote currency without changing a source-supplied INR or USD value.
+ * Arrays are supported for aggregate displays: a mixed set has no aggregate
+ * currency because combining native-currency P&L values would be misleading.
+ */
+function inferDisplayCurrency(item = {}) {
+  if (Array.isArray(item)) {
+    const currencies = new Set(item.map((entry) => inferDisplayCurrency(entry)));
+    return currencies.size === 1 ? [...currencies][0] : null;
+  }
+  if (item.currency === "INR" || item.currency === "USD") return item.currency;
+  if (item.assetClass === "crypto") return "USD";
+  return /\.(NS|BO)$/i.test(item.symbol || "") ? "INR" : "USD";
+}
+
+/** Normalise sources for ticker rendering while keeping holdings P&L intact. */
+function normalizeTickerItem(item = {}, kind) {
+  return {
+    ...item,
+    ...(kind ? { kind } : {}),
+    currency: inferDisplayCurrency(item)
+  };
+}
+
+/**
+ * Normalise sources for ticker rendering while keeping holdings P&L intact.
+ */
+function buildTickerItems({ positions = [], watchlist = [], crypto = [] } = {}) {
+  return [
+    ...positions.map((item) => normalizeTickerItem(item, "holding")),
+    ...watchlist.map((item) => ({ ...normalizeTickerItem(item, "watchlist"), dayPnl: null })),
+    ...crypto.map((item) => ({ ...normalizeTickerItem(item, "crypto"), dayPnl: null }))
+  ];
+}
+
+/** Add quote-only tape items without changing the holdings P&L state. */
+function withTickerItems({ positionsState, watchlist = [], crypto = [] } = {}) {
+  return {
+    ...positionsState,
+    tickerItems: buildTickerItems({
+      positions: positionsState?.positions || [],
+      watchlist,
+      crypto
+    })
+  };
+}
+
+/**
+ * Attach current quotes to quote-only tape items. When a provider has no
+ * current quote, keep the latest stored snapshot visible and mark it stale.
+ */
+function hydrateTickerQuoteItems(items = [], quotes = [], priceHistory = {}) {
+  const quoteBySymbol = new Map(quotes.map((quote) => [quote.symbol, quote]));
+  return items.map((item) => {
+    const quote = quoteBySymbol.get(item.symbol);
+    const snapshot = priceHistory[item.symbol]?.at(-1);
+    const price = quote?.lastPrice ?? snapshot?.p ?? null;
+    const prevClose = quote?.prevClose ?? snapshot?.prevClose ?? null;
+    const changePct = Number.isFinite(quote?.changePct)
+      ? quote.changePct
+      : Number.isFinite(price) && Number.isFinite(prevClose) && prevClose
+        ? ((price - prevClose) / prevClose) * 100
+        : null;
+
+    return normalizeTickerItem({
+      ...item,
+      lastPrice: price,
+      prevClose,
+      changePct,
+      currency: quote?.currency || item.currency,
+      source: quote?.source || item.source,
+      updatedAt: quote?.updatedAt ?? snapshot?.t ?? item.updatedAt,
+      stale: !quote && !!snapshot
+    }, item.kind);
+  });
+}
+
+/**
  * Signed currency for P&L displays (e.g. +₹1,234.56).
  */
 function formatSignedCurrency(value, currency = "INR") {
@@ -271,13 +478,6 @@ function formatSignedCurrency(value, currency = "INR") {
   if (num > 0) return `+${abs}`;
   if (num < 0) return `-${abs}`;
   return abs;
-}
-
-/** Pick INR when most holdings are Indian brokers. */
-function inferDisplayCurrency(holdings) {
-  if (!holdings?.length) return "INR";
-  const inrCount = holdings.filter((h) => (h.currency || "INR") === "INR").length;
-  return inrCount >= holdings.length / 2 ? "INR" : "USD";
 }
 
 function getStartOfDayTimestamp(now) {
@@ -289,7 +489,16 @@ function getStartOfDayTimestamp(now) {
 // ES module exports for background, options, popup, and content script.
 export {
   STORAGE_KEYS,
+  DIAGNOSTICS_LOG_LIMIT,
+  sanitizeDiagnosticEntry,
+  appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
+  CRYPTO_CATALOG,
+  resolveCryptoCatalogEntry,
+  normalizeCryptoConfig,
+  normalizeManualCryptoHoldings,
+  normalizeWatchlistSymbol,
+  normalizeTapeScale,
   ACTIVATION_EVENT,
   isActivated,
   needsFinnhubKey,
@@ -298,6 +507,11 @@ export {
   computePositionsState,
   formatSigned,
   formatCurrency,
+  formatQuotePrice,
+  normalizeTickerItem,
+  buildTickerItems,
+  withTickerItems,
+  hydrateTickerQuoteItems,
   formatSignedCurrency,
   inferDisplayCurrency
 };

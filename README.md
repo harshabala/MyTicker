@@ -130,7 +130,7 @@ Writer: **background.js** for refresh/activation; **options.js** for import outc
 | Scoreboard popup | Aggregate day P&amp;L, top 3 movers by \|day %\|, strip status, method + privacy copy |
 | Setup spine | API → holdings → live; incomplete rows are CTAs |
 | Zerodha golden path | Sample CSV + auto `.NS`; other brokers under details |
-| Crypto (optional) | Finnhub/Binance symbols; core loop works without it |
+| Crypto (optional) | CoinGecko primary with mapped Binance fallback; core loop works without it |
 | Local privacy | Keys/holdings local; footer names Finnhub honesty |
 
 ### Dev install and tests
@@ -138,6 +138,9 @@ Writer: **background.js** for refresh/activation; **options.js** for import outc
 ```bash
 # Unit tests (pure P&amp;L + activation helpers)
 node test_fixtures/test_shared.mjs
+node test_fixtures/test_content_telemetry_bridge.mjs
+node test_fixtures/test_ticker_render.mjs
+node test_fixtures/test_content_script_classic.mjs
 
 # Syntax check ES modules
 for f in background.js contentScript.js shared.js popup.js options.js onboarding.js csvParser.js priceProviders.js metrics.js; do

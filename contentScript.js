@@ -1,6 +1,9 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
 
-import { STORAGE_KEYS, formatSigned, formatSignedCurrency } from "./shared.js";
+let STORAGE_KEYS;
+let formatQuotePrice;
+let formatSigned;
+let formatSignedCurrency;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
@@ -10,56 +13,122 @@ const BODY_TRANSITION_ATTR = "data-pts-body-transition";
 let tickerHost = null;
 let tickerShadow = null;
 let tickerBar = null;
+let latestState;
+let latestStateResolved = false;
+let tickerSettings = null;
+let reducedMotionMq = { matches: false, addEventListener() {} };
 
-const reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+function reportLifecycle(stage, error) {
+  try {
+    const pending = chrome.runtime.sendMessage({
+      action: "content-script-lifecycle",
+      stage,
+      origin: globalThis.location?.origin || "",
+      error: error ? { name: String(error.name || "Error"), message: String(error.message || "") } : undefined
+    });
+    if (pending?.catch) pending.catch(() => {});
+  } catch {
+    // Diagnostics must never make the page integration fail.
+  }
+}
+
+function reportFatal(error) {
+  reportLifecycle("fatal-error", error);
+  console.warn("[MyTicker] content script initialization failed", error);
+}
+
+function runSafely(work) {
+  try {
+    work();
+  } catch (error) {
+    reportFatal(error);
+  }
+}
 
 function prefersReducedMotion() {
   return reducedMotionMq.matches;
 }
 
-reducedMotionMq.addEventListener("change", () => {
-  if (tickerBar) {
-    tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
-    chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
-      const state = data[STORAGE_KEYS.positionsState];
-      if (state) renderTicker(state);
-    });
-  }
-});
+function onReducedMotionChange() {
+  runSafely(() => {
+    if (tickerBar) {
+      tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
+      chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
+        runSafely(() => {
+          const state = data[STORAGE_KEYS.positionsState];
+          latestState = state;
+          latestStateResolved = true;
+          renderTicker(state);
+        });
+      });
+    }
+  });
+}
 
-init();
+function bootstrap() {
+  try {
+    const bridge = globalThis.__MYTICKER_CONTENT_SHARED__;
+    if (!bridge) throw new Error("Content shared bridge was not loaded");
+    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } = bridge);
+    reportLifecycle("loaded");
+    reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotionMq.addEventListener("change", onReducedMotionChange);
+    init();
+  } catch (error) {
+    reportFatal(error);
+  }
+}
+
+bootstrap();
 
 function init() {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    const settings = data[STORAGE_KEYS.settings];
-    if (settings?.enabled) {
-      ensureTickerContainer(false);
-      applyTickerSpeed(settings);
+    try {
+      const settings = data[STORAGE_KEYS.settings];
+      tickerSettings = settings;
+      reportLifecycle("storage-settings-read");
+      if (settings?.enabled) {
+        ensureTickerContainer(false);
+        applyTickerSpeed(settings);
+        applyTapeSize(settings);
+        applyTickerTheme(settings);
+      }
+    } catch (error) {
+      reportFatal(error);
     }
   });
 
   chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
-      const newSettings = changes[STORAGE_KEYS.settings].newValue;
-      if (newSettings && newSettings.enabled) {
-        ensureTickerContainer(true);
-      } else {
-        removeTickerContainer();
+    runSafely(() => {
+      if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
+        const newSettings = changes[STORAGE_KEYS.settings].newValue;
+        tickerSettings = newSettings;
+        if (newSettings && newSettings.enabled) {
+          ensureTickerContainer(true);
+          applyTickerSpeed(newSettings);
+          applyTapeSize(newSettings);
+          applyTickerTheme(newSettings);
+        } else {
+          removeTickerContainer();
+        }
       }
-      applyTickerSpeed(newSettings);
-    }
 
-    if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
-      const state = changes[STORAGE_KEYS.positionsState].newValue;
-      renderTicker(state);
-    }
+      if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
+        const state = changes[STORAGE_KEYS.positionsState].newValue;
+        latestState = state;
+        latestStateResolved = true;
+        renderTicker(state);
+      }
+    });
   });
 
   chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
-    const state = data[STORAGE_KEYS.positionsState];
-    if (state) {
+    runSafely(() => {
+      const state = data[STORAGE_KEYS.positionsState];
+      latestState = state;
+      latestStateResolved = true;
       renderTicker(state);
-    }
+    });
   });
 }
 
@@ -89,7 +158,7 @@ function ensureTickerContainer(animate = false) {
     document.addEventListener(
       "DOMContentLoaded",
       () => {
-        ensureTickerContainer(animate);
+        runSafely(() => ensureTickerContainer(animate));
       },
       { once: true }
     );
@@ -117,7 +186,11 @@ function ensureTickerContainer(animate = false) {
   }
   tickerShadow.appendChild(tickerBar);
 
-  document.documentElement.insertBefore(tickerHost, document.body);
+  // The body can be replaced by SPA navigation between the guard above and an
+  // insertBefore call. Appending to the stable document root prevents that
+  // race from aborting the content script on sites such as LinkedIn.
+  document.documentElement.appendChild(tickerHost);
+  reportLifecycle("mount-success");
 
   if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
     const rect = document.body.getBoundingClientRect();
@@ -125,13 +198,19 @@ function ensureTickerContainer(animate = false) {
     document.body.setAttribute(ORIGINAL_MARGIN_ATTR, String(offset));
   }
   const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
-  setBodyMarginTop(originalPx + 28, animate, false);
+  applyTapeSize(tickerSettings);
+  applyTickerTheme(tickerSettings);
+  setBodyMarginTop(originalPx + getTapeBarHeight(tickerSettings), animate, false);
 
   if (!prefersReducedMotion() && animate) {
     requestAnimationFrame(() => {
       tickerBar.classList.add("pts-ticker-visible");
     });
   }
+
+  // Storage can resolve before a late page body lets us mount. Re-render the
+  // cached state once this bar exists rather than dropping that first paint.
+  renderTicker(latestState);
 }
 
 function restoreBodyMargin(animate) {
@@ -206,6 +285,9 @@ function getTickerParts(container) {
 
     const scrollWrapper = document.createElement("div");
     scrollWrapper.className = "pts-scroll-wrapper";
+    scrollWrapper.setAttribute("tabindex", "0");
+    scrollWrapper.setAttribute("role", "group");
+    scrollWrapper.setAttribute("aria-label", "Market tape. Focus pauses scrolling.");
     const scrollInner = document.createElement("div");
     scrollInner.className = "pts-scroll-inner";
     scrollWrapper.appendChild(scrollInner);
@@ -251,22 +333,18 @@ function updateAggregate(parts, state) {
   const aggregate = parts.aggregate;
   const aggPnl = Number(state?.aggregate?.dayPnl) || 0;
   const aggPct = Number(state?.aggregate?.dayPnlPct) || 0;
-  const currency = state?.displayCurrency || "INR";
+  const currency = state?.displayCurrency;
   const dirClass = aggPnl > 0 ? "pts-up" : aggPnl < 0 ? "pts-down" : "pts-flat";
   const newSign = aggPnl > 0 ? "up" : aggPnl < 0 ? "down" : "flat";
 
   aggregate.classList.remove("pts-up", "pts-down", "pts-flat");
   aggregate.classList.add(dirClass);
 
-  const prevSign = aggregate.dataset.ptsSign;
-  if (prevSign && prevSign !== newSign && !prefersReducedMotion()) {
-    aggregate.classList.remove("pts-aggregate-flash");
-    void aggregate.offsetWidth;
-    aggregate.classList.add("pts-aggregate-flash");
-  }
   aggregate.dataset.ptsSign = newSign;
 
-  aggregate.textContent = `Today ${formatSignedCurrency(aggPnl, currency)} (${aggPct.toFixed(2)}%)`;
+  aggregate.textContent = currency
+    ? `MyTicker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
+    : "MyTicker · today mixed currencies";
 }
 
 function buildItemElement(pos) {
@@ -274,33 +352,42 @@ function buildItemElement(pos) {
   item.className = "pts-item";
   item.dataset.ptsKey = positionKey(pos);
 
-  const iconSpan = document.createElement("span");
-  iconSpan.className = "pts-icon";
+  const groupSpan = document.createElement("span");
+  groupSpan.className = "pts-group-marker";
 
   const nameSpan = document.createElement("span");
   nameSpan.className = "pts-symbol";
 
-  const arrowSpan = document.createElement("span");
-  arrowSpan.className = "pts-arrow";
+  const priceSpan = document.createElement("span");
+  priceSpan.className = "pts-price";
 
   const changeSpan = document.createElement("span");
   changeSpan.className = "pts-change";
 
-  item.appendChild(iconSpan);
+  const pnlSpan = document.createElement("span");
+  pnlSpan.className = "pts-personal-pnl";
+
+  const staleSpan = document.createElement("span");
+  staleSpan.className = "pts-item-stale";
+  staleSpan.setAttribute("role", "status");
+
+  item.appendChild(groupSpan);
   item.appendChild(nameSpan);
-  item.appendChild(arrowSpan);
+  item.appendChild(priceSpan);
   item.appendChild(changeSpan);
+  item.appendChild(pnlSpan);
+  item.appendChild(staleSpan);
 
   return item;
 }
 
-function updateItemElement(item, pos) {
-  const w5pnl = Number(pos.window5mPnl) || 0;
-  const w5pct = Number(pos.window5mPnlPct) || 0;
-  const dPnl = Number(pos.dayPnl) || 0;
-  const dPct = Number(pos.dayPnlPct) || 0;
-
-  const dirClass = w5pnl > 0 ? "pts-up" : w5pnl < 0 ? "pts-down" : "pts-flat";
+function updateItemElement(item, pos, isGroupBoundary) {
+  const changePct = Number.isFinite(Number(pos.changePct))
+    ? Number(pos.changePct)
+    : Number(pos.dayPnlPct) || 0;
+  const isHolding = (pos.kind || "holding") === "holding";
+  const dayPnl = Number(pos.dayPnl) || 0;
+  const dirClass = changePct > 0 ? "pts-up" : changePct < 0 ? "pts-down" : "pts-flat";
   item.classList.remove("pts-up", "pts-down", "pts-flat", "pts-crypto");
   item.classList.add(dirClass);
   if (pos.assetClass === "crypto") {
@@ -309,39 +396,52 @@ function updateItemElement(item, pos) {
 
   item.dataset.ptsKey = positionKey(pos);
   // Privacy: never expose quantity in title attributes (page-scrape surface)
-  item.title = `${pos.displayName || pos.symbol || ""} · Day ${formatSigned(dPnl)} (${dPct.toFixed(2)}%)`;
+  item.title = `${pos.displayName || pos.symbol || ""} · ${formatSigned(changePct)}%`;
 
-  const [iconSpan, nameSpan, arrowSpan, changeSpan] = item.children;
-  iconSpan.textContent = getInitials(pos.displayName);
+  const [groupSpan, nameSpan, priceSpan, changeSpan, pnlSpan, staleSpan] = item.children;
+  groupSpan.textContent = isGroupBoundary ? getGroupLabel(pos.kind) : "";
+  groupSpan.hidden = !isGroupBoundary;
   nameSpan.textContent = pos.displayName || pos.symbol || "—";
-  arrowSpan.textContent = ""; // color-only deltas (arrows hidden in CSS)
-  changeSpan.textContent = `${formatSigned(w5pnl)} (${w5pct.toFixed(2)}%)`;
+  priceSpan.textContent = formatQuotePrice(pos.lastPrice, pos.currency || "USD");
+  changeSpan.textContent = `${formatSigned(changePct)}%`;
+  pnlSpan.textContent = isHolding ? `p&l ${formatSignedCurrency(dayPnl, pos.currency || "USD")}` : "";
+  pnlSpan.hidden = !isHolding;
+  staleSpan.textContent = pos.stale ? "stale" : "";
+  staleSpan.hidden = !pos.stale;
+  staleSpan.setAttribute("aria-label", pos.stale ? "Stale quote" : "");
 }
 
 function updateScrollItems(parts, state) {
-  const positions = state?.positions || [];
+  const positions = state?.tickerItems || state?.positions || [];
   const reduced = prefersReducedMotion();
   const scrollInner = parts.scrollInner;
-  const slotCount = reduced ? positions.length : positions.length * 2;
-
-  while (scrollInner.children.length > slotCount) {
-    scrollInner.removeChild(scrollInner.lastChild);
-  }
-
-  for (let i = 0; i < slotCount; i++) {
-    const pos = positions[i % positions.length];
-    if (!pos) continue;
-
-    let item = scrollInner.children[i];
-    if (!item) {
-      item = buildItemElement(pos);
-      scrollInner.appendChild(item);
-    } else {
-      updateItemElement(item, pos);
+  const renderSlots = (slotCount) => {
+    while (scrollInner.children.length > slotCount) {
+      scrollInner.removeChild(scrollInner.lastChild);
     }
-  }
 
-  parts.scrollInner.classList.toggle("pts-scroll-static", reduced);
+    for (let i = 0; i < slotCount; i++) {
+      const pos = positions[i % positions.length];
+      if (!pos) continue;
+
+      let item = scrollInner.children[i];
+      if (!item) {
+        item = buildItemElement(pos);
+        scrollInner.appendChild(item);
+      }
+      const previous = positions[(i - 1 + positions.length) % positions.length];
+      const isGroupBoundary = i % positions.length === 0 || previous?.kind !== pos.kind;
+      updateItemElement(item, pos, isGroupBoundary);
+    }
+  };
+
+  // Measure one copy first. Duplicate only when it actually overflows, so the
+  // marquee remains the tape's sole continuous animation.
+  renderSlots(positions.length);
+  const shouldMarquee = !reduced && scrollInner.scrollWidth > parts.scrollWrapper.clientWidth;
+  renderSlots(shouldMarquee ? positions.length * 2 : positions.length);
+
+  parts.scrollInner.classList.toggle("pts-scroll-static", !shouldMarquee);
 }
 
 function clearTickerContent(container) {
@@ -351,7 +451,7 @@ function clearTickerContent(container) {
     parts.stale = null;
   }
   if (parts?.aggregate) {
-    parts.aggregate.textContent = "No holdings — import CSV in Settings";
+    parts.aggregate.textContent = "No items — add holdings or a watchlist";
     parts.aggregate.classList.remove("pts-up", "pts-down", "pts-flat");
     parts.aggregate.classList.add("pts-flat");
     delete parts.aggregate.dataset.ptsSign;
@@ -368,8 +468,20 @@ function renderTicker(state) {
 
   tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
 
-  if (!state?.positions?.length) {
+  if (!latestStateResolved && !state) {
+    const parts = getTickerParts(tickerBar);
+    parts.aggregate.textContent = "Updating markets";
+    parts.aggregate.classList.remove("pts-up", "pts-down");
+    parts.aggregate.classList.add("pts-flat");
+    while (parts.scrollInner.firstChild) parts.scrollInner.removeChild(parts.scrollInner.firstChild);
+    return;
+  }
+
+  const items = state?.tickerItems || state?.positions || [];
+  if (!items.length) {
+    getTickerParts(tickerBar);
     clearTickerContent(tickerBar);
+    reportLifecycle("render-success");
     return;
   }
 
@@ -377,6 +489,13 @@ function renderTicker(state) {
   updateStaleIndicator(tickerBar, parts, state);
   updateAggregate(parts, state);
   updateScrollItems(parts, state);
+  reportLifecycle("render-success");
+}
+
+function getGroupLabel(kind) {
+  if (kind === "watchlist") return "watchlist";
+  if (kind === "crypto") return "crypto";
+  return "holdings";
 }
 
 function getInitials(name) {
@@ -401,4 +520,38 @@ function applyTickerSpeed(settings) {
   if (tickerBar) {
     tickerBar.style.setProperty("--pts-ticker-duration", value);
   }
+}
+
+function getTapeScale(settings) {
+  const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
+  return { compact: 0.92, comfortable: 1.08, large: 1.20 }[size];
+}
+
+function getTapeBarHeight(settings) {
+  return 34 * getTapeScale(settings);
+}
+
+function applyTapeSize(settings) {
+  const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
+  const scale = getTapeScale(settings);
+  document.documentElement.style.setProperty("--pts-tape-scale", String(scale));
+  if (tickerBar) {
+    tickerBar.setAttribute("data-tape-size", size);
+    tickerBar.style.setProperty("--pts-tape-scale", String(scale));
+  }
+  if (document.body?.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
+    const originalPx = Number(document.body.getAttribute(ORIGINAL_MARGIN_ATTR)) || 0;
+    setBodyMarginTop(originalPx + getTapeBarHeight(settings), false);
+  }
+}
+
+function applyTickerTheme(settings) {
+  const theme = ["light", "dark"].includes(settings?.tickerStyleConfig?.theme)
+    ? settings.tickerStyleConfig.theme
+    : "system";
+  if (tickerBar) tickerBar.setAttribute("data-theme", theme);
+}
+
+function normalizeTapeScale(value) {
+  return ["compact", "comfortable", "large"].includes(value) ? value : "comfortable";
 }

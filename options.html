@@ -2,7 +2,7 @@
 <html>
   <head>
     <meta charset="utf-8" />
-    <title>MyTicker Settings</title>
+    <title>MyTicker settings</title>
     <link rel="stylesheet" href="brand.css" />
     <style>
 
@@ -16,6 +16,7 @@
         font-family: var(--font-sans);
         background: var(--bg);
         color: var(--text-primary);
+        font-variant-numeric: tabular-nums;
         -webkit-font-smoothing: antialiased;
         -moz-osx-font-smoothing: grayscale;
         min-height: 100vh;
@@ -24,7 +25,7 @@
       .page {
         max-width: 680px;
         margin: 0 auto;
-        padding: 28px 24px 48px;
+        padding: 1.75rem 1.5rem 3rem;
       }
 
       /* Header */
@@ -35,7 +36,7 @@
         margin-bottom: 20px;
       }
 
-      /* Settings tabs — flat row + gold underline (no pill / curved chrome) */
+      /* Settings tabs — flat row with a single brand selection line. */
       .settings-tabs {
         display: flex;
         flex-wrap: wrap;
@@ -52,6 +53,13 @@
         backdrop-filter: blur(12px);
         -webkit-backdrop-filter: blur(12px);
         background: color-mix(in srgb, var(--bg) 88%, transparent);
+      }
+      @media (prefers-reduced-transparency: reduce) {
+        .settings-tabs {
+          backdrop-filter: none;
+          -webkit-backdrop-filter: none;
+          background: var(--bg-surface);
+        }
       }
       .settings-tab {
         flex: 0 0 auto;
@@ -76,7 +84,7 @@
         color: var(--text-secondary);
         background: transparent;
       }
-      /* Active: plain gold hairline under the label only */
+      /* Active: one restrained hairline under the label. */
       .settings-tab[aria-selected="true"] {
         color: var(--text-primary);
         font-weight: 600;
@@ -90,7 +98,7 @@
         right: 10px;
         bottom: -1px;
         height: 2px;
-        background: var(--accent);
+        background: var(--brand-gold);
         border-radius: 0;
       }
       .settings-tab:focus-visible {
@@ -101,9 +109,30 @@
         content: "";
         position: absolute;
         inset: 4px 6px;
-        border: 1px solid var(--accent);
+        border: 1px solid var(--brand-gold);
         border-radius: 2px;
         pointer-events: none;
+      }
+      @media (prefers-contrast: more) {
+        .settings-tabs {
+          background: var(--bg-surface);
+          border-bottom: 2px solid var(--border);
+        }
+        .settings-tab {
+          border: 1px solid var(--border);
+        }
+        .settings-tab[aria-selected="true"]::after {
+          background: var(--brand-gold);
+        }
+        .settings-tab:focus-visible::before {
+          border-color: var(--brand-gold);
+        }
+        .card,
+        .btn,
+        input,
+        select {
+          border-color: var(--border);
+        }
       }
       .tab-panel {
         display: none;
@@ -162,6 +191,47 @@
         box-shadow: var(--material-elevated-shadow);
       }
 
+      .settings-card {
+        padding: 24px;
+      }
+
+      .form-stack {
+        display: grid;
+        gap: 16px;
+      }
+
+      .form-stack .field {
+        display: grid;
+        gap: 8px;
+        padding: 0;
+        border: 0;
+      }
+
+      .form-stack .field-label,
+      .form-stack .field-hint {
+        margin: 0;
+      }
+
+      .form-action-row {
+        margin-top: 16px;
+      }
+
+      .btn-row.form-action-row {
+        padding: 0;
+      }
+
+      .configured-list {
+        margin-top: 16px;
+        padding: 12px 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+
+      .configured-list.field-hint {
+        margin-top: 16px;
+      }
+
       .card-item {
         padding: 12px 16px;
         border-bottom: 1px solid var(--border);
@@ -210,7 +280,7 @@
         background: var(--bg-inset);
         color: var(--text-primary);
         outline: none;
-        transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
       }
 
       input[type="text"]:focus,
@@ -218,8 +288,8 @@
       input[type="password"]:focus,
       select:focus,
       textarea:focus {
-        border-color: var(--border-focus);
-        box-shadow: var(--focus-ring);
+        border-color: var(--brand-gold);
+        box-shadow: 0 0 0 3px var(--brand-gold-muted);
       }
 
       select {
@@ -264,6 +334,23 @@
         font-size: 11px;
         color: var(--text-tertiary);
         margin-top: 4px;
+      }
+
+      .tape-size-options {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        border: 0;
+        margin: 0;
+        padding: 0;
+      }
+
+      .tape-size-options label {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        font-size: 12px;
+        color: var(--text-secondary);
       }
 
       .setup-status {
@@ -351,12 +438,12 @@
       .btn:focus-visible,
       .wizard-step:focus-visible,
       .drop-zone:focus-visible {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 2px;
       }
 
       .toggle-switch input:focus-visible + .toggle-slider {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 2px;
         border-radius: 11px;
       }
@@ -382,9 +469,9 @@
       }
 
       .wizard-step.active {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+        background: var(--brand-gold-muted);
       }
 
       .wizard-step.done {
@@ -393,9 +480,9 @@
       }
 
       .wizard-step.is-next {
-        border-color: var(--accent);
-        color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+        background: var(--brand-gold-muted);
         font-weight: 600;
         box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
       }
@@ -477,7 +564,7 @@
 
       .golden-path-sample {
         font-size: 12px;
-        color: var(--accent);
+        color: var(--brand-gold);
         text-decoration: none;
       }
 
@@ -539,7 +626,7 @@
       }
 
       .section-highlight {
-        outline: 2px solid var(--accent);
+        outline: 2px solid var(--brand-gold);
         outline-offset: 4px;
         border-radius: var(--radius);
         transition: outline-color var(--motion-fast, 150ms) ease, outline-offset var(--motion-fast, 150ms) ease;
@@ -559,8 +646,114 @@
       }
 
       #cryptoManualField.is-open {
-        max-height: 220px;
+        max-height: none;
+        overflow: visible;
         opacity: 1;
+      }
+
+      .crypto-selector {
+        display: grid;
+        gap: 14px;
+        padding: 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+
+      .crypto-search-region {
+        display: grid;
+        gap: 8px;
+      }
+
+      .crypto-selected-region {
+        display: grid;
+        gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
+      }
+
+      .crypto-region-label {
+        color: var(--text-secondary);
+        font-size: var(--text-label, 12px);
+        font-weight: 600;
+      }
+
+      .crypto-search-results,
+      .crypto-selected-chips {
+        min-height: 0;
+      }
+
+      .crypto-result-list,
+      .crypto-selected-chips {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+      }
+
+      .crypto-result-action,
+      .crypto-selected-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 30px;
+        padding: 5px 8px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: var(--bg-surface);
+        color: var(--text-primary);
+        font: inherit;
+        font-size: 12px;
+        line-height: 1.2;
+      }
+
+      .crypto-result-action {
+        min-height: 32px;
+        cursor: pointer;
+      }
+
+      .crypto-result-action:hover {
+        background: var(--bg-hover);
+        border-color: var(--brand-gold);
+      }
+
+      .crypto-result-action:focus-visible,
+      .crypto-chip-remove:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+
+      .crypto-selected-chip {
+        min-height: 32px;
+        padding: 0 4px 0 8px;
+        background: color-mix(in srgb, var(--brand-gold-muted) 52%, var(--bg-surface));
+      }
+
+      .crypto-chip-remove {
+        display: inline-grid;
+        width: 32px;
+        height: 32px;
+        place-items: center;
+        padding: 0;
+        border: 0;
+        border-radius: 50%;
+        background: transparent;
+        color: var(--text-secondary);
+        font: inherit;
+        font-size: 16px;
+        line-height: 1;
+        cursor: pointer;
+      }
+
+      .crypto-chip-remove:hover {
+        background: var(--bg-hover);
+        color: var(--text-primary);
+      }
+
+      .crypto-selector-guidance {
+        margin: 0;
+        padding-top: 2px;
       }
 
       .preview-container.preview-updating {
@@ -604,7 +797,7 @@
         position: relative;
         display: inline-block;
         width: 42px;
-        height: 26px;
+        height: 32px;
         flex-shrink: 0;
         cursor: pointer;
         margin: 0;
@@ -621,7 +814,7 @@
 
       .toggle-slider {
         position: absolute;
-        inset: 0;
+        inset: 3px 0;
         background: var(--toggle-track, var(--bg-tertiary));
         border-radius: 999px;
         transition: background var(--motion-medium, 220ms) var(--ease-out, ease);
@@ -642,7 +835,7 @@
       }
 
       .toggle-switch input:checked + .toggle-slider {
-        background: var(--accent);
+        background: var(--brand-gold);
       }
 
       .toggle-switch input:checked + .toggle-slider::before {
@@ -671,12 +864,12 @@
       }
 
       .btn-primary {
-        background: var(--accent);
-        color: var(--accent-ink, #0a0a0a);
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
       }
 
       .btn-primary:hover {
-        background: var(--accent-hover);
+        background: var(--brand-gold-hover);
       }
 
       .btn-primary:active {
@@ -716,8 +909,8 @@
 
       .drop-zone:hover,
       .drop-zone.dragover {
-        border-color: var(--accent);
-        background: var(--accent-muted);
+        border-color: var(--brand-gold);
+        background: var(--brand-gold-muted);
         border-style: solid;
       }
 
@@ -995,7 +1188,7 @@
         transition: color 0.15s ease;
       }
       .input-eye-btn:hover { color: var(--text-primary); }
-      .input-eye-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+      .input-eye-btn:focus-visible { outline: 2px solid var(--brand-gold); outline-offset: 2px; }
 
       /* Test connection disabled state */
       .btn:disabled {
@@ -1055,7 +1248,7 @@
         flex-shrink: 0;
         font-family: inherit;
         white-space: nowrap;
-        transition: all 0.15s ease;
+        transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
       }
       .btn-copy-entry:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
 
@@ -1091,7 +1284,7 @@
         content: "→";
         position: absolute;
         left: 0;
-        color: var(--accent);
+        color: var(--brand-gold);
         font-weight: 600;
       }
 
@@ -1110,22 +1303,22 @@
       <div class="page-header">
         <img src="icons/icon48.png" alt="MyTicker" />
         <div class="page-header-text">
-          <h1>MyTicker Settings</h1>
-          <p>Import holdings, prices, and appearance — sectioned so you don’t scroll forever.</p>
+          <h1>MyTicker settings</h1>
+          <p>Set up your portfolio, follow markets, and tune the live tape.</p>
         </div>
       </div>
 
       <nav class="settings-tabs" role="tablist" aria-label="Settings sections">
-        <button type="button" class="settings-tab" role="tab" id="nav-setup" data-tab="setup" aria-selected="true" aria-controls="tab-setup" tabindex="0">Setup</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="false" aria-controls="tab-portfolio" tabindex="-1">Portfolio</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-market" data-tab="market" aria-selected="false" aria-controls="tab-market" tabindex="-1">Market data</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-optional" data-tab="optional" aria-selected="false" aria-controls="tab-optional" tabindex="-1">Optional</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-portfolio" data-tab="portfolio" aria-selected="true" aria-controls="tab-portfolio" tabindex="0">Portfolio</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-watchlist" data-tab="watchlist" aria-selected="false" aria-controls="tab-watchlist" tabindex="-1">Watchlist</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-crypto" data-tab="crypto" aria-selected="false" aria-controls="tab-crypto" tabindex="-1">Crypto</button>
+        <button type="button" class="settings-tab" role="tab" id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-data" tabindex="-1">Data &amp; diagnostics</button>
         <button type="button" class="settings-tab" role="tab" id="nav-appearance" data-tab="appearance" aria-selected="false" aria-controls="tab-appearance" tabindex="-1">Appearance</button>
-        <button type="button" class="settings-tab" role="tab" id="nav-tips" data-tab="tips" aria-selected="false" aria-controls="tab-tips" tabindex="-1">Tips</button>
       </nav>
 
-      <!-- Tab: Setup -->
-      <div class="tab-panel is-active" id="tab-setup" role="tabpanel" aria-labelledby="nav-setup">
+      <!-- Data & diagnostics sections are presented together by the Data tab. -->
+      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden></div>
+      <div class="data-section-panel" id="tab-setup" hidden>
       <div class="section" id="section-setup">
         <div class="section-title">Setup status</div>
         <div class="card">
@@ -1153,6 +1346,23 @@
           </div>
         </div>
       </div>
+      </div>
+
+      <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
+        <div class="section">
+          <div class="section-title">Watchlist</div>
+          <div class="card settings-card">
+            <div class="form-stack">
+              <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
+              <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
+              <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
+              <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
+            </div>
+            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
+            <div id="watchlistConfigured" class="configured-list field-hint"></div>
+          </div>
+        </div>
+      </div>
       <div class="section" id="section-error-log" style="display:none">
         <div class="section-title" style="color: var(--red)">Setup errors</div>
         <div class="card" style="padding: 0; overflow: hidden;">
@@ -1164,17 +1374,15 @@
           <div id="errorLogList" class="error-log-list"></div>
         </div>
       </div>
-      </div>
-
       <!-- Tab: Portfolio -->
-      <div class="tab-panel" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio" hidden>
+      <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
       <div class="section" id="section-import">
         <div class="section-title">Portfolio import</div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--accent);">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--brand-gold);">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
               <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
@@ -1239,8 +1447,8 @@
       </div>
       </div>
 
-      <!-- Tab: Market data -->
-      <div class="tab-panel" id="tab-market" role="tabpanel" aria-labelledby="nav-market" hidden>
+      <!-- Data sources -->
+      <div class="data-section-panel" id="tab-market" hidden>
       <div class="section" id="section-market">
         <div class="section-title">India (automatic)</div>
         <div class="card card-provider-india">
@@ -1266,7 +1474,7 @@
             <div class="provider-card-header">
               <div>
                 <div class="provider-name">NYSE &amp; NASDAQ</div>
-                <div class="provider-sub">Finnhub · free key for US / crypto</div>
+                <div class="provider-sub">Finnhub · free key for US equities</div>
               </div>
               <span class="provider-badge optional">Optional</span>
             </div>
@@ -1282,7 +1490,7 @@
                 </svg>
               </button>
             </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
           </div>
           <div class="field">
             <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
@@ -1297,40 +1505,35 @@
         </div>
       </div>
       </div>
-
-      <!-- Tab: Optional (crypto) -->
-      <div class="tab-panel" id="tab-optional" role="tabpanel" aria-labelledby="nav-optional" hidden>
+      <!-- Tab: Crypto -->
+      <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
       <div class="section" id="section-crypto">
         <div class="section-title">Crypto (advanced)</div>
         <div class="card crypto-details" id="cryptoDetails">
           <div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label" id="labelIncludeCrypto">Include crypto</div>
-              <div class="item-desc">Finnhub quotes via BINANCE:SYMBOL (e.g. BINANCE:BTCUSDT) — requires US key</div>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="includeCrypto" aria-labelledby="labelIncludeCrypto" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="card-item">
-            <div class="item-left">
-              <div class="item-label">Mode</div>
+              <div class="item-label">Crypto list</div>
             </div>
             <select id="cryptoMode" style="width: auto; min-width: 160px;">
-              <option value="top5">Top 5 (watchlist)</option>
-              <option value="manual">My holdings</option>
+              <option value="off">Off</option>
+              <option value="top5">Top 5</option>
+              <option value="manual">Manual</option>
             </select>
           </div>
-          <div class="field" id="cryptoManualField">
-            <label class="field-label" for="cryptoHoldingsText">Manual holdings</label>
-            <textarea
-              id="cryptoHoldingsText"
-              rows="3"
-              placeholder="BINANCE:BTCUSDT, 0.5&#10;BINANCE:ETHUSDT, 2"
-            ></textarea>
-            <div class="field-hint">One per line: BINANCE:PAIR, quantity. Top 5 mode is a watchlist (qty 1, unit price P&amp;L).</div>
+          <div class="field" id="cryptoManualField" hidden inert>
+            <section class="crypto-selector" aria-label="Manual crypto selection">
+              <div class="crypto-search-region">
+                <label class="field-label" for="cryptoSearch">Search supported crypto</label>
+                <input id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
+                <div id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"></div>
+              </div>
+              <div class="crypto-selected-region">
+                <div class="crypto-region-label">Selected coins</div>
+                <div id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"></div>
+              </div>
+              <div class="field-hint crypto-selector-guidance">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
+            </section>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>
@@ -1365,9 +1568,27 @@
             </label>
           </div>
           <div class="field">
+            <fieldset class="tape-size-options" aria-describedby="themeHelp">
+              <legend class="field-label">Theme</legend>
+              <label><input type="radio" name="theme" value="system" checked /> System</label>
+              <label><input type="radio" name="theme" value="light" /> Light</label>
+              <label><input type="radio" name="theme" value="dark" /> Dark</label>
+            </fieldset>
+            <div class="field-hint" id="themeHelp">System follows your browser. The live tape uses the same choice.</div>
+          </div>
+          <div class="field">
             <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
             <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
-            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds. Theme follows system light/dark.</div>
+            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
+          </div>
+          <div class="field">
+            <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
+              <legend class="field-label">Tape size</legend>
+              <label><input type="radio" name="tapeScale" value="compact" /> Compact (0.92×)</label>
+              <label><input type="radio" name="tapeScale" value="comfortable" checked /> Comfortable (1.08×)</label>
+              <label><input type="radio" name="tapeScale" value="large" /> Large (1.20×)</label>
+            </fieldset>
+            <div class="field-hint" id="tapeSizeHelp">Changes the tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save</button>
@@ -1377,8 +1598,32 @@
       </div>
       </div>
 
-      <!-- Tab: Tips (expanded reference) -->
-      <div class="tab-panel" id="tab-tips" role="tabpanel" aria-labelledby="nav-tips" hidden>
+      <!-- Diagnostics -->
+      <div class="data-section-panel" id="tab-diagnostics" hidden>
+        <div class="section">
+          <div class="section-title">Diagnostics</div>
+          <div class="card" style="padding: 20px;">
+            <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
+            <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
+            <div class="btn-row" style="padding: 14px 0 0;">
+              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy diagnostics</button>
+              <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
+            </div>
+          </div>
+        </div>
+        <div class="section">
+          <div class="section-title">What changed</div>
+          <div class="card" style="padding: 20px 24px;">
+            <ul class="tips-list">
+              <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
+              <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
+              <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
+            </ul>
+          </div>
+        </div>
+      </div>
+      <!-- Reference notes live with data & diagnostics. -->
+      <div class="data-section-panel" id="tab-tips" hidden>
       <div class="section">
         <div class="section-title">Getting started</div>
         <div class="card" style="padding: 20px 24px;">
@@ -1391,11 +1636,12 @@
         </div>
       </div>
       <div class="section">
-        <div class="section-title">US stocks &amp; crypto</div>
+        <div class="section-title">US stocks, watchlist &amp; crypto</div>
         <div class="card" style="padding: 20px 24px;">
           <ul class="tips-list">
-            <li>US equities and crypto need a free <strong>Finnhub</strong> key under <strong>Market data</strong> (optional for pure India portfolios).</li>
-            <li>Crypto pairs use Finnhub’s BINANCE symbols (e.g. <code style="color: var(--text-secondary);">BINANCE:BTCUSDT</code>) — enable under <strong>Optional</strong>.</li>
+            <li>A <strong>Finnhub</strong> key is still required for US equities under <strong>Market data</strong> (optional for pure India portfolios).</li>
+            <li>Crypto uses <strong>CoinGecko</strong> first for supported canonical assets and <strong>Binance</strong> only as a fallback for mapped liquid assets; no Finnhub key is required for those quotes.</li>
+            <li>Your manually added watchlist uses the symbol and exchange you select in the popup. It appears as the second strip group, after holdings; crypto follows as the third group when enabled.</li>
             <li>Free Finnhub tiers are rate-limited (~60 calls/min). Prefer a 2+ minute refresh for large US books.</li>
           </ul>
         </div>
@@ -1418,14 +1664,14 @@
             <li><strong>File permission / Error reading file:</strong> use <em>Import my holdings</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
             <li><strong>Missing Exchange/Currency columns:</strong> Zerodha-style exports are fine — we default NSE + INR when those columns are absent.</li>
             <li><strong>Empty strip:</strong> confirm holdings on Portfolio, then open any http(s) tab and wait for the next alarm refresh (or re-open the popup).</li>
-            <li>Setup errors appear on the <strong>Setup</strong> tab when something fails mid-import or fetch.</li>
+            <li>Setup errors appear in <strong>Data &amp; diagnostics</strong> when something fails mid-import or fetch.</li>
           </ul>
         </div>
       </div>
       </div>
 
       <div class="page-footer">
-        MyTicker v0.4.1 · Holdings and keys stay in this browser. India prices: Yahoo · US/crypto: Finnhub (optional). We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--accent); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
+        MyTicker v0.5.0 · Holdings and keys stay in this browser. India prices: Yahoo · US equities: Finnhub key required · Crypto: CoinGecko, with Binance fallback for mapped liquid assets. We don’t send your portfolio to our servers. · Built by <a href="https://github.com/harshabala" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none; opacity: 0.8;">Harsha Balakrishnan</a>
       </div>
     </div>
 
