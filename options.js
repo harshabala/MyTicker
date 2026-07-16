@@ -1,4 +1,4 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
 import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
 import {
   getSetupStatus,
@@ -23,11 +23,13 @@ const tickerSpeedEl = document.getElementById("tickerSpeed");
 const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
 
-const includeCryptoEl = document.getElementById("includeCrypto");
 const cryptoModeEl = document.getElementById("cryptoMode");
-const cryptoHoldingsTextEl = document.getElementById("cryptoHoldingsText");
 const cryptoStatusEl = document.getElementById("cryptoStatus");
 const cryptoManualField = document.getElementById("cryptoManualField");
+const cryptoSearchEl = document.getElementById("cryptoSearch");
+const cryptoSearchResultsEl = document.getElementById("cryptoSearchResults");
+const cryptoSelectedChipsEl = document.getElementById("cryptoSelectedChips");
+let selectedCrypto = [];
 const watchlistTypeEl = document.getElementById("watchlistType");
 const watchlistExchangeEl = document.getElementById("watchlistExchange");
 const watchlistInputEl = document.getElementById("watchlistInput");
@@ -108,12 +110,10 @@ function init() {
       input.checked = input.value === tapeScale;
     });
 
-    const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
-    includeCryptoEl.checked = !!cryptoConfig.includeCrypto;
-    cryptoModeEl.value = cryptoConfig.mode || "top5";
-    cryptoHoldingsTextEl.value = (cryptoConfig.manualHoldings || [])
-      .map((c) => `${c.symbol}, ${c.quantity}`)
-      .join("\n");
+    const cryptoConfig = normalizeCryptoConfig(settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig);
+    cryptoModeEl.value = cryptoConfig.mode;
+    selectedCrypto = cryptoConfig.manualHoldings || [];
+    renderCryptoSelector();
 
     const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
     showStocksEl.checked = filters.showStocks !== false;
@@ -173,6 +173,7 @@ function init() {
 
   // Crypto mode toggle
   cryptoModeEl.addEventListener("change", updateCryptoManualVisibility);
+  cryptoSearchEl?.addEventListener("input", renderCryptoSelector);
   watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
@@ -596,6 +597,21 @@ function updateCryptoManualVisibility() {
   }
 }
 
+function renderCryptoSelector() {
+  if (!cryptoSearchResultsEl || !cryptoSelectedChipsEl) return;
+  const query = (cryptoSearchEl?.value || "").trim().toLowerCase();
+  const matches = CRYPTO_CATALOG.filter((coin) => !query || [coin.id, coin.symbol, coin.name].some((value) => value.toLowerCase().includes(query)));
+  cryptoSearchResultsEl.replaceChildren(...matches.map((coin) => {
+    const button = document.createElement("button"); button.type = "button"; button.className = "btn btn-secondary"; button.textContent = `Add ${coin.symbol} / ${coin.name}`;
+    button.addEventListener("click", () => { if (!selectedCrypto.some((item) => item.symbol === coin.id)) selectedCrypto.push({ symbol: coin.id, quantity: 1 }); cryptoSearchEl.value = ""; renderCryptoSelector(); });
+    return button;
+  }));
+  cryptoSelectedChipsEl.replaceChildren(...selectedCrypto.map((item) => {
+    const coin = resolveCryptoCatalogEntry(item.symbol); const chip = document.createElement("button"); chip.type = "button"; chip.className = "btn btn-secondary"; chip.textContent = `${coin?.symbol || item.symbol} ×`;
+    chip.addEventListener("click", () => { selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol); renderCryptoSelector(); }); return chip;
+  }));
+}
+
 function detectPresetFromRows(rows) {
   if (!rows.length) return null;
   const headers = Object.keys(rows[0]).map((h) => h.toLowerCase());
@@ -936,21 +952,13 @@ function handleSaveAppearance() {
 }
 
 function handleSaveCrypto() {
-  const includeCrypto = includeCryptoEl.checked;
-  const mode = cryptoModeEl.value || "top5";
-  const text = cryptoHoldingsTextEl.value || "";
-  const unsupported = text.split(/\r?\n/).map((line) => line.trim()).filter(Boolean).find((line) => !resolveCryptoCatalogEntry(line.split(",")[0]?.trim()));
-  if (mode === "manual" && unsupported) {
-    cryptoStatusEl.textContent = `Unsupported crypto “${unsupported.split(",")[0]}”. Use BTC, ETH, BNB, XRP, or SOL.`;
-    cryptoStatusEl.className = "status-badge error";
-    return;
-  }
-  const manualHoldings = parseCryptoHoldings(text);
+  const mode = cryptoModeEl.value || "off";
+  const manualHoldings = selectedCrypto;
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
     settings.cryptoConfig = {
-      includeCrypto,
+      includeCrypto: mode !== "off",
       mode,
       manualHoldings
     };

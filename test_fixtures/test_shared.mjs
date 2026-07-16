@@ -19,6 +19,7 @@ import {
   CRYPTO_CATALOG,
   normalizeWatchlistSymbol,
   resolveCryptoCatalogEntry,
+  normalizeCryptoConfig,
   normalizeTickerItem,
   formatQuotePrice,
   buildTickerItems,
@@ -120,6 +121,8 @@ assert(normalizeWatchlistSymbol("BTC", "crypto") === null, "keeps crypto out of 
 assert(resolveCryptoCatalogEntry("Bitcoin")?.id === "bitcoin", "finds canonical crypto by full name");
 assert(resolveCryptoCatalogEntry("ETH")?.id === "ethereum", "finds canonical crypto by ticker");
 assert(resolveCryptoCatalogEntry("dogecoin") === null, "rejects unsupported crypto with no silent substitution");
+assert(normalizeCryptoConfig({ includeCrypto: false, mode: "top5" }).mode === "off", "migrates legacy disabled crypto setting to explicit off mode");
+assert(normalizeCryptoConfig({ includeCrypto: true, mode: "manual" }).mode === "manual", "keeps legacy enabled manual crypto setting");
 
 // ── Test Suite: formatSigned ──
 console.log("\n🔢 formatSigned");

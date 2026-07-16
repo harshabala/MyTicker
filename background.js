@@ -11,6 +11,7 @@ import {
   withTickerItems,
   hydrateTickerQuoteItems,
   appendDiagnosticLogEntry
+  , normalizeCryptoConfig
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
@@ -381,8 +382,8 @@ function normalizeWatchlist(items) {
 
 function buildCryptoTickerItems(settings) {
   const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
-  const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
-  if (!filters.showCrypto || !cryptoConfig?.includeCrypto) return [];
+  const cryptoConfig = normalizeCryptoConfig(settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig);
+  if (!filters.showCrypto || cryptoConfig.mode === "off") return [];
 
   const symbols = cryptoConfig.mode === "manual"
     ? (Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : [])

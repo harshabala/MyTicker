@@ -760,8 +760,14 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
         changeEl.className = `watch-change ${
           pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat"
         }`;
+        if (pd.stale) {
+          changeEl.textContent = "Stale";
+          changeEl.className = "watch-change pnl-flat";
+        }
       } else {
-        priceEl.textContent = "–";
+        priceEl.textContent = "Unavailable";
+        changeEl.textContent = "Unavailable";
+        changeEl.className = "watch-change pnl-flat";
       }
       const removeBtn = document.createElement("button");
       removeBtn.type = "button";

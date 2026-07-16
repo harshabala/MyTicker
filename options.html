@@ -1340,31 +1340,20 @@
           <div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label" id="labelIncludeCrypto">Include crypto in the strip</div>
-              <div class="item-desc">CoinGecko first for supported canonical crypto, then Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes.</div>
-            </div>
-            <label class="toggle-switch">
-              <input type="checkbox" id="includeCrypto" aria-labelledby="labelIncludeCrypto" />
-              <span class="toggle-slider"></span>
-            </label>
-          </div>
-          <div class="card-item">
-            <div class="item-left">
               <div class="item-label">Crypto list</div>
             </div>
             <select id="cryptoMode" style="width: auto; min-width: 160px;">
-              <option value="top5">Top five market watchlist</option>
-              <option value="manual">Manual holdings</option>
+              <option value="off">Off</option>
+              <option value="top5">Top 5</option>
+              <option value="manual">Manual</option>
             </select>
           </div>
           <div class="field" id="cryptoManualField">
-            <label class="field-label" for="cryptoHoldingsText">Manual holdings</label>
-            <textarea
-              id="cryptoHoldingsText"
-              rows="3"
-              placeholder="BTC, 0.5&#10;ETH, 2"
-            ></textarea>
-            <div class="field-hint">Search/add: BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. One per line with quantity; unsupported coins stay visible with a correction. Top 5: BTC, ETH, BNB, XRP, SOL. Crypto becomes the third strip group, after holdings and watchlist.</div>
+            <label class="field-label" for="cryptoSearch">Search supported crypto</label>
+            <input id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
+            <div id="cryptoSearchResults" class="field-hint"></div>
+            <div id="cryptoSelectedChips" class="field-hint"></div>
+            <div class="field-hint">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
           </div>
           <div class="btn-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>

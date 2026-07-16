@@ -119,7 +119,7 @@ const DEFAULT_SETTINGS = {
   },
   cryptoConfig: {
     includeCrypto: false,
-    mode: "top5", // "top5" | "manual"
+    mode: "off", // "off" | "top5" | "manual"
     manualHoldings: [] // [{ symbol, quantity }]
   },
   portfolioFilters: {
@@ -146,6 +146,15 @@ const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
 
 function resolveCryptoCatalogEntry(input) {
   return CRYPTO_LOOKUP.get(String(input || "").trim().toLowerCase()) || null;
+}
+
+/** Migrate legacy includeCrypto settings into one unambiguous mode field. */
+function normalizeCryptoConfig(config = {}) {
+  const requested = config.mode;
+  const mode = config.includeCrypto === false ? "off"
+    : ["off", "top5", "manual"].includes(requested) ? requested
+    : config.includeCrypto ? "top5" : "off";
+  return { ...config, mode, includeCrypto: mode !== "off", manualHoldings: Array.isArray(config.manualHoldings) ? config.manualHoldings : [] };
 }
 
 function normalizeWatchlistSymbol(input, assetType, exchange = "NSE") {
@@ -471,6 +480,7 @@ export {
   DEFAULT_SETTINGS,
   CRYPTO_CATALOG,
   resolveCryptoCatalogEntry,
+  normalizeCryptoConfig,
   normalizeWatchlistSymbol,
   normalizeTapeScale,
   ACTIVATION_EVENT,

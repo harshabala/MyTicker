@@ -1,4 +1,4 @@
-// Pluggable price providers. India: Yahoo (no key). US/crypto: Finnhub (optional key).
+// Pluggable price providers. India: Yahoo (no key). US: Finnhub (optional key). Crypto: CoinGecko with Binance fallback.
 
 const MAX_CONCURRENT = 6;
 const CACHE_TTL_MS = 30_000;
