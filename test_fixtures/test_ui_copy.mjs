@@ -61,6 +61,7 @@ assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider hea
 for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {
   assert(source.includes("CoinGecko") && source.includes("Binance") && !/US\/crypto|for US stocks and crypto|Finnhub\/Binance/i.test(source), `${name} describes CoinGecko/Binance crypto sourcing without Finnhub crypto`);
 }
+assert(storeListingSource.includes("Bitcoin/BTC, Ethereum/ETH, BNB, XRP, and Solana/SOL") && !storeListingSource.includes("BINANCE:BTCUSDT"), "store listing describes the actual canonical manual crypto catalog");
 assert(visibleText.includes("No Finnhub key is required for crypto quotes"), "states crypto quotes do not require a Finnhub key");
 assert(visibleText.includes("Finnhub key is still required for US equities"), "keeps the US-equity Finnhub requirement distinct");
 assert(visibleText.includes("third strip group, after holdings and watchlist"), "explains crypto strip placement");

@@ -22,7 +22,7 @@ The ticker scrolls smoothly across the top of every page. Hover to pause. Click 
 
 Optionally add supported crypto to your ticker (CoinGecko primary, with mapped Binance fallback):
 • **Top 5 watchlist** — BTC, ETH, BNB, XRP, SOL (unit price change, qty 1)
-• **Manual holdings** — e.g. `BINANCE:BTCUSDT, 0.5` (one symbol per line)
+• **Manual holdings** — search and select from Bitcoin/BTC, Ethereum/ETH, BNB, XRP, and Solana/SOL; remove selected assets with their chips.
 
 ### 🔒 100% Private
 
