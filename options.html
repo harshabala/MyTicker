@@ -625,7 +625,8 @@
       }
 
       #cryptoManualField.is-open {
-        max-height: 220px;
+        max-height: none;
+        overflow: visible;
         opacity: 1;
       }
 
@@ -638,10 +639,18 @@
         background: var(--bg-inset);
       }
 
-      .crypto-search-region,
+      .crypto-search-region {
+        display: grid;
+        gap: 8px;
+      }
+
       .crypto-selected-region {
         display: grid;
         gap: 8px;
+        padding: 10px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-surface);
       }
 
       .crypto-region-label {

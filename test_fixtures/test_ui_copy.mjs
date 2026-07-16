@@ -107,6 +107,9 @@ assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.i
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
 assert(/<section class="crypto-selector" aria-label="Manual crypto selection">[\s\S]*?<div class="crypto-search-region">[\s\S]*?id="cryptoSearch"[\s\S]*?id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"[\s\S]*?<div class="crypto-selected-region">[\s\S]*?id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"[\s\S]*?<div class="[^"]*crypto-selector-guidance"/.test(optionsHtml), "contains manual crypto search, selected coins, and guidance in dedicated semantic regions");
 assert(["crypto-result-list", "crypto-result-action", "crypto-selected-chip", "crypto-chip-remove"].every((className) => optionsHtml.includes(`.${className}`)), "styles add results as compact actions and selections as removable chips");
+const cryptoSelectedRegionRule = cssRuleBodyAt(optionsHtml, ".crypto-selected-region {");
+assert(/padding:\s*10px 12px;/.test(cryptoSelectedRegionRule) && /border:\s*1px solid var\(--border\);/.test(cryptoSelectedRegionRule) && /background:\s*var\(--bg-surface\);/.test(cryptoSelectedRegionRule), "gives selected crypto chips their own padded inset region");
+assert(/#cryptoManualField\.is-open\s*\{[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/.test(optionsHtml), "allows the open manual crypto selector to grow without clipping its results or guidance");
 assert(popupJs.includes("Unavailable") && popupJs.includes("Stale"), "popup labels unavailable and stale watchlist quotes");
 assert(!/id="addWatchBtn"/.test(popupHtml), "popup has no quick-add header action");
 assert(!/quickAddInput|quickAddExchange|quickAddBtn/.test(popupHtml), "popup has no quick-add sheet inputs");
