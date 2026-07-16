@@ -7,6 +7,27 @@ const [optionsSource, backgroundSource] = await Promise.all([
   readFile(new URL("../background.js", import.meta.url), "utf8")
 ]);
 
+const testConnectionSource = optionsSource.match(
+  /async function handleTestConnection\(\) \{([\s\S]*?)\n\}\n\nasync function handleTestIndia/
+)?.[1];
+
+assert.ok(testConnectionSource, "options exposes the connection-test handler");
+assert.match(
+  testConnectionSource,
+  /sendVaultMessage\(["']vault-test-connection["']\)/,
+  "connection testing delegates to the trusted vault message boundary"
+);
+assert.doesNotMatch(
+  testConnectionSource,
+  /fetch\s*\(/,
+  "options never fetches directly while testing the Finnhub connection"
+);
+assert.doesNotMatch(
+  testConnectionSource,
+  /finnhub\.io\/api\/v1\/quote|encodeURIComponent\(apiKey\)|err\.message/,
+  "options never builds a Finnhub request or exposes raw connection errors"
+);
+
 assert.match(
   optionsSource,
   /chrome\.runtime\.sendMessage\(\{\s*type:\s*["']poll-now["'],\s*payload:\s*\{\}\s*\}/,

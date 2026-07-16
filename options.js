@@ -920,21 +920,6 @@ async function handleLockVault() {
 }
 
 async function handleTestConnection() {
-  const apiKey = finnhubApiKeyEl.value.trim();
-  if (!apiKey) {
-    testConnectionButton.textContent = "Testing…";
-    testConnectionButton.disabled = true;
-    const response = await sendVaultMessage("vault-test-connection");
-    testConnectionButton.textContent = "Test connection";
-    await refreshVaultStatus();
-    if (!response?.ok) {
-      showToast("Unlock your Finnhub key before testing", "error");
-      return;
-    }
-    showToast(`Finnhub connected (AAPL: $${Number(response.result?.price).toFixed(2)})`, "success");
-    return;
-  }
-
   testConnectionButton.textContent = "Testing…";
   testConnectionButton.disabled = true;
   if (providerStatusEl) {
@@ -943,55 +928,18 @@ async function handleTestConnection() {
   }
 
   try {
-    // Step 1: verify key is valid with a US stock (always on free tier)
-    const usResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (usResp.status === 401 || usResp.status === 403) {
-      const body = await usResp.json().catch(() => ({}));
-      const hint = body.error || `HTTP ${usResp.status}`;
-      showToast(`Key rejected by Finnhub: ${hint}. Regenerate at finnhub.io/dashboard.`, "error");
+    const response = await sendVaultMessage("vault-test-connection");
+    if (!response?.ok) {
+      showToast("Unable to test the Finnhub connection. Unlock your saved key and try again.", "error");
       return;
     }
-    if (!usResp.ok) throw new Error(`HTTP ${usResp.status}`);
-    const usData = await usResp.json();
-    if (typeof usData.c !== "number") {
-      showToast("Key accepted but returned unexpected data. Try again.", "error");
-      return;
-    }
-
-    // Step 2: try an Indian stock — may require a paid Finnhub plan
-    const inResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=TCS.NS&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (inResp.status === 403) {
-      showToast(
-        `✓ Key valid (AAPL: $${usData.c.toFixed(2)}) but Indian stocks (NSE/BSE) need a Finnhub paid plan. Free tier is US-only.`,
-        "error"
-      );
-      return;
-    }
-    if (inResp.ok) {
-      const inData = await inResp.json();
-      if (typeof inData.c === "number" && inData.c > 0) {
-        showToast(`✓ Connected: TCS.NS: ₹${inData.c.toFixed(2)} · AAPL: $${usData.c.toFixed(2)}`, "success");
-        await markWizardStep(2);
-        refreshSetupUI();
-        return;
-      }
-    }
-
-    // Key works, Indian stock returned empty — still usable
-    showToast(`✓ Key valid (AAPL: $${usData.c.toFixed(2)}). NSE quotes will be fetched on next refresh.`, "success");
-    await markWizardStep(2);
-    refreshSetupUI();
-  } catch (err) {
-    showToast(`Connection failed: ${err.message}`, "error");
+    showToast(`Finnhub connected (AAPL: $${Number(response.result?.price).toFixed(2)})`, "success");
+  } catch {
+    showToast("Unable to test the Finnhub connection. Try again.", "error");
   } finally {
     testConnectionButton.textContent = "Test connection";
     testConnectionButton.disabled = false;
+    await refreshVaultStatus();
     if (providerStatusEl && providerStatusEl.querySelector(".skeleton-inline-loader")) {
       providerStatusEl.innerHTML = "";
     }
