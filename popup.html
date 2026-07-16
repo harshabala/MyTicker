@@ -290,115 +290,6 @@
         text-align: right;
       }
 
-      /* ── Strip control ── */
-      .strip-card {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        gap: 12px;
-        padding: 12px 14px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        margin-bottom: 12px;
-      }
-      .strip-card-left {
-        display: flex;
-        align-items: center;
-        gap: 10px;
-        min-width: 0;
-      }
-      .strip-card-icon {
-        width: 28px;
-        height: 28px;
-        border-radius: 8px;
-        background: var(--bg-hover);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        flex-shrink: 0;
-        color: var(--accent);
-      }
-      .strip-card-icon svg {
-        width: 16px;
-        height: 16px;
-      }
-      .strip-card-title {
-        font-size: 13px;
-        font-weight: 600;
-      }
-      .strip-card-sub {
-        font-size: 11px;
-        color: var(--text-tertiary);
-        margin-top: 1px;
-      }
-
-      /* ── Toggle ── */
-      .toggle-switch {
-        position: relative;
-        display: inline-block;
-        width: 42px;
-        height: 26px;
-        flex-shrink: 0;
-        cursor: pointer;
-      }
-      .toggle-switch input {
-        opacity: 0;
-        width: 0;
-        height: 0;
-        position: absolute;
-      }
-      .toggle-slider {
-        position: absolute;
-        inset: 0;
-        background: var(--toggle-track, var(--bg-tertiary));
-        border-radius: 999px;
-        transition: background var(--motion-medium) var(--ease-out);
-      }
-      .toggle-slider::before {
-        content: "";
-        position: absolute;
-        left: 2px;
-        top: 50%;
-        width: 22px;
-        height: 22px;
-        margin-top: -11px;
-        background: var(--toggle-thumb, #fff);
-        border-radius: 50%;
-        box-shadow: var(--toggle-thumb-shadow, 0 1px 2px rgba(0,0,0,.35));
-        transition: transform var(--motion-medium) var(--ease-out);
-      }
-      .toggle-switch input:checked + .toggle-slider {
-        background: var(--accent);
-      }
-      .toggle-switch input:checked + .toggle-slider::before {
-        transform: translateX(16px);
-      }
-      .toggle-switch input:focus-visible + .toggle-slider {
-        outline: 2px solid var(--accent);
-        outline-offset: 2px;
-      }
-
-      /* ── Footer meta ── */
-      .footer-meta {
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
-        font-size: 11px;
-        color: var(--text-tertiary);
-        padding: 0 2px;
-      }
-      .footer-meta .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: var(--green);
-        display: inline-block;
-        margin-right: 5px;
-        vertical-align: middle;
-      }
-      .footer-meta.is-stale .dot { background: var(--yellow); }
-
       /* ── Watchlist tab ── */
       .watchlist-panel { min-height: 120px; }
       .watchlist-item {
@@ -440,57 +331,6 @@
         color: var(--text-tertiary);
         line-height: 1.45;
       }
-      .watchlist-add {
-        display: flex;
-        gap: 6px;
-        align-items: center;
-        margin-top: 12px;
-        padding-top: 12px;
-        border-top: 1px solid var(--border);
-      }
-      .watchlist-input {
-        flex: 1;
-        min-width: 0;
-        background: var(--bg-inset);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        color: var(--text-primary);
-        font-size: 12px;
-        padding: 8px 10px;
-        font-family: var(--font-mono);
-        text-transform: uppercase;
-        outline: none;
-      }
-      .watchlist-input:focus-visible {
-        border-color: var(--border-focus);
-        box-shadow: var(--focus-ring);
-      }
-      .watchlist-exchange {
-        background: var(--bg-inset);
-        border: 1px solid var(--border);
-        border-radius: var(--radius-sm);
-        color: var(--text-secondary);
-        font-size: 11px;
-        padding: 8px 4px;
-        width: 56px;
-        font-family: inherit;
-      }
-      .watchlist-add-btn {
-        background: var(--accent);
-        border: none;
-        border-radius: var(--radius-sm);
-        color: var(--accent-ink);
-        font-size: 18px;
-        font-weight: 600;
-        width: 36px;
-        height: 36px;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
-      .watchlist-add-btn:hover { background: var(--accent-hover); }
-
       /* ── Checklist / empty ── */
       .setup-checklist .label,
       .empty-state .title {
@@ -586,37 +426,6 @@
         border: 0;
       }
 
-      .shortcut-hint {
-        text-align: center;
-        font-size: 10px;
-        color: var(--text-tertiary);
-        margin-top: 10px;
-      }
-      .shortcut-hint kbd {
-        background: var(--bg-hover);
-        padding: 1px 5px;
-        border-radius: 3px;
-        font-family: inherit;
-        font-size: 10px;
-        border: 1px solid var(--border);
-      }
-
-      .add-sheet {
-        display: none;
-        margin-bottom: 12px;
-        padding: 12px;
-        background: var(--bg-surface);
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-      }
-      .add-sheet.is-open { display: block; }
-      .add-sheet-title {
-        font-size: 12px;
-        font-weight: 600;
-        color: var(--text-secondary);
-        margin-bottom: 8px;
-      }
-
       @media (prefers-reduced-motion: reduce) {
         .popup-view { transition: none; }
       }
@@ -629,9 +438,6 @@
         <h1>MyTicker</h1>
       </div>
       <div class="header-actions">
-        <button type="button" class="icon-btn" id="addWatchBtn" aria-label="Add to watchlist" title="Add to watchlist">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>
-        </button>
         <button type="button" class="icon-btn" id="openOptions" aria-label="Settings" title="Settings">
           <svg viewBox="0 0 24 24" aria-hidden="true">
             <circle cx="12" cy="12" r="3"/>
@@ -646,25 +452,10 @@
       <button type="button" class="tab" role="tab" id="tabWatchlist" aria-selected="false" aria-controls="panelWatchlist" tabindex="-1">Watchlist</button>
     </div>
 
-    <div class="add-sheet" id="addSheet" hidden>
-      <div class="add-sheet-title">Add watchlist symbol</div>
-      <div class="watchlist-add" style="margin:0;padding:0;border:none;">
-        <input type="text" class="watchlist-input" id="quickAddInput" placeholder="SYMBOL" maxlength="20" aria-label="Watchlist symbol" />
-        <select class="watchlist-exchange" id="quickAddExchange" aria-label="Exchange">
-          <option value="NSE">NSE</option>
-          <option value="BSE">BSE</option>
-          <option value="US">US</option>
-        </select>
-        <button type="button" class="watchlist-add-btn" id="quickAddBtn" aria-label="Add">+</button>
-      </div>
-    </div>
-
     <div id="mainContent">
       <div id="panelHoldings" role="tabpanel" aria-labelledby="tabHoldings"></div>
       <div id="panelWatchlist" role="tabpanel" aria-labelledby="tabWatchlist" hidden></div>
     </div>
-    <div class="shortcut-hint" id="shortcutHint" hidden></div>
-
     <script type="module" src="popup.js"></script>
   </body>
 </html>

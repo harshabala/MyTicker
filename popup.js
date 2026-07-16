@@ -20,20 +20,12 @@ let lastPnlPayload = null; // for tab switches without full re-fetch
 document.addEventListener("DOMContentLoaded", () => {
   const openOptions = document.getElementById("openOptions");
   const mainContent = document.getElementById("mainContent");
-  const shortcutHint = document.getElementById("shortcutHint");
   const tabHoldings = document.getElementById("tabHoldings");
   const tabWatchlist = document.getElementById("tabWatchlist");
-  const addWatchBtn = document.getElementById("addWatchBtn");
-  const addSheet = document.getElementById("addSheet");
-  const quickAddInput = document.getElementById("quickAddInput");
-  const quickAddExchange = document.getElementById("quickAddExchange");
-  const quickAddBtn = document.getElementById("quickAddBtn");
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     applyPopupTheme(data[STORAGE_KEYS.settings]?.tickerStyleConfig?.theme);
   });
-
-  setPlatformShortcut(shortcutHint);
 
   openOptions?.addEventListener("click", (e) => {
     e.preventDefault();
@@ -44,47 +36,6 @@ document.addEventListener("DOMContentLoaded", () => {
   tabWatchlist?.addEventListener("click", () => setTab("watchlist", mainContent));
   [tabHoldings, tabWatchlist].filter(Boolean).forEach((tabEl) => {
     tabEl.addEventListener("keydown", (event) => handleTabKeydown(event, mainContent));
-  });
-
-  addWatchBtn?.addEventListener("click", () => {
-    const open = addSheet?.classList.toggle("is-open");
-    if (addSheet) {
-      addSheet.hidden = !open;
-      if (open) {
-        setTab("watchlist", mainContent);
-        quickAddInput?.focus();
-      }
-    }
-  });
-
-  const doQuickAdd = async () => {
-    const raw = (quickAddInput?.value || "").trim().toUpperCase().replace(/[^A-Z0-9&-]/g, "");
-    if (!raw) {
-      quickAddInput?.focus();
-      return;
-    }
-    const exchange = quickAddExchange?.value || "NSE";
-    const symbol =
-      exchange === "NSE" ? `${raw}.NS` : exchange === "BSE" ? `${raw}.BO` : raw;
-    const data = await chrome.storage.local.get([STORAGE_KEYS.watchlist]);
-    const current = data[STORAGE_KEYS.watchlist] || [];
-    if (!current.some((w) => w.symbol === symbol)) {
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.watchlist]: [...current, { symbol, displayName: raw }]
-      });
-      chrome.runtime.sendMessage({ action: "poll-now" }, () => void chrome.runtime.lastError);
-    }
-    if (quickAddInput) quickAddInput.value = "";
-    if (addSheet) {
-      addSheet.classList.remove("is-open");
-      addSheet.hidden = true;
-    }
-    setTab("watchlist", mainContent);
-  };
-
-  quickAddBtn?.addEventListener("click", doQuickAdd);
-  quickAddInput?.addEventListener("keydown", (e) => {
-    if (e.key === "Enter") doQuickAdd();
   });
 
   refreshPopup(mainContent);
@@ -155,31 +106,6 @@ function handleTabKeydown(event, mainContent) {
   const nextTab = tabs[nextIndex];
   setTab(nextTab.id === "tabHoldings" ? "holdings" : "watchlist", mainContent);
   nextTab.focus();
-}
-
-async function setPlatformShortcut(el) {
-  if (!el) return;
-  try {
-    const commands = await chrome.commands.getAll();
-    const cmd = commands.find((c) => c.name === "toggle-myticker");
-    if (cmd?.shortcut) {
-      el.hidden = false;
-      el.textContent = "";
-      el.append("Toggle strip: ");
-      const parts = cmd.shortcut.split("+");
-      parts.forEach((part, i) => {
-        const kbd = document.createElement("kbd");
-        kbd.textContent =
-          part === "Command" ? "⌘" : part === "MacCtrl" ? "⌃" : part === "Alt" ? "⌥" : part;
-        el.appendChild(kbd);
-        if (i < parts.length - 1) el.append("+");
-      });
-      return;
-    }
-  } catch (_) {
-    /* ignore */
-  }
-  el.hidden = true;
 }
 
 function prefersReducedMotion() {
@@ -267,12 +193,7 @@ async function _refreshPopupInner(container) {
 
   // Show tabs only when fully set up with data
   const tabs = document.querySelector(".tabs");
-  const headerActions = document.querySelector(".header-actions");
   if (tabs) tabs.style.display = nextView === VIEW_PNL ? "flex" : "none";
-  if (headerActions) {
-    const addBtn = document.getElementById("addWatchBtn");
-    if (addBtn) addBtn.style.display = nextView === VIEW_PNL ? "flex" : "none";
-  }
 
   if (currentView === nextView && outgoing && nextView === VIEW_PNL) {
     updatePnlInPlace(outgoing, state, watchlistItems, settings);
@@ -385,15 +306,6 @@ function updateChecklistInPlace(viewEl, status) {
   });
 }
 
-function shortTimeAgo(timestamp) {
-  if (!timestamp) return "just now";
-  const seconds = Math.floor((Date.now() - timestamp) / 1000);
-  if (seconds < 60) return "just now";
-  const minutes = Math.floor(seconds / 60);
-  if (minutes < 60) return `${minutes}m ago`;
-  return `${Math.floor(minutes / 60)}h ago`;
-}
-
 export function getAggregateDisplay(currency, value, percentage) {
   if (!currency) {
     return { value: "Mixed currencies", percentage: "", className: "pnl-flat" };
@@ -429,8 +341,6 @@ export function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAU
   const fiveValue = viewEl.querySelector("[data-five-value]");
   const holdingsCount = viewEl.querySelector("[data-holdings-count]");
   const livePill = viewEl.querySelector(".live-pill");
-  const footerMeta = viewEl.querySelector(".footer-meta");
-  const stripToggle = viewEl.querySelector("#enabledToggle");
 
   if (pnlValue) {
     pnlValue.className = `pnl-value ${dayDisplay.className}`;
@@ -462,14 +372,6 @@ export function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAU
     livePill.classList.toggle("is-stale", !!state.staleWarning);
     const label = livePill.querySelector(".live-label");
     if (label) label.textContent = state.staleWarning ? "Stale" : "Live";
-  }
-  if (footerMeta) {
-    footerMeta.classList.toggle("is-stale", !!state.staleWarning);
-    const t = footerMeta.querySelector(".footer-time");
-    if (t) t.textContent = `Last updated ${shortTimeAgo(state.updatedAt)}`;
-  }
-  if (stripToggle) {
-    stripToggle.checked = settings.enabled !== false;
   }
 
   const moversList = viewEl.querySelector(".movers-list");
@@ -684,12 +586,7 @@ export function renderHoldingsPanel(container, state, status, settings) {
   helpLink.target = "_blank";
   helpLink.rel = "noopener noreferrer";
   helpLink.textContent = "How P&L is calculated";
-  const sep = document.createElement("span");
-  sep.className = "sep";
-  sep.textContent = "·";
-  const privacy = document.createElement("span");
-  privacy.textContent = "Local only";
-  help.append(helpLink, sep, privacy);
+  help.append(helpLink);
 
   hero.append(live, heroTop, pnlRow, grid, help);
   container.appendChild(hero);
@@ -732,55 +629,6 @@ export function renderHoldingsPanel(container, state, status, settings) {
     container.appendChild(section);
   }
 
-  // Strip control card
-  const strip = document.createElement("div");
-  strip.className = "strip-card";
-  const left = document.createElement("div");
-  left.className = "strip-card-left";
-  const icon = document.createElement("div");
-  icon.className = "strip-card-icon";
-  icon.innerHTML =
-    '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75"><path d="M3 12h3l2-6 4 12 2-6h7"/></svg>';
-  const texts = document.createElement("div");
-  const t1 = document.createElement("div");
-  t1.className = "strip-card-title";
-  t1.id = "toggleLabel";
-  t1.textContent = "Ticker strip";
-  const t2 = document.createElement("div");
-  t2.className = "strip-card-sub";
-  t2.textContent = "Live market updates in your browser";
-  texts.append(t1, t2);
-  left.append(icon, texts);
-
-  const toggleLabel = document.createElement("label");
-  toggleLabel.className = "toggle-switch";
-  const input = document.createElement("input");
-  input.type = "checkbox";
-  input.id = "enabledToggle";
-  input.checked = settings.enabled !== false;
-  input.setAttribute("aria-labelledby", "toggleLabel");
-  const slider = document.createElement("span");
-  slider.className = "toggle-slider";
-  toggleLabel.append(input, slider);
-  input.addEventListener("change", () => {
-    chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-      const s = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
-      s.enabled = input.checked;
-      chrome.storage.sync.set({ [STORAGE_KEYS.settings]: s });
-    });
-  });
-  strip.append(left, toggleLabel);
-  container.appendChild(strip);
-
-  // Footer meta
-  const footer = document.createElement("div");
-  footer.className = `footer-meta${state.staleWarning ? " is-stale" : ""}`;
-  const time = document.createElement("span");
-  time.innerHTML = `<span class="dot"></span><span class="footer-time">Last updated ${shortTimeAgo(state.updatedAt)}</span>`;
-  const local = document.createElement("span");
-  local.textContent = "Data: Local only";
-  footer.append(time, local);
-  container.appendChild(footer);
 }
 
 function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
@@ -792,7 +640,7 @@ function renderWatchlistPanel(container, watchlistItems, watchlistPrices) {
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "No symbols yet. Tap + to add a symbol and exchange. Watchlist is the second strip group, after holdings.";
+      "No symbols yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {
