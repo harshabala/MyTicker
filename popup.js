@@ -338,7 +338,21 @@ function shortTimeAgo(timestamp) {
   return `${Math.floor(minutes / 60)}h ago`;
 }
 
-function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
+export function getAggregateDisplay(currency, value, percentage) {
+  if (!currency) {
+    return { value: "Mixed currencies", percentage: "", className: "pnl-flat" };
+  }
+  const numericValue = Number(value) || 0;
+  const numericPercentage = Number(percentage) || 0;
+  const className = numericValue > 0 ? "pnl-positive" : numericValue < 0 ? "pnl-negative" : "pnl-flat";
+  return {
+    value: formatSignedCurrency(numericValue, currency),
+    percentage: `${numericPercentage >= 0 ? "+" : ""}${numericPercentage.toFixed(2)}%`,
+    className
+  };
+}
+
+export function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETTINGS) {
   if (activeTab === "watchlist") {
     renderActiveTab(viewEl, { state, watchlistItems, status: null, settings });
     return;
@@ -351,9 +365,8 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
   const window5mPnl = Number(agg.window5mPnl) || 0;
   const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
-  const fiveClass =
-    window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
+  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
+  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
 
   const pnlValue = viewEl.querySelector(".pnl-value");
   const pnlPct = viewEl.querySelector(".pnl-pct");
@@ -363,24 +376,29 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
   const footerMeta = viewEl.querySelector(".footer-meta");
   const stripToggle = viewEl.querySelector("#enabledToggle");
 
-  if (pnlValue && currency) {
-    pnlValue.className = `pnl-value ${pnlClass}`;
-    pnlValue.textContent = formatSignedCurrency(dayPnl, currency);
-  } else if (pnlValue) pnlValue.textContent = "Mixed currencies";
-  if (pnlPct) {
-    pnlPct.className = `pnl-pct ${pnlClass}`;
-    pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+  if (pnlValue) {
+    pnlValue.className = `pnl-value ${dayDisplay.className}`;
+    pnlValue.textContent = dayDisplay.value;
   }
+  if (pnlPct) {
+    pnlPct.className = `pnl-pct ${dayDisplay.className}`;
+    pnlPct.textContent = dayDisplay.percentage;
+    pnlPct.hidden = !currency;
+  }
+  if (fiveValue) fiveValue.className = "stat-cell-value";
   if (fiveValue && currency) {
     fiveValue.innerHTML = "";
     const main = document.createElement("span");
-    main.className = fiveClass;
-    main.textContent = formatSignedCurrency(window5mPnl, currency);
+    main.className = fiveDisplay.className;
+    main.textContent = fiveDisplay.value;
     const sub = document.createElement("span");
-    sub.className = `sub ${fiveClass}`;
-    sub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
+    sub.className = `sub ${fiveDisplay.className}`;
+    sub.textContent = fiveDisplay.percentage;
     fiveValue.append(main, sub);
-  } else if (fiveValue) fiveValue.textContent = "Mixed currencies";
+  } else if (fiveValue) {
+    fiveValue.className = `stat-cell-value ${fiveDisplay.className}`;
+    fiveValue.textContent = fiveDisplay.value;
+  }
   if (holdingsCount) {
     holdingsCount.textContent = String(state.positions.length);
   }
@@ -413,7 +431,7 @@ function updatePnlInPlace(viewEl, state, watchlistItems, settings = DEFAULT_SETT
     }
   }
 
-  const newSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
+  const newSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
   lastAggregateSign = newSign;
 }
 
@@ -524,7 +542,7 @@ export function buildMoverItem(pos) {
   return item;
 }
 
-function renderHoldingsPanel(container, state, status, settings) {
+export function renderHoldingsPanel(container, state, status, settings) {
   if (!state?.positions?.length) {
     renderEmptyState(container, status);
     return;
@@ -536,10 +554,9 @@ function renderHoldingsPanel(container, state, status, settings) {
   const dayPnlPct = Number(agg.dayPnlPct) || 0;
   const window5mPnl = Number(agg.window5mPnl) || 0;
   const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const pnlClass = dayPnl > 0 ? "pnl-positive" : dayPnl < 0 ? "pnl-negative" : "pnl-flat";
-  const fiveClass =
-    window5mPnl > 0 ? "pnl-positive" : window5mPnl < 0 ? "pnl-negative" : "pnl-flat";
-  lastAggregateSign = dayPnl > 0 ? "up" : dayPnl < 0 ? "down" : "flat";
+  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
+  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
+  lastAggregateSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
   const firstValue = status && !status.firstValueSeen;
 
   // Hero
@@ -566,11 +583,12 @@ function renderHoldingsPanel(container, state, status, settings) {
   const pnlRow = document.createElement("div");
   pnlRow.className = "pnl-row";
   const pnlValue = document.createElement("span");
-  pnlValue.className = `pnl-value ${pnlClass}`;
-  pnlValue.textContent = currency ? formatSignedCurrency(dayPnl, currency) : "Mixed currencies";
+  pnlValue.className = `pnl-value ${dayDisplay.className}`;
+  pnlValue.textContent = dayDisplay.value;
   const pnlPct = document.createElement("span");
-  pnlPct.className = `pnl-pct ${pnlClass}`;
-  pnlPct.textContent = `${dayPnlPct >= 0 ? "+" : ""}${dayPnlPct.toFixed(2)}%`;
+  pnlPct.className = `pnl-pct ${dayDisplay.className}`;
+  pnlPct.textContent = dayDisplay.percentage;
+  pnlPct.hidden = !currency;
   pnlRow.append(pnlValue, pnlPct);
 
   const grid = document.createElement("div");
@@ -582,12 +600,15 @@ function renderHoldingsPanel(container, state, status, settings) {
   fiveVal.className = "stat-cell-value";
   fiveVal.dataset.fiveValue = "1";
   const fiveMain = document.createElement("span");
-  fiveMain.className = fiveClass;
-  fiveMain.textContent = currency ? formatSignedCurrency(window5mPnl, currency) : "Mixed currencies";
-  const fiveSub = document.createElement("span");
-  fiveSub.className = `sub ${fiveClass}`;
-  fiveSub.textContent = `${window5mPnlPct >= 0 ? "+" : ""}${window5mPnlPct.toFixed(2)}%`;
-  fiveVal.append(fiveMain, fiveSub);
+  fiveMain.className = fiveDisplay.className;
+  fiveMain.textContent = fiveDisplay.value;
+  fiveVal.append(fiveMain);
+  if (currency) {
+    const fiveSub = document.createElement("span");
+    fiveSub.className = `sub ${fiveDisplay.className}`;
+    fiveSub.textContent = fiveDisplay.percentage;
+    fiveVal.append(fiveSub);
+  }
   cell5.appendChild(fiveVal);
 
   const cellH = document.createElement("div");
