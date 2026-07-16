@@ -531,7 +531,12 @@ export function renderHoldingsPanel(container, state, status) {
   heroLabel.textContent = firstValue ? "Your day so far" : "Your day so far";
   const livePill = document.createElement("span");
   livePill.className = `live-pill${state.staleWarning ? " is-stale" : ""}`;
-  livePill.innerHTML = `<span class="dot"></span><span class="live-label">${state.staleWarning ? "Stale" : "Live"}</span>`;
+  const liveDot = document.createElement("span");
+  liveDot.className = "dot";
+  const liveLabel = document.createElement("span");
+  liveLabel.className = "live-label";
+  liveLabel.textContent = state.staleWarning ? "Stale" : "Live";
+  livePill.append(liveDot, liveLabel);
   heroTop.append(heroLabel, livePill);
 
   const pnlRow = document.createElement("div");

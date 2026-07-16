@@ -28,8 +28,12 @@ Optionally add supported crypto to your ticker (CoinGecko primary, with mapped B
 
 Your data NEVER leaves your browser:
 • Holdings stored locally in Chrome storage
-• API key stays on your device
-• No analytics, no tracking, no accounts
+• Optional Finnhub API key encrypted locally; its derived unlock material lasts only for the current browser session, so you unlock it again after restart
+• No analytics, tracking, accounts, or portfolio telemetry
+
+### 🌐 Why MyTicker runs on all pages
+
+The ticker tape starts on all pages before page content so it can reserve its small strip of layout space consistently. It does not read page content. Prices are requested only from Yahoo Finance (`query1.finance.yahoo.com` and `query2.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for optional US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and mapped Binance fallback (`data-api.binance.vision`) when CoinGecko has no quote.
 
 ### ⚡ Premium Design
 

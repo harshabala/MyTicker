@@ -13,7 +13,7 @@ function assert(condition, message) {
   }
 }
 
-const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
+const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, sharedSource, vaultSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
   readFile(new URL("../popup.html", import.meta.url), "utf8"),
   readFile(new URL("../popup.js", import.meta.url), "utf8"),
   readFile(new URL("../options.html", import.meta.url), "utf8"),
@@ -23,6 +23,13 @@ const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifest
   readFile(new URL("../manifest.json", import.meta.url), "utf8"),
   readFile(new URL("../priceProviders.js", import.meta.url), "utf8"),
   readFile(new URL("../background.js", import.meta.url), "utf8"),
+  readFile(new URL("../contentScript.js", import.meta.url), "utf8"),
+  readFile(new URL("../contentShared.js", import.meta.url), "utf8"),
+  readFile(new URL("../csvParser.js", import.meta.url), "utf8"),
+  readFile(new URL("../metrics.js", import.meta.url), "utf8"),
+  readFile(new URL("../onboarding.js", import.meta.url), "utf8"),
+  readFile(new URL("../shared.js", import.meta.url), "utf8"),
+  readFile(new URL("../vault.js", import.meta.url), "utf8"),
   readFile(new URL("../README.md", import.meta.url), "utf8"),
   readFile(new URL("../PRIVACY.md", import.meta.url), "utf8"),
   readFile(new URL("../STORE_LISTING.md", import.meta.url), "utf8")
@@ -83,6 +90,29 @@ assert(optionsHtml.includes("<h1>MyTicker settings</h1>"), "uses canonical MyTic
 assert(manifest.name === "MyTicker", "uses canonical MyTicker name in the extension manifest");
 assert(manifest.action?.default_title === "MyTicker", "uses canonical MyTicker name in the extension action title");
 assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
+
+console.log("\n🔒 Release-gate privacy and extension-boundary audit");
+const expectedProviderHosts = [
+  "https://finnhub.io/*",
+  "https://query1.finance.yahoo.com/*",
+  "https://query2.finance.yahoo.com/*",
+  "https://api.coingecko.com/*",
+  "https://data-api.binance.vision/*"
+];
+assert(JSON.stringify(manifest.host_permissions) === JSON.stringify(expectedProviderHosts), "declares only the required Yahoo, CoinGecko, Binance, and Finnhub provider hosts");
+assert(manifest.content_security_policy?.extension_pages === "script-src 'self'; object-src 'self';", "pins extension pages to self-hosted scripts with an explicit MV3 CSP");
+assert(manifest.permissions?.length === 2 && manifest.permissions.includes("storage") && manifest.permissions.includes("alarms"), "requests only storage and alarms extension permissions");
+assert(manifest.web_accessible_resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.[0] === "ticker.css" && manifest.web_accessible_resources[0]?.matches?.join() === "<all_urls>", "exposes only the tape stylesheet to pages where the closed shadow-root tape needs it");
+const releaseCopy = `${readmeSource}\n${privacySource}\n${storeListingSource}`;
+for (const host of ["finnhub.io", "query1.finance.yahoo.com", "query2.finance.yahoo.com", "api.coingecko.com", "data-api.binance.vision"]) {
+  assert(releaseCopy.includes(host), `discloses the ${host} remote host`);
+}
+assert(/all pages[\s\S]{0,160}(?:reserve space|before page content)/i.test(releaseCopy), "explains all-page tape access as early layout reservation before page content");
+assert(/encrypted[\s\S]{0,120}(?:local|browser)[\s\S]{0,160}(?:session|restart)/i.test(releaseCopy), "discloses the encrypted local Finnhub vault and session-only unlock after restart");
+assert(/no portfolio telemetry/i.test(releaseCopy), "explicitly rules out portfolio telemetry");
+const extensionSource = [backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, optionsJs, popupJs, priceProvidersSource, sharedSource, vaultSource].join("\n");
+assert(!/\beval\s*\(|new\s+Function\s*\(|https?:\/\/[^\s'"`]+\.js/i.test(extensionSource), "contains no unsafe dynamic code or remotely hosted JavaScript");
+assert(!/innerHTML\s*=\s*`[^`]*\$\{/m.test(extensionSource), "keeps HTML insertion free of interpolated values");
 for (const tab of ["portfolio", "watchlist", "crypto", "data", "appearance"]) {
   assert(optionsHtml.includes(`data-tab="${tab}"`), `includes ${tab} in the task-based settings navigation`);
 }
