@@ -1,17 +1,17 @@
 # MyTicker information architecture handoff
 
-Source baseline: commit `7371016`. This describes the implemented extension, not a future product proposal.
+Source baseline: commit `98c276f`, including the final simplified popup and gold-surface refinement. This describes the implemented extension, not a future product proposal.
 
 ## Product map and screen ownership
 
 | Surface | Owns | Does not own | Rationale |
 | --- | --- | --- | --- |
-| Popup | At-a-glance holdings P&L, top movers, tape toggle, quick watchlist add, watchlist quote review. | Full imports/provider setup/appearance. | A compact action surface should answer “how is my portfolio?” first. |
+| Popup | At-a-glance holdings P&L, top movers, and read-only watchlist quote review with removal. | Adding instruments, watchlist setup, and tape controls. | A compact review surface should answer “how is my portfolio?” first; its single header gear leads to Settings. |
 | Settings: Portfolio | Broker CSV import and holdings preview. | Watchlist, crypto, provider credentials. | Holdings are the product’s primary data and the shortest India-first route to a usable tape. |
-| Settings: Watchlist | Supplemental symbols by India/US/index/ETF/crypto type. | Core holdings import. | Watchlist is secondary market tracking, after owned positions. |
+| Settings: Watchlist | Add and configure supplemental symbols by India/US/index/ETF/crypto type. | Core holdings import. | Watchlist is secondary market tracking, after owned positions; Settings owns additions. |
 | Settings: Crypto | Optional Top 5/manual canonical crypto selection. | General watchlist setup and credentials. | Crypto is a distinct, optional third tape group with its own provider rules. |
 | Settings: Data & diagnostics | Setup status, Yahoo/Finnhub data configuration, diagnostic output, change notes, help/troubleshooting, in-session errors. | Day-to-day portfolio edits. | Operational/support information is lower-frequency and placed last. |
-| Settings: Appearance | Stock/crypto visibility, theme, speed, tape size. | Data/provider controls. | Visual preferences apply to the shared tape experience. |
+| Settings: Appearance | Tape visibility filters, theme, speed, and tape size. | Data/provider controls. | Tape controls and visual preferences belong with the shared tape experience, not the popup. |
 | Page-level tape | Persistent, compact market summary across eligible pages. | Browser toolbar/chrome controls. | It is injected by the content script at the top of a webpage in a closed Shadow DOM; it is explicitly **not browser chrome**. |
 
 ## Settings hierarchy
@@ -41,20 +41,20 @@ flowchart LR
 
 ```text
 MyTicker header
-├─ Add to watchlist (opens inline quick-add sheet)
-├─ Settings (opens options page)
+├─ Settings gear (opens options page)
 └─ Tabs, when setup has positions
    ├─ Holdings (default)
    │  ├─ daily P&L hero + live/stale state
    │  ├─ 5-minute change + holdings count
    │  ├─ top movers (up to three)
-   │  └─ ticker-strip toggle + update/local-only footer
    └─ Watchlist
-      ├─ empty-state instruction, or
+      ├─ empty-state instruction directing additions to Settings, or
       └─ symbol, market/currency metadata, quote/change, remove
 ```
 
 Before setup completion, the popup replaces tabs with the checklist (import holdings, prices loading, and an optional US-key item only when needed). If setup is complete but no position state exists, it shows the holdings empty state. The first paint uses `Loading…` while storage/setup reads resolve.
+
+Gold is the interaction accent across the popup and Settings: selected tab underlines, primary actions, links, hover, and keyboard focus. Green and red retain their semantic roles for positive/success and negative/error market states, rather than indicating selection.
 
 ## Tape structure and state
 
@@ -75,11 +75,11 @@ Each tape item shows display name, quote price, percent change, and `p&l` only f
 | Goal | Entry point | Flow | Destination/outcome |
 | --- | --- | --- | --- |
 | Import holdings | Settings → Portfolio, popup checklist, or Settings header route | `Import my holdings` / demo sample / local CSV → parser/preset → preview → immediate poll | Holdings become first tape group and populate popup P&L after prices load. |
-| Add watchlist | Popup `Add to watchlist` or Settings → Watchlist | Choose market/exchange → enter canonical symbol or supported crypto → `Add to watchlist` | Item appears as the second tape group; popup Watchlist shows quote state. |
+| Add watchlist | Settings → Watchlist | Choose market/exchange → enter canonical symbol or supported crypto → `Add to watchlist` | Item appears as the second tape group; the popup Watchlist tab reviews quote state and permits removal. |
 | Enable/select crypto | Settings → Crypto | Choose Off/Top 5/Manual → search/add/remove canonical coins if Manual → Save | Crypto uses CoinGecko first and Binance fallback for mapped liquid assets; it becomes tape group three. |
 | Configure/check data | Settings → Data & diagnostics | Review setup status → test Yahoo India or save/test Finnhub US key → Refresh/Copy diagnostics | India `.NS`/`.BO` quotes use Yahoo automatically; configured US equities use Finnhub; safe diagnostics can be shared. |
 | Change theme/tape size | Settings → Appearance | Choose System/Light/Dark, speed, Compact/Comfortable/Large and filters → Save | Shared visual configuration is applied to the page-level tape (and theme to popup/settings). |
-| Toggle tape | Popup toggle or configured keyboard shortcut | Enable/disable ticker strip | Content script mounts/removes page-level tape on eligible tabs. |
+| Tune tape | Settings → Appearance | Choose stock/crypto visibility, theme, speed, and Compact/Comfortable/Large size → Save | The page-level tape uses the saved presentation controls; the popup has no tape controls. |
 
 ## Provider ownership and truthful scope
 

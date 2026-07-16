@@ -1,28 +1,27 @@
 # MyTicker content inventory
 
-Source baseline: commit `7371016` (`popup.html`/`popup.js`, `options.html`/`options.js`, and `contentScript.js`).  “Exact string” preserves source text; `{…}` marks runtime data, not a new claim. This is an inventory of meaningful user-visible or assistive text, rather than CSS-only labels or source-only constants.
+Source baseline: commit `98c276f` (the final popup and gold-surface refinement, including `popup.html`/`popup.js`, `options.html`/`options.js`, and `contentScript.js`). “Exact string” preserves source text; `{…}` marks runtime data, not a new claim. This is an inventory of meaningful user-visible or assistive text, rather than CSS-only labels or source-only constants.
 
 ## Popup
 
 | Exact string | Location / surface | User-facing purpose | Internal rationale |
 | --- | --- | --- | --- |
 | `MyTicker` | Header | Identifies the extension. | Canonical product name. |
-| `Add to watchlist`; `Settings` | Header icon button labels/titles | Opens quick add or full settings. | Direct entry points without consuming popup space. |
+| `Settings` | Header gear button label/title | Opens the Settings page. | The popup has one header action; configuration lives in Settings. |
 | `Holdings`; `Watchlist`; `Popup sections` | Tab bar and its accessible label | Switches the popup’s two primary views. | Holdings is the default, watchlist is secondary. |
-| `Add watchlist symbol`; `SYMBOL`; `Watchlist symbol`; `Exchange`; `NSE`; `BSE`; `US`; `Add` | Quick-add sheet | Adds an equity symbol and market suffix. | Fast low-friction watchlist capture. |
 | `Loading…` | Initial popup state | Indicates storage/setup state is being read. | Avoids a blank popup. |
 | `Import your holdings`; `Zerodha CSV works immediately for Indian stocks (no API key)` | Setup checklist | First-run action and India-first reassurance. | Guides the shortest route to value. |
 | `Prices loading`; `Fetching live prices… open any tab in a moment`; `Import holdings first` | Setup checklist | Explains the live-price prerequisite/progress. | Keeps asynchronous refresh understandable. |
 | `Optional: US price key`; `Needed for US equities; crypto quotes use CoinGecko with Binance fallback` | Conditional setup checklist | Explains US-key scope. | Does not misstate crypto’s providers. |
 | `Your day so far`; `Today {signed currency}`; `Today, mixed currencies`; `Live`; `Stale` | Holdings hero and live announcement | Shows aggregate daily outcome and quote freshness. | Primary portfolio-at-a-glance information. |
-| `5-min change`; `Holdings`; `How P&L is calculated`; `Local only` | Holdings hero | Provides short-horizon context, count, methodology/help, privacy reassurance. | Supports interpretation without exposing holdings externally. |
+| `5-min change`; `Holdings`; `How P&L is calculated` | Holdings hero | Provides short-horizon context, count, and methodology/help. | Supports interpretation without exposing holdings externally. |
 | `Top movers (today)`; `View all →` | Holdings movers | Highlights up to three largest absolute P&L movers and opens settings. | Gives a compact reason to inspect holdings. |
-| `Ticker strip`; `Live market updates in your browser`; `Last updated {just now\|{n}m ago\|{n}h ago}`; `Data: Local only` | Holdings strip control/footer | Toggles the tape, describes it, gives recency and locality. | Makes page-level tape state controllable from the popup. |
-| `No symbols yet. Tap + to add a symbol and exchange. Watchlist is the second strip group, after holdings.` | Empty Watchlist tab | Explains how to populate it and its tape order. | Maintains explicit ordering promise. |
+| `No symbols yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.` | Empty Watchlist tab | Explains where to populate the list and its tape order. | Adding is owned by Settings while the popup remains a review surface. |
 | `Crypto · USD`; `India · {NSE\|BSE} · INR`; `Index · USD`; `ETF · USD`; `US[ · {exchange}] · USD` | Watchlist row metadata | Identifies asset market/currency. | Prevents ambiguous ticker symbols. |
-| `Stale`; `Unavailable`; `Remove {display name}` | Watchlist quote/remove states | Signals bad/missing quote or removes an item. | Clear degraded-state recovery. |
+| `Stale`; `Unavailable`; `Remove {display name}` | Read-only watchlist quote/remove states | Signals bad/missing quote or removes an item. | The popup supports review and removal, while adding and list setup are in Settings. |
 | `Mixed currencies` | Holdings aggregate fallback | States that one aggregate currency cannot be shown. | Avoids false precision. |
-| `Toggle strip: {shortcut}` | Conditional shortcut hint | Exposes the configured keyboard entry point. | Supports keyboard control. |
+
+Gold is the shared interaction accent for selected tabs, primary actions, explanatory/action links, hover, and keyboard focus. Green and red remain semantic market-state colors for positive/success and negative/error values; they do not signal the current interactive selection.
 
 ## Page-level tape (not browser chrome)
 
@@ -86,7 +85,7 @@ The tape is a **page-level content-script strip at the top of eligible web pages
 | `Provider availability and latest result:`; `CoinGecko: primary crypto source · {eligible when supported crypto is enabled\|crypto disabled} · {n} quotes in last provider result`; `Binance: fallback for mapped liquid crypto only · {available\|crypto disabled} · {n} quotes in last provider result`; `Yahoo Finance: automatic for .NS/.BO · available · {n} quotes in last provider result`; `Finnhub: US equities · {API key configured\|no API key configured} · {n} quotes in last provider result` | Diagnostic output | Describes provider availability and latest counts. | Provider claims match source routing. |
 | `Recent refresh lifecycle (safe operational counts only):`; `No refresh diagnostics recorded yet.`; `{time} · {event} · {counts}`; `Refresh failed` | Diagnostic output | Displays bounded lifecycle/history. | Contains counts only, no portfolio values. |
 | `What changed`; `Live tape architecture: the service worker refreshes state on chrome.alarms; the content script renders that state in a closed Shadow DOM strip.`; `Provider behavior: Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.`; `Current release: v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.` | Change notes | Explains architecture and release scope. | Prevents claims about unimplemented providers. |
-| `Getting started`; `India-first: Import a Zerodha / Groww / Upstox holdings CSV on the Portfolio tab. NSE/BSE symbols get .NS / .BO and price automatically via Yahoo — no API key.`; `Toggle the strip: Use the popup or {shortcut}.` | Reference notes | Gives first-run steps and tape entry point. | Keeps task flow discoverable. |
+| `Getting started`; `India-first: Import a Zerodha / Groww / Upstox holdings CSV on the Portfolio tab. NSE/BSE symbols get .NS / .BO and price automatically via Yahoo — no API key.` | Reference notes | Gives the first-run setup path. | Keeps the holdings-first flow discoverable without retired popup tape controls. |
 | `How MyTicker works`; `Service worker fetches quotes on a chrome.alarms schedule (not setInterval), so fetches continue when the worker sleeps.`; `Content script injects a closed Shadow DOM ticker at the top of pages so host CSS cannot break the strip (and vice versa).`; `Holdings, last prices, and keys live in chrome.storage.local on this browser only — nothing is sent to our servers.`; `Fullscreen video (YouTube, Netflix, etc.) hides the strip so it does not cover the player.` | Reference notes | Explains implementation/privacy/behavior. | Accurate technical transparency. |
 | `Troubleshooting`; `File permission / Error reading file: use Import my holdings or drop the CSV again; the import path uses the File API safely for extensions.`; `Missing Exchange/Currency columns: Zerodha-style exports are fine — we default NSE + INR when those columns are absent.`; `Empty strip: confirm holdings on Portfolio, then open any http(s) tab and wait for the next alarm refresh (or re-open the popup).`; `Setup errors appear in Data & diagnostics when something fails mid-import or fetch.` | Reference notes | Gives recovery paths. | Keeps support context beside diagnostics. |
 | `Setup errors`; `Copy all`; `Clear`; `{n} error(s)` | Error log (only shown after an error) | Reviews/copies/clears in-session errors. | Error visibility without adding a separate tab. |
