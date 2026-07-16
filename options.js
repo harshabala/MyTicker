@@ -15,6 +15,9 @@ const csvStatusEl = document.getElementById("csvStatus");
 const dropZone = document.getElementById("dropZone");
 
 const finnhubApiKeyEl = document.getElementById("finnhubApiKey");
+const vaultUnlockCodeEl = document.getElementById("vaultUnlockCode");
+const vaultUnlockConfirmEl = document.getElementById("vaultUnlockConfirm");
+const vaultStatusEl = document.getElementById("vaultStatus");
 const refreshMinutesEl = document.getElementById("refreshMinutes");
 const providerStatusEl = document.getElementById("providerStatus");
 const testConnectionButton = document.getElementById("testConnectionButton");
@@ -90,15 +93,7 @@ function init() {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
-    // Load API key from local storage (canonical source).
-    chrome.storage.local.get(["pts_price_api_key"], (localData) => {
-      const savedKey = localData["pts_price_api_key"] || "";
-      finnhubApiKeyEl.value = savedKey;
-      if (savedKey) {
-        testConnectionButton.disabled = false;
-        testConnectionButton.title = "";
-      }
-    });
+    refreshVaultStatus();
 
     refreshMinutesEl.value = String(
       settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes
@@ -139,6 +134,9 @@ function init() {
   importCsvButton.addEventListener("click", () => handleImportCsv());
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
+  document.getElementById("unlockVaultButton").addEventListener("click", handleUnlockVault);
+  document.getElementById("lockVaultButton").addEventListener("click", handleLockVault);
+  document.getElementById("replaceVaultButton").addEventListener("click", () => handleSaveProvider(true));
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
   saveAppearanceButton.addEventListener("click", handleSaveAppearance);
   saveCryptoButton.addEventListener("click", handleSaveCrypto);
@@ -415,8 +413,7 @@ async function renderDiagnostics() {
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.pollHealth,
       STORAGE_KEYS.diagnosticsLog,
-      STORAGE_KEYS.contentScriptStatus,
-      "pts_price_api_key"
+      STORAGE_KEYS.contentScriptStatus
     ])
   ]);
   const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
@@ -428,7 +425,8 @@ async function renderDiagnostics() {
   const providerResults = [...log].reverse().find((entry) => entry.event === "provider-results");
   const contentStatus = localData[STORAGE_KEYS.contentScriptStatus] || {};
   const cryptoEnabled = !!settings.cryptoConfig?.includeCrypto && settings.portfolioFilters?.showCrypto !== false;
-  const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
+  const vaultResponse = await sendVaultMessage("vault-status");
+  const vaultStatus = vaultResponse?.status || { configured: false, unlocked: false };
   const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
   const lines = [
     `MyTicker diagnostics · build v${buildVersion}`,
@@ -442,7 +440,7 @@ async function renderDiagnostics() {
     `CoinGecko: primary crypto source · ${cryptoEnabled ? "eligible when supported crypto is enabled" : "crypto disabled"} · ${providerResultLine(providerResults, "coinGeckoQuotes", "result")}`,
     `Binance: fallback for mapped liquid crypto only · ${cryptoEnabled ? "available" : "crypto disabled"} · ${providerResultLine(providerResults, "binanceQuotes", "result")}`,
     `Yahoo Finance: automatic for .NS/.BO · available · ${providerResultLine(providerResults, "yahooQuotes", "result")}`,
-    `Finnhub: US equities · ${finnhubConfigured ? "API key configured" : "no API key configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
+    `Finnhub: US equities · ${vaultStatus.configured ? (vaultStatus.unlocked ? "key unlocked" : "key locked") : "not configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
     "",
     "Recent refresh lifecycle (safe operational counts only):"
   ];
@@ -849,8 +847,27 @@ function handleClearHoldings() {
   });
 }
 
-function handleSaveProvider() {
+function sendVaultMessage(type, payload = {}) {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type, payload }, resolve));
+}
+
+async function refreshVaultStatus() {
+  const response = await sendVaultMessage("vault-status");
+  const status = response?.status || { configured: false, unlocked: false };
+  if (vaultStatusEl) vaultStatusEl.textContent = !status.configured ? "No encrypted Finnhub key configured." : status.unlocked ? "Finnhub key unlocked for this browser session." : "Finnhub key locked. Unlock after browser restart.";
+  testConnectionButton.disabled = !status.unlocked;
+  testConnectionButton.title = status.unlocked ? "" : "Unlock your key first";
+  return status;
+}
+
+async function handleSaveProvider(replace = false) {
   const apiKey = finnhubApiKeyEl.value.trim();
+  const unlockCode = vaultUnlockCodeEl.value;
+  const confirmation = vaultUnlockConfirmEl.value;
+  if (unlockCode.length < 6 || unlockCode !== confirmation || !apiKey) {
+    showToast("Enter a key and matching 6+ character unlock code", "error");
+    return;
+  }
   const refreshMinutes = Math.min(60, Math.max(1, Number(refreshMinutesEl.value) || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes));
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -861,8 +878,16 @@ function handleSaveProvider() {
       refreshMinutes
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
-      chrome.storage.local.set({ pts_price_api_key: apiKey }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, async () => {
+      const vaultResponse = await sendVaultMessage(replace ? "vault-replace" : "vault-create", { apiKey, unlockCode });
+      if (!vaultResponse?.ok) {
+        showToast("Could not encrypt and save the Finnhub key", "error");
+        return;
+      }
+      finnhubApiKeyEl.value = "";
+      vaultUnlockCodeEl.value = "";
+      vaultUnlockConfirmEl.value = "";
+      await refreshVaultStatus();
         chrome.alarms.clear("price-poll", () => {
           chrome.alarms.create("price-poll", {
             delayInMinutes: 0.1,
@@ -875,9 +900,23 @@ function handleSaveProvider() {
         markWizardStep(2);
         requestImmediatePoll();
         refreshSetupUI();
-      });
     });
   });
+}
+
+async function handleUnlockVault() {
+  const response = await sendVaultMessage("vault-unlock", { unlockCode: vaultUnlockCodeEl.value });
+  if (!response?.ok) { showToast("Unlock code was not accepted", "error"); return; }
+  vaultUnlockCodeEl.value = "";
+  await refreshVaultStatus();
+  showToast("Finnhub key unlocked", "success");
+  requestImmediatePoll();
+}
+
+async function handleLockVault() {
+  await sendVaultMessage("vault-lock");
+  await refreshVaultStatus();
+  showToast("Finnhub key locked", "success");
 }
 
 async function handleTestConnection() {
@@ -1082,8 +1121,7 @@ chrome.storage.onChanged.addListener((changes, areaName) => {
   if (
     areaName === "local" &&
     (changes[STORAGE_KEYS.holdings] ||
-      changes[STORAGE_KEYS.positionsState] ||
-      changes["pts_price_api_key"])
+      changes[STORAGE_KEYS.positionsState])
   ) {
     refreshSetupUI();
   }

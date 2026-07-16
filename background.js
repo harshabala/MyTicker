@@ -17,6 +17,11 @@ import {
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
+import { createVaultRecord, decryptVaultRecord } from "./vault.js";
+
+const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
+const FINNHUB_SESSION_KEY = "pts_finnhub_vault_unlocked_key";
+const LEGACY_FINNHUB_KEY = "pts_price_api_key";
 
 const DEFAULT_TOP5_CRYPTO = ["bitcoin", "ethereum", "binancecoin", "ripple", "solana"];
 const CRYPTO_ID_BY_SYMBOL = {
@@ -117,6 +122,49 @@ function isTrustedContentSender(sender, payload) {
   return sender?.id === chrome.runtime.id && !!sender?.tab && sender?.frameId === 0 && /^https?:\/\//.test(senderOrigin) && senderOrigin === safeOrigin(payload?.origin);
 }
 
+async function getVaultStatus() {
+  const [local, session] = await Promise.all([
+    chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]),
+    chrome.storage.session.get([FINNHUB_SESSION_KEY])
+  ]);
+  return { configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]), unlocked: !!session[FINNHUB_SESSION_KEY] };
+}
+
+async function createOrReplaceVault(payload) {
+  const code = String(payload?.unlockCode || "");
+  const apiKey = String(payload?.apiKey || "").trim();
+  if (code.length < 6 || !apiKey) throw new Error("Invalid vault input");
+  const record = await createVaultRecord(apiKey, code);
+  await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: apiKey });
+  await chrome.storage.local.remove(LEGACY_FINNHUB_KEY);
+  return getVaultStatus();
+}
+
+async function unlockVault(payload) {
+  const code = String(payload?.unlockCode || "");
+  if (code.length < 6) throw new Error("Invalid unlock code");
+  const local = await chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]);
+  let apiKey;
+  if (local[FINNHUB_VAULT_KEY]) {
+    apiKey = await decryptVaultRecord(local[FINNHUB_VAULT_KEY], code);
+  } else if (local[LEGACY_FINNHUB_KEY]) {
+    apiKey = String(local[LEGACY_FINNHUB_KEY]).trim();
+    const record = await createVaultRecord(apiKey, code);
+    await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
+    await chrome.storage.local.remove(LEGACY_FINNHUB_KEY);
+  } else {
+    throw new Error("Vault not configured");
+  }
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: apiKey });
+  return getVaultStatus();
+}
+
+async function lockVault() {
+  await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
+  return getVaultStatus();
+}
+
 async function migrateStoredSettings() {
   if (settingsMigrationInFlight) return settingsMigrationInFlight;
   const migration = (async () => {
@@ -172,6 +220,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
       console.error("[MyTicker] poll-now failed", err);
       sendResponse({ ok: false, error: "Unable to refresh prices" });
     });
+    return true;
+  }
+  if (!isTrustedExtensionSender(sender)) return;
+  if (message.type === "vault-status") {
+    getVaultStatus().then((status) => sendResponse({ ok: true, status }));
+    return true;
+  }
+  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock"].includes(message.type)) {
+    const action = message.type === "vault-unlock" ? unlockVault
+      : message.type === "vault-lock" ? lockVault : createOrReplaceVault;
+    action(message.payload).then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault operation failed" }));
     return true;
   }
 });
@@ -238,8 +297,7 @@ async function handlePricePoll() {
       chrome.storage.local.get([
         STORAGE_KEYS.holdings,
         STORAGE_KEYS.watchlist,
-        STORAGE_KEYS.priceHistory,
-        "pts_price_api_key"
+        STORAGE_KEYS.priceHistory
       ])
     ]);
 
@@ -271,7 +329,8 @@ async function handlePricePoll() {
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
     // India (.NS/.BO) quotes via Yahoo without a key; Finnhub is optional for US symbols. Crypto uses CoinGecko with mapped Binance fallback.
-    const apiKeyOverride = (localData["pts_price_api_key"] || "").trim();
+    const sessionData = await chrome.storage.session.get([FINNHUB_SESSION_KEY]);
+    const apiKeyOverride = String(sessionData[FINNHUB_SESSION_KEY] || "").trim();
     const apiConfig = {
       apiKey: apiKeyOverride,
       baseUrl: "https://finnhub.io/api/v1"

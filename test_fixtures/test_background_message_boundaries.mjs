@@ -2,8 +2,10 @@
 // Run with: node test_fixtures/test_background_message_boundaries.mjs
 
 import assert from "node:assert/strict";
+import { readFile } from "node:fs/promises";
 
 const local = new Map();
+const session = new Map();
 const sync = new Map([["pts_settings", { enabled: false }]]);
 let messageListener;
 let syncGets = 0;
@@ -16,7 +18,13 @@ globalThis.chrome = {
   storage: {
     local: {
       get: async (keys) => read(local, keys),
-      set: async (values) => Object.entries(values).forEach(([key, value]) => local.set(key, value))
+      set: async (values) => Object.entries(values).forEach(([key, value]) => local.set(key, value)),
+      remove: async (keys) => (Array.isArray(keys) ? keys : [keys]).forEach((key) => local.delete(key))
+    },
+    session: {
+      get: async (keys) => read(session, keys),
+      set: async (values) => Object.entries(values).forEach(([key, value]) => session.set(key, value)),
+      remove: async (keys) => (Array.isArray(keys) ? keys : [keys]).forEach((key) => session.delete(key))
     },
     sync: {
       get: (keys, callback) => {
@@ -60,6 +68,28 @@ assert.equal(keptChannelOpen, true, "valid typed poll keeps the response channel
 await new Promise((resolve) => setTimeout(resolve, 0));
 assert.equal(syncGets, 1, "a trusted extension message can start a poll");
 assert.deepEqual(response, { ok: true }, "trusted poll receives a typed-route response");
+
+let vaultResponse;
+messageListener(
+  { type: "vault-status", payload: {} },
+  { id: "test-extension-id", url: "chrome-extension://test-extension-id/options.html" },
+  (value) => { vaultResponse = value; }
+);
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.deepEqual(vaultResponse, { ok: true, status: { configured: false, unlocked: false } }, "vault status exposes no secret");
+
+local.set("pts_price_api_key", "legacy-finnhub-secret");
+messageListener(
+  { type: "vault-unlock", payload: { unlockCode: "123456" } },
+  { id: "test-extension-id", url: "chrome-extension://test-extension-id/options.html" },
+  (value) => { vaultResponse = value; }
+);
+await new Promise((resolve) => setTimeout(resolve, 100));
+assert(vaultResponse?.ok && local.has("pts_finnhub_vault") && !local.has("pts_price_api_key"), "legacy key migrates only after encrypted vault write");
+assert(session.get("pts_finnhub_vault_unlocked_key") === "legacy-finnhub-secret", "unlocked key is session-only");
+
+const backgroundSource = await readFile(new URL("../background.js", import.meta.url), "utf8");
+assert(backgroundSource.includes('chrome.storage.session.get([FINNHUB_SESSION_KEY])') && !backgroundSource.includes('localData["pts_price_api_key"]'), "locked polling omits Finnhub while India and crypto providers remain eligible");
 
 messageListener(
   { type: "content-script-lifecycle", payload: { stage: "loaded", origin: "https://evil.example" } },

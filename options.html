@@ -1490,7 +1490,13 @@
                 </svg>
               </button>
             </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · kept encrypted on this device · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+          </div>
+          <div class="field">
+            <label class="field-label" for="vaultUnlockCode">Create unlock code / confirm / Unlock key</label>
+            <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
+            <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
+            <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
           </div>
           <div class="field">
             <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
@@ -1499,6 +1505,9 @@
           </div>
           <div class="btn-row" style="padding: 0 20px 16px;">
             <button class="btn btn-primary btn-pressable" id="saveProviderButton">Save</button>
+            <button class="btn btn-secondary btn-pressable" id="unlockVaultButton">Unlock key</button>
+            <button class="btn btn-secondary btn-pressable" id="lockVaultButton">Lock key</button>
+            <button class="btn btn-secondary btn-pressable" id="replaceVaultButton">Replace key</button>
             <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
             <span class="status-badge" id="providerStatus"></span>
           </div>

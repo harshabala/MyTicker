@@ -88,6 +88,9 @@ for (const tab of ["portfolio", "watchlist", "crypto", "data", "appearance"]) {
 }
 assert(!optionsHtml.includes('data-tab="setup"') && !optionsHtml.includes('data-tab="market"') && !optionsHtml.includes('data-tab="optional"'), "replaces implementation-oriented settings tabs with task-based navigation");
 assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
+assert(optionsHtml.includes("Create unlock code / confirm / Unlock key") && optionsHtml.includes('id="unlockVaultButton"') && optionsHtml.includes('id="lockVaultButton"') && optionsHtml.includes('id="replaceVaultButton"'), "offers compact encrypted Finnhub create, unlock, lock, and replace controls");
+assert(!optionsJs.includes('finnhubApiKeyEl.value = savedKey') && optionsJs.includes('sendVaultMessage("vault-status")'), "does not preload the Finnhub key and requests non-secret vault status");
+assert(optionsJs.includes('"key unlocked" : "key locked") : "not configured"'), "diagnostics distinguish Finnhub not-configured, locked, and unlocked states");
 assert(optionsHtml.includes('id="refreshDiagnosticsButton"'), "includes a refresh diagnostics button");
 assert(/<button[^>]*id="refreshDiagnosticsButton"[^>]*>Refresh<\/button>/.test(optionsHtml), "Diagnostics Refresh control is a visible button labelled Refresh");
 assert(optionsJs.includes('refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics)'), "Diagnostics Refresh control renders current diagnostics on click");
