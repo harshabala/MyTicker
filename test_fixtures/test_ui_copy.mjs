@@ -122,6 +122,13 @@ assert(!/Ticker strip|Last updated|Local only|shortcut-hint/.test(popupHtml + po
 assert(/<button[^>]*id="openOptions"[^>]*aria-label="Settings"/.test(popupHtml), "popup retains one accessible Settings action");
 assert((popupHtml.match(/class="icon-btn"/g) || []).length === 1, "Settings is the popup's only header action");
 assert(/id="openOptions"[\s\S]*?<path d="M19\.14,12\.94a7\.43,7\.43/.test(popupHtml), "popup Settings action uses the standard cog silhouette");
+const popupCogRule = cssRuleBodyAt(popupHtml, ".icon-btn {");
+const popupCogPressedRule = cssRuleBodyAt(popupHtml, ".icon-btn:active {");
+const popupReducedMotionCogRule = mediaRuleBody(popupHtml, "prefers-reduced-motion: reduce", ".icon-btn:active");
+assert(/transition:[\s\S]*?transform/.test(popupCogRule) && /transform:\s*scale\(0\.96\)/.test(popupCogPressedRule), "popup Settings cog acknowledges press immediately with a compact transform");
+assert(/transform:\s*none/.test(popupReducedMotionCogRule), "popup Settings cog keeps press feedback without transform when reduced motion is requested");
+assert(/@media \(prefers-contrast: more\)/.test(brandCss) && /--bg-surface:\s*#(?:ffffff|18181a)/.test(brandCss) && /--border:\s*#(?:1d1d1f|f5f5f7)/.test(brandCss), "high-contrast mode uses near-solid MyTicker surfaces with clear borders");
+assert(/@media \(prefers-contrast: more\)[\s\S]*?var\(--brand-gold\)/.test(optionsHtml + popupHtml), "high-contrast extension controls preserve gold focus and selection cues");
 assert(popupHtml.includes('id="panelHoldings" role="tabpanel" aria-labelledby="tabHoldings"') && popupHtml.includes('id="panelWatchlist" role="tabpanel" aria-labelledby="tabWatchlist"'), "popup tabs control stable labelled tabpanels");
 assert(popupJs.includes('event.key === "ArrowRight"') && popupJs.includes('event.key === "ArrowLeft"') && popupJs.includes('event.key === "Home"') && popupJs.includes('event.key === "End"'), "popup tabs support roving Arrow, Home, and End keyboard navigation");
 assert(popupJs.includes('setAttribute("tabindex", selected ? "0" : "-1")'), "popup tab selection maintains a roving tabindex");
@@ -200,6 +207,7 @@ assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.i
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");
 assert(brandCss.includes("--weight-display: 700") && brandCss.includes("--weight-section: 600") && brandCss.includes("--weight-label: 500") && brandCss.includes("--weight-body: 400"), "defines the intended type-weight hierarchy");
+assert(/\.page\s*\{[^}]*padding:\s*1\.75rem\s+1\.5rem\s+3rem/.test(optionsHtml), "Settings page uses root-relative padding while preserving its 28/24/48px default rhythm");
 assert(/\.settings-card\s*\{[^}]*padding:\s*24px/.test(optionsHtml), "Settings form cards use a consistent 24px inset");
 assert(/\.form-stack\s*\{[^}]*display:\s*grid[^}]*gap:\s*16px/.test(optionsHtml), "Settings form stacks use a 16px rhythm");
 assert(/\.form-stack\s+\.field\s*\{[^}]*gap:\s*8px/.test(optionsHtml), "Settings fields pair labels and controls with an 8px rhythm");
