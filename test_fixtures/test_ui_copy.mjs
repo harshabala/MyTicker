@@ -34,6 +34,8 @@ assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics b
 assert(optionsHtml.includes('data-tab="diagnostics"'), "includes a Diagnostics settings tab");
 assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
 assert(optionsHtml.includes('id="refreshDiagnosticsButton"'), "includes a refresh diagnostics button");
+assert(/<button[^>]*id="refreshDiagnosticsButton"[^>]*>Refresh<\/button>/.test(optionsHtml), "Diagnostics Refresh control is a visible button labelled Refresh");
+assert(optionsJs.includes('refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics)'), "Diagnostics Refresh control renders current diagnostics on click");
 assert(visibleText.includes("What changed"), "includes a visible What changed section");
 assert(visibleText.includes("CoinGecko and Binance only"), "does not overclaim unimplemented crypto providers");
 assert(visibleText.includes("Ticker enabled") && visibleText.includes("Holdings:") && visibleText.includes("Watchlist:"), "diagnostics copy includes required ticker and item counts");
