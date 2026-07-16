@@ -9,7 +9,8 @@
     pollHealth: "pts_poll_health",
     onboarding: "pts_onboarding",
     watchlist: "pts_watchlist",
-    metrics: "pts_metrics"
+    metrics: "pts_metrics",
+    contentScriptStatus: "pts_content_script_status"
   };
 
   function formatSigned(value) {

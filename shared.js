@@ -9,7 +9,8 @@ const STORAGE_KEYS = {
   onboarding: "pts_onboarding",
   watchlist: "pts_watchlist",
   metrics: "pts_metrics",
-  diagnosticsLog: "pts_diagnostics_log"
+  diagnosticsLog: "pts_diagnostics_log",
+  contentScriptStatus: "pts_content_script_status"
 };
 
 const DIAGNOSTICS_LOG_LIMIT = 40;
@@ -18,7 +19,15 @@ const DIAGNOSTIC_EVENTS = new Set([
   "eligible-symbols",
   "provider-results",
   "state-write",
-  "refresh-failed"
+  "refresh-failed",
+  "content-script-lifecycle"
+]);
+const CONTENT_LIFECYCLE_STAGES = new Set([
+  "loaded",
+  "storage-settings-read",
+  "mount-success",
+  "render-success",
+  "fatal-error"
 ]);
 
 /**
@@ -39,7 +48,10 @@ function sanitizeDiagnosticEntry(entry = {}) {
     const value = Number(entry[key]);
     if (Number.isFinite(value) && value >= 0) safe[key] = Math.floor(value);
   }
-  if (entry.error) safe.error = "Refresh failed";
+  if (entry.error && safe.event !== "content-script-lifecycle") safe.error = "Refresh failed";
+  if (safe.event === "content-script-lifecycle" && CONTENT_LIFECYCLE_STAGES.has(entry.stage)) {
+    safe.stage = entry.stage;
+  }
   return safe;
 }
 

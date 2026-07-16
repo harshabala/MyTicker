@@ -138,6 +138,9 @@ Writer: **background.js** for refresh/activation; **options.js** for import outc
 ```bash
 # Unit tests (pure P&amp;L + activation helpers)
 node test_fixtures/test_shared.mjs
+node test_fixtures/test_content_telemetry_bridge.mjs
+node test_fixtures/test_ticker_render.mjs
+node test_fixtures/test_content_script_classic.mjs
 
 # Syntax check ES modules
 for f in background.js contentScript.js shared.js popup.js options.js onboarding.js csvParser.js priceProviders.js metrics.js; do

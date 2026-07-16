@@ -1,7 +1,9 @@
 // Injects the ticker strip into every page and keeps it updated from storage.
 
-const { STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } =
-  globalThis.__MYTICKER_CONTENT_SHARED__;
+let STORAGE_KEYS;
+let formatQuotePrice;
+let formatSigned;
+let formatSignedCurrency;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
@@ -13,60 +15,113 @@ let tickerShadow = null;
 let tickerBar = null;
 let latestState;
 let latestStateResolved = false;
+let reducedMotionMq = { matches: false, addEventListener() {} };
 
-const reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+function reportLifecycle(stage, error) {
+  try {
+    const pending = chrome.runtime.sendMessage({
+      action: "content-script-lifecycle",
+      stage,
+      origin: globalThis.location?.origin || "",
+      error: error ? { name: String(error.name || "Error"), message: String(error.message || "") } : undefined
+    });
+    if (pending?.catch) pending.catch(() => {});
+  } catch {
+    // Diagnostics must never make the page integration fail.
+  }
+}
+
+function reportFatal(error) {
+  reportLifecycle("fatal-error", error);
+  console.warn("[MyTicker] content script initialization failed", error);
+}
+
+function runSafely(work) {
+  try {
+    work();
+  } catch (error) {
+    reportFatal(error);
+  }
+}
 
 function prefersReducedMotion() {
   return reducedMotionMq.matches;
 }
 
-reducedMotionMq.addEventListener("change", () => {
-  if (tickerBar) {
-    tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
-    chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
+function onReducedMotionChange() {
+  runSafely(() => {
+    if (tickerBar) {
+      tickerBar.classList.toggle("pts-reduced-motion", prefersReducedMotion());
+      chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
+        runSafely(() => {
+          const state = data[STORAGE_KEYS.positionsState];
+          latestState = state;
+          latestStateResolved = true;
+          renderTicker(state);
+        });
+      });
+    }
+  });
+}
+
+function bootstrap() {
+  try {
+    const bridge = globalThis.__MYTICKER_CONTENT_SHARED__;
+    if (!bridge) throw new Error("Content shared bridge was not loaded");
+    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } = bridge);
+    reportLifecycle("loaded");
+    reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
+    reducedMotionMq.addEventListener("change", onReducedMotionChange);
+    init();
+  } catch (error) {
+    reportFatal(error);
+  }
+}
+
+bootstrap();
+
+function init() {
+  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+    try {
+      const settings = data[STORAGE_KEYS.settings];
+      reportLifecycle("storage-settings-read");
+      if (settings?.enabled) {
+        ensureTickerContainer(false);
+        applyTickerSpeed(settings);
+      }
+    } catch (error) {
+      reportFatal(error);
+    }
+  });
+
+  chrome.storage.onChanged.addListener((changes, areaName) => {
+    runSafely(() => {
+      if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
+        const newSettings = changes[STORAGE_KEYS.settings].newValue;
+        if (newSettings && newSettings.enabled) {
+          ensureTickerContainer(true);
+        } else {
+          removeTickerContainer();
+        }
+        applyTickerSpeed(newSettings);
+      }
+
+      if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
+        const state = changes[STORAGE_KEYS.positionsState].newValue;
+        latestState = state;
+        latestStateResolved = true;
+        renderTicker(state);
+      }
+    });
+  });
+
+  chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
+    runSafely(() => {
       const state = data[STORAGE_KEYS.positionsState];
       latestState = state;
       latestStateResolved = true;
       renderTicker(state);
     });
-  }
-});
-
-init();
-
-function init() {
-  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    const settings = data[STORAGE_KEYS.settings];
-    if (settings?.enabled) {
-      ensureTickerContainer(false);
-      applyTickerSpeed(settings);
-    }
-  });
-
-  chrome.storage.onChanged.addListener((changes, areaName) => {
-    if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
-      const newSettings = changes[STORAGE_KEYS.settings].newValue;
-      if (newSettings && newSettings.enabled) {
-        ensureTickerContainer(true);
-      } else {
-        removeTickerContainer();
-      }
-      applyTickerSpeed(newSettings);
-    }
-
-    if (areaName === "local" && changes[STORAGE_KEYS.positionsState]) {
-      const state = changes[STORAGE_KEYS.positionsState].newValue;
-      latestState = state;
-      latestStateResolved = true;
-      renderTicker(state);
-    }
-  });
-
-  chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
-    const state = data[STORAGE_KEYS.positionsState];
-    latestState = state;
-    latestStateResolved = true;
-    renderTicker(state);
   });
 }
 
@@ -96,7 +151,7 @@ function ensureTickerContainer(animate = false) {
     document.addEventListener(
       "DOMContentLoaded",
       () => {
-        ensureTickerContainer(animate);
+        runSafely(() => ensureTickerContainer(animate));
       },
       { once: true }
     );
@@ -124,7 +179,11 @@ function ensureTickerContainer(animate = false) {
   }
   tickerShadow.appendChild(tickerBar);
 
-  document.documentElement.insertBefore(tickerHost, document.body);
+  // The body can be replaced by SPA navigation between the guard above and an
+  // insertBefore call. Appending to the stable document root prevents that
+  // race from aborting the content script on sites such as LinkedIn.
+  document.documentElement.appendChild(tickerHost);
+  reportLifecycle("mount-success");
 
   if (!document.body.hasAttribute(ORIGINAL_MARGIN_ATTR)) {
     const rect = document.body.getBoundingClientRect();
@@ -408,6 +467,7 @@ function renderTicker(state) {
   if (!items.length) {
     getTickerParts(tickerBar);
     clearTickerContent(tickerBar);
+    reportLifecycle("render-success");
     return;
   }
 
@@ -415,6 +475,7 @@ function renderTicker(state) {
   updateStaleIndicator(tickerBar, parts, state);
   updateAggregate(parts, state);
   updateScrollItems(parts, state);
+  reportLifecycle("render-success");
 }
 
 function getGroupLabel(kind) {

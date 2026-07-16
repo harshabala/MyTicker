@@ -70,6 +70,40 @@ async function recordDiagnostic(entry) {
   });
 }
 
+const CONTENT_LIFECYCLE_STAGES = new Set([
+  "loaded", "storage-settings-read", "mount-success", "render-success", "fatal-error"
+]);
+
+function safeOrigin(value) {
+  try {
+    const origin = new URL(String(value || "")).origin;
+    return origin === "null" ? "" : origin;
+  } catch {
+    return "";
+  }
+}
+
+function sanitizeContentError(error) {
+  if (!error || typeof error !== "object") return undefined;
+  const name = String(error.name || "Error").replace(/[^a-zA-Z0-9_. -]/g, "").slice(0, 80) || "Error";
+  const message = String(error.message || "").replace(/https?:\/\/\S+/g, "[url]").replace(/[\r\n]/g, " ").slice(0, 160);
+  return message ? { name, message } : { name };
+}
+
+async function recordContentLifecycle(message, sender) {
+  if (!CONTENT_LIFECYCLE_STAGES.has(message?.stage)) return;
+  const timestamp = Date.now();
+  const status = {
+    origin: safeOrigin(sender?.url) || safeOrigin(message.origin),
+    stage: message.stage,
+    timestamp
+  };
+  const error = sanitizeContentError(message.error);
+  if (error) status.error = error;
+  await chrome.storage.local.set({ [STORAGE_KEYS.contentScriptStatus]: status });
+  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.stage });
+}
+
 function providerQuoteCounts(quotes) {
   const counts = { coinGeckoQuotes: 0, binanceQuotes: 0, yahooQuotes: 0, finnhubQuotes: 0 };
   for (const quote of quotes) {
@@ -90,7 +124,13 @@ async function ensurePollHealthLoaded() {
 
 ensurePollHealthLoaded();
 
-chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
+chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
+  if (message?.action === "content-script-lifecycle") {
+    recordContentLifecycle(message, sender).catch((err) => {
+      console.warn("[MyTicker] could not record content lifecycle", err);
+    });
+    return;
+  }
   if (message?.action === "poll-now") {
     handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
       console.error("[MyTicker] poll-now failed", err);

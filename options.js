@@ -316,6 +316,7 @@ async function renderDiagnostics() {
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.pollHealth,
       STORAGE_KEYS.diagnosticsLog,
+      STORAGE_KEYS.contentScriptStatus,
       "pts_price_api_key"
     ])
   ]);
@@ -326,6 +327,7 @@ async function renderDiagnostics() {
   const health = localData[STORAGE_KEYS.pollHealth] || {};
   const log = Array.isArray(localData[STORAGE_KEYS.diagnosticsLog]) ? localData[STORAGE_KEYS.diagnosticsLog] : [];
   const providerResults = [...log].reverse().find((entry) => entry.event === "provider-results");
+  const contentStatus = localData[STORAGE_KEYS.contentScriptStatus] || {};
   const cryptoEnabled = !!settings.cryptoConfig?.includeCrypto && settings.portfolioFilters?.showCrypto !== false;
   const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
   const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
@@ -335,6 +337,7 @@ async function renderDiagnostics() {
     `Holdings: ${holdings.length} · Watchlist: ${watchlist.length} · Ticker items: ${(state.tickerItems || state.positions || []).length}`,
     `Last state update: ${formatDiagnosticTime(state.updatedAt)}`,
     `Poll health: ${Number(health.consecutiveFailures) || 0} consecutive failure(s) · last successful fetch ${formatDiagnosticTime(health.lastSuccessfulFetch)}`,
+    `Content script: ${contentStatus.stage || "never reported"} · ${contentStatus.origin || "no page origin"} · ${formatDiagnosticTime(contentStatus.timestamp)}${contentStatus.error ? ` · ${contentStatus.error.name}: ${contentStatus.error.message || ""}` : ""}`,
     "",
     "Provider availability and latest result:",
     `CoinGecko: primary crypto source · ${cryptoEnabled ? "eligible when supported crypto is enabled" : "crypto disabled"} · ${providerResultLine(providerResults, "coinGeckoQuotes", "result")}`,

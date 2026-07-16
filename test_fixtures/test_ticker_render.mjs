@@ -87,11 +87,15 @@ const state = {
     { kind: "watchlist", symbol: "AAPL", displayName: "Apple", lastPrice: 210, changePct: 1.5, currency: "USD" }
   ]
 };
+const lifecycleMessages = [];
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
 globalThis.requestAnimationFrame = (callback) => callback();
 globalThis.chrome = {
-  runtime: { getURL: (path) => path },
+  runtime: {
+    getURL: (path) => path,
+    sendMessage: (message) => lifecycleMessages.push(message)
+  },
   storage: {
     sync: { get: (_keys, callback) => callback({ pts_settings: { enabled: true } }) },
     local: { get: (_keys, callback) => callback({ pts_positions_state: state }) },
@@ -116,6 +120,15 @@ assert(rendered.includes("210.00"), "renders cached current price after delayed 
 assert(rendered.includes("holdings") && rendered.includes("watchlist"), "marks ticker group boundaries");
 assert(rendered.includes("p&l") && !rendered.includes("p&l $0.00"), "shows personal P&L only for holdings");
 assert(rendered.includes("stale"), "shows an item-level stale indicator");
+
+console.log("\n📡 content lifecycle telemetry");
+const contentStages = lifecycleMessages
+  .filter((message) => message.action === "content-script-lifecycle")
+  .map((message) => message.stage);
+assert(contentStages.includes("loaded"), "reports that the content script loaded");
+assert(contentStages.includes("storage-settings-read"), "reports that settings were read");
+assert(contentStages.includes("mount-success"), "reports successful ticker mounting");
+assert(contentStages.includes("render-success"), "reports successful ticker rendering");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

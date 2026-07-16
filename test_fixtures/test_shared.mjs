@@ -53,6 +53,7 @@ assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState ke
 assert(STORAGE_KEYS.watchlist === "pts_watchlist", "watchlist key correct");
 assert(STORAGE_KEYS.metrics === "pts_metrics", "metrics key correct");
 assert(STORAGE_KEYS.diagnosticsLog === "pts_diagnostics_log", "diagnostics log key correct");
+assert(STORAGE_KEYS.contentScriptStatus === "pts_content_script_status", "content status key correct");
 
 // ── Test Suite: diagnostics log privacy and bounds ──
 console.log("\n🔎 diagnostics log helpers");
@@ -81,6 +82,17 @@ const boundedDiagnostics = Array.from({ length: DIAGNOSTICS_LOG_LIMIT + 2 }, (_,
   .reduce((log, entry) => appendDiagnosticLogEntry(log, entry), []);
 assert(boundedDiagnostics.length === DIAGNOSTICS_LOG_LIMIT, "caps diagnostics log at its configured bound");
 assert(boundedDiagnostics[0].timestamp === 2, "keeps the newest diagnostics entries when bounded");
+
+const contentDiagnostic = appendDiagnosticLogEntry([], {
+  timestamp: 123,
+  event: "content-script-lifecycle",
+  stage: "mount-success",
+  origin: "https://www.linkedin.com/feed/",
+  error: "unexpected details"
+})[0];
+assert(contentDiagnostic.event === "content-script-lifecycle", "accepts content lifecycle diagnostics");
+assert(contentDiagnostic.stage === "mount-success", "retains the aggregate lifecycle stage");
+assert(!("origin" in contentDiagnostic) && !("error" in contentDiagnostic), "content lifecycle log excludes page and error details");
 
 // ── Test Suite: DEFAULT_SETTINGS ──
 console.log("\n⚙️  DEFAULT_SETTINGS");

@@ -39,6 +39,7 @@ assert(optionsJs.includes('refreshDiagnosticsButton?.addEventListener("click", r
 assert(visibleText.includes("What changed"), "includes a visible What changed section");
 assert(visibleText.includes("CoinGecko and Binance only"), "does not overclaim unimplemented crypto providers");
 assert(visibleText.includes("Ticker enabled") && visibleText.includes("Holdings:") && visibleText.includes("Watchlist:"), "diagnostics copy includes required ticker and item counts");
+assert(visibleText.includes("Content script:"), "diagnostics copy includes content-script status");
 assert(visibleText.includes("CoinGecko:") && visibleText.includes("Binance:") && visibleText.includes("Yahoo Finance:") && visibleText.includes("Finnhub:"), "diagnostics copy names every active provider");
 assert(visibleText.includes("Recent refresh lifecycle"), "diagnostics copy includes the bounded change-log lifecycle");
 assert(visibleText.includes("CoinGecko first for supported canonical crypto"), "explains CoinGecko as the primary crypto source");
