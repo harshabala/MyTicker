@@ -922,7 +922,16 @@ async function handleLockVault() {
 async function handleTestConnection() {
   const apiKey = finnhubApiKeyEl.value.trim();
   if (!apiKey) {
-    showToast("Enter an API key first", "error");
+    testConnectionButton.textContent = "Testing…";
+    testConnectionButton.disabled = true;
+    const response = await sendVaultMessage("vault-test-connection");
+    testConnectionButton.textContent = "Test connection";
+    await refreshVaultStatus();
+    if (!response?.ok) {
+      showToast("Unlock your Finnhub key before testing", "error");
+      return;
+    }
+    showToast(`Finnhub connected (AAPL: $${Number(response.result?.price).toFixed(2)})`, "success");
     return;
   }
 

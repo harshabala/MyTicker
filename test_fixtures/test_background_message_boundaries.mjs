@@ -9,6 +9,7 @@ const session = new Map();
 const sync = new Map([["pts_settings", { enabled: false }]]);
 let messageListener;
 let syncGets = 0;
+globalThis.fetch = async () => new Response(JSON.stringify({ c: 123.45 }), { status: 200 });
 
 function read(map, keys) {
   return Object.fromEntries(keys.map((key) => [key, map.get(key)]));
@@ -84,12 +85,20 @@ messageListener(
   { id: "test-extension-id", url: "chrome-extension://test-extension-id/options.html" },
   (value) => { vaultResponse = value; }
 );
-await new Promise((resolve) => setTimeout(resolve, 100));
+await new Promise((resolve) => setTimeout(resolve, 1000));
 assert(vaultResponse?.ok && local.has("pts_finnhub_vault") && !local.has("pts_price_api_key"), "legacy key migrates only after encrypted vault write");
-assert(session.get("pts_finnhub_vault_unlocked_key") === "legacy-finnhub-secret", "unlocked key is session-only");
+assert(typeof session.get("pts_finnhub_vault_aes_material") === "string" && ![...session.values()].includes("legacy-finnhub-secret"), "session stores only derived AES vault material, never the API key");
+
+await new Promise((resolve) => messageListener(
+  { type: "vault-test-connection", payload: {} },
+  { id: "test-extension-id", url: "chrome-extension://test-extension-id/options.html" },
+  (value) => { vaultResponse = value; resolve(); }
+));
+assert.deepEqual(vaultResponse, { ok: true, result: { symbol: "AAPL", price: 123.45 } }, "worker tests an unlocked key without returning it");
 
 const backgroundSource = await readFile(new URL("../background.js", import.meta.url), "utf8");
-assert(backgroundSource.includes('chrome.storage.session.get([FINNHUB_SESSION_KEY])') && !backgroundSource.includes('localData["pts_price_api_key"]'), "locked polling omits Finnhub while India and crypto providers remain eligible");
+assert(backgroundSource.includes('getUnlockedFinnhubKey()') && !backgroundSource.includes('localData["pts_price_api_key"]'), "locked polling omits Finnhub while India and crypto providers remain eligible");
+assert(backgroundSource.includes('message.type === "vault-test-connection"') && backgroundSource.includes('testVaultConnection()'), "trusted UI can test an unlocked key without receiving it");
 
 messageListener(
   { type: "content-script-lifecycle", payload: { stage: "loaded", origin: "https://evil.example" } },

@@ -11,19 +11,25 @@ export async function getSetupStatus() {
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.pollHealth,
       STORAGE_KEYS.onboarding,
-      "pts_price_api_key"
+      "pts_price_api_key",
+      "pts_finnhub_vault"
     ]),
     chrome.storage.sync.get([STORAGE_KEYS.settings])
   ]);
 
-  const apiKey = (local["pts_price_api_key"] || "").trim();
+  let vaultStatus = null;
+  try {
+    vaultStatus = await new Promise((resolve) => chrome.runtime.sendMessage({ type: "vault-status", payload: {} }, resolve));
+  } catch {
+    vaultStatus = null;
+  }
   const holdings = local[STORAGE_KEYS.holdings] || [];
   const positionsState = local[STORAGE_KEYS.positionsState];
   const pollHealth = local[STORAGE_KEYS.pollHealth] || {};
   const onboarding = local[STORAGE_KEYS.onboarding] || {};
   const settings = sync[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
-  const hasApiKey = apiKey.length > 0;
+  const hasApiKey = !!(vaultStatus?.status?.configured || local["pts_finnhub_vault"] || String(local["pts_price_api_key"] || "").trim());
   const hasHoldings = holdings.length > 0;
   const lastFetch = Number(pollHealth.lastSuccessfulFetch) || Number(positionsState?.updatedAt) || 0;
   const hasLiveData = !!(positionsState?.positions?.length);

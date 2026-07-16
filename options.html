@@ -1492,8 +1492,9 @@
             </div>
             <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · kept encrypted on this device · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
           </div>
-          <div class="field">
-            <label class="field-label" for="vaultUnlockCode">Create unlock code / confirm / Unlock key</label>
+          <div class="field" aria-labelledby="vaultProtectionTitle">
+            <div class="field-label" id="vaultProtectionTitle">Protect your Finnhub key</div>
+            <label class="sr-only" for="vaultUnlockCode">Create unlock code</label>
             <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
             <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
             <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
@@ -1504,7 +1505,7 @@
             <div class="field-hint">How often the background worker refreshes quotes (via chrome.alarms).</div>
           </div>
           <div class="btn-row" style="padding: 0 20px 16px;">
-            <button class="btn btn-primary btn-pressable" id="saveProviderButton">Save</button>
+            <button class="btn btn-primary btn-pressable" id="saveProviderButton">Create unlock code</button>
             <button class="btn btn-secondary btn-pressable" id="unlockVaultButton">Unlock key</button>
             <button class="btn btn-secondary btn-pressable" id="lockVaultButton">Lock key</button>
             <button class="btn btn-secondary btn-pressable" id="replaceVaultButton">Replace key</button>
