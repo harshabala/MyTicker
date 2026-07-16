@@ -105,10 +105,10 @@ function recordActiveDay(activeDays, now = Date.now()) {
 }
 
 const DEFAULT_SETTINGS = {
+  schemaVersion: 1,
   enabled: true,
   priceProvider: "finnhub",
   priceProviderConfig: {
-    apiKey: "",
     baseUrl: "https://finnhub.io/api/v1",
     refreshMinutes: 1
   },
@@ -128,6 +128,38 @@ const DEFAULT_SETTINGS = {
     showCrypto: true
   }
 };
+
+const SETTINGS_SCHEMA_VERSION = 1;
+const LEGACY_SYNC_SECRET_FIELDS = new Set(["apiKey", "finnhubApiKey", "finnhub_key", "pts_price_api_key"]);
+
+/**
+ * Return the current, secret-free settings shape without mutating the input.
+ * API keys used to live in sync settings; deliberately drop those fields here
+ * so every migration write removes them from Chrome Sync.
+ */
+function migrateSettings(value = {}) {
+  const source = value && typeof value === "object" ? value : {};
+  const providerConfig = source.priceProviderConfig && typeof source.priceProviderConfig === "object"
+    ? source.priceProviderConfig : {};
+  const tickerStyleConfig = source.tickerStyleConfig && typeof source.tickerStyleConfig === "object"
+    ? source.tickerStyleConfig : {};
+  const cryptoConfig = source.cryptoConfig && typeof source.cryptoConfig === "object" ? source.cryptoConfig : {};
+  const portfolioFilters = source.portfolioFilters && typeof source.portfolioFilters === "object" ? source.portfolioFilters : {};
+  const cleanProviderConfig = Object.fromEntries(
+    Object.entries(providerConfig).filter(([key]) => !LEGACY_SYNC_SECRET_FIELDS.has(key))
+  );
+  const next = {
+    ...DEFAULT_SETTINGS,
+    ...Object.fromEntries(Object.entries(source).filter(([key]) => !LEGACY_SYNC_SECRET_FIELDS.has(key))),
+    schemaVersion: SETTINGS_SCHEMA_VERSION,
+    priceProviderConfig: { ...DEFAULT_SETTINGS.priceProviderConfig, ...cleanProviderConfig },
+    tickerStyleConfig: { ...DEFAULT_SETTINGS.tickerStyleConfig, ...tickerStyleConfig },
+    cryptoConfig: normalizeCryptoConfig({ ...DEFAULT_SETTINGS.cryptoConfig, ...cryptoConfig }),
+    portfolioFilters: { ...DEFAULT_SETTINGS.portfolioFilters, ...portfolioFilters }
+  };
+  delete next.priceProviderConfig.apiKey;
+  return next;
+}
 
 const TAPE_SCALES = new Set(["compact", "comfortable", "large"]);
 
@@ -493,6 +525,8 @@ export {
   sanitizeDiagnosticEntry,
   appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
+  SETTINGS_SCHEMA_VERSION,
+  migrateSettings,
   CRYPTO_CATALOG,
   resolveCryptoCatalogEntry,
   normalizeCryptoConfig,

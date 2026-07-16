@@ -129,6 +129,8 @@ globalThis.getComputedStyle = (element) => ({
   position: element.style.getPropertyValue("position") || "static"
 });
 globalThis.requestAnimationFrame = (callback) => callback();
+globalThis.setTimeout = (callback) => { callback(); return null; };
+globalThis.clearTimeout = () => {};
 globalThis.chrome = {
   runtime: {
     getURL: (path) => path,
@@ -221,8 +223,8 @@ assert(rendered.includes("stale"), "shows an item-level stale indicator");
 
 console.log("\n📡 content lifecycle telemetry");
 const contentStages = lifecycleMessages
-  .filter((message) => message.action === "content-script-lifecycle")
-  .map((message) => message.stage);
+  .filter((message) => message.type === "content-script-lifecycle")
+  .map((message) => message.payload?.stage);
 assert(contentStages.includes("loaded"), "reports that the content script loaded");
 assert(contentStages.includes("storage-settings-read"), "reports that settings were read");
 assert(contentStages.includes("mount-success"), "reports successful ticker mounting");

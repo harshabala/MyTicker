@@ -11,7 +11,8 @@ import {
   withTickerItems,
   hydrateTickerQuoteItems,
   appendDiagnosticLogEntry
-  , normalizeCryptoConfig
+  , normalizeCryptoConfig,
+  migrateSettings
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
@@ -92,17 +93,37 @@ function sanitizeContentError(error) {
 }
 
 async function recordContentLifecycle(message, sender) {
-  if (!CONTENT_LIFECYCLE_STAGES.has(message?.stage)) return;
+  if (!CONTENT_LIFECYCLE_STAGES.has(message?.payload?.stage) || !isTrustedContentSender(sender, message.payload)) return;
   const timestamp = Date.now();
   const status = {
-    origin: safeOrigin(sender?.url) || safeOrigin(message.origin),
-    stage: message.stage,
+    origin: safeOrigin(sender.url),
+    stage: message.payload.stage,
     timestamp
   };
-  const error = sanitizeContentError(message.error);
+  const error = sanitizeContentError(message.payload.error);
   if (error) status.error = error;
   await chrome.storage.local.set({ [STORAGE_KEYS.contentScriptStatus]: status });
-  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.stage });
+  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.payload.stage });
+}
+
+function isTrustedExtensionSender(sender) {
+  const id = String(chrome.runtime.id || "");
+  return !!id && sender?.id === id && String(sender?.url || "").startsWith(`chrome-extension://${id}/`);
+}
+
+function isTrustedContentSender(sender, payload) {
+  const senderOrigin = safeOrigin(sender?.url);
+  return sender?.id === chrome.runtime.id && sender?.frameId === 0 && !!senderOrigin && senderOrigin === safeOrigin(payload?.origin);
+}
+
+async function migrateStoredSettings() {
+  const data = await chrome.storage.sync.get([STORAGE_KEYS.settings]);
+  const migrated = migrateSettings(data[STORAGE_KEYS.settings]);
+  const previous = data[STORAGE_KEYS.settings];
+  if (JSON.stringify(previous) !== JSON.stringify(migrated)) {
+    await chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrated });
+  }
+  return migrated;
 }
 
 function providerQuoteCounts(quotes) {
@@ -126,13 +147,14 @@ async function ensurePollHealthLoaded() {
 ensurePollHealthLoaded();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.action === "content-script-lifecycle") {
+  if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload || typeof message.payload !== "object") return;
+  if (message.type === "content-script-lifecycle") {
     recordContentLifecycle(message, sender).catch((err) => {
       console.warn("[MyTicker] could not record content lifecycle", err);
     });
     return;
   }
-  if (message?.action === "poll-now") {
+  if (message.type === "poll-now" && isTrustedExtensionSender(sender)) {
     handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
       console.error("[MyTicker] poll-now failed", err);
       sendResponse({ ok: false, error: String(err) });
@@ -142,17 +164,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
-  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    if (!data[STORAGE_KEYS.settings]) {
-      chrome.storage.sync.set({ [STORAGE_KEYS.settings]: DEFAULT_SETTINGS });
-    }
-    const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+  migrateStoredSettings().then((settings) => {
     const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
     chrome.alarms.create("price-poll", {
       delayInMinutes: 0.1,
       periodInMinutes: interval
     });
-  });
+  }).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
   if (details.reason === "install") {
     chrome.storage.local.set({
@@ -167,8 +185,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // Re-create alarm on service worker startup (MV3 workers restart frequently).
-chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-  const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+migrateStoredSettings().then((settings) => {
   const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
   chrome.alarms.get("price-poll", (existing) => {
     if (!existing) {
@@ -178,7 +195,7 @@ chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
       });
     }
   });
-});
+}).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "price-poll") {
@@ -189,7 +206,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.commands.onCommand.addListener((command) => {
   if (command === "toggle-myticker") {
     chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-      const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+      const settings = migrateSettings(data[STORAGE_KEYS.settings]);
       const next = { ...settings, enabled: !settings.enabled };
       chrome.storage.sync.set({ [STORAGE_KEYS.settings]: next });
     });

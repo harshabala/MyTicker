@@ -12,7 +12,11 @@ globalThis.chrome = {
       set: async (values) => Object.entries(values).forEach(([key, value]) => local.set(key, value))
     },
     sync: {
-      get: (_keys, callback) => callback({})
+      get: (_keys, callback) => {
+        if (callback) callback({});
+        return Promise.resolve({});
+      },
+      set: async () => {}
     }
   },
   runtime: {
@@ -29,11 +33,13 @@ globalThis.chrome = {
 await import(`../background.js?content-telemetry-test=${Date.now()}`);
 assert.ok(messageListener, "background registers a runtime message listener");
 messageListener({
-  action: "content-script-lifecycle",
-  stage: "fatal-error",
-  origin: "https://untrusted.example/path?secret=1",
-  error: { name: "TypeError", message: "Failed at https://untrusted.example/path?secret=1" }
-}, { url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
+  type: "content-script-lifecycle",
+  payload: {
+    stage: "fatal-error",
+    origin: "https://www.linkedin.com",
+    error: { name: "TypeError", message: "Failed at https://untrusted.example/path?secret=1" }
+  }
+}, { id: undefined, frameId: 0, url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 const status = local.get("pts_content_script_status");

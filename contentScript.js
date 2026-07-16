@@ -23,17 +23,46 @@ let tapeReservation = null;
 let tapeResizeObserver = null;
 let tapeDocumentObserver = null;
 let chatgptDialog = null;
+let tapeReconcileTimer = null;
+let extensionContextAlive = true;
+
+function isContextInvalidated(error) {
+  return /extension context invalidated/i.test(String(error?.message || error || ""));
+}
+
+function teardownForInvalidatedContext() {
+  if (!extensionContextAlive) return;
+  extensionContextAlive = false;
+  if (tapeReconcileTimer !== null) clearTimeout(tapeReconcileTimer);
+  tapeReconcileTimer = null;
+  tapeResizeObserver?.disconnect();
+  tapeDocumentObserver?.disconnect();
+  tapeResizeObserver = null;
+  tapeDocumentObserver = null;
+  reducedMotionMq?.removeEventListener?.("change", onReducedMotionChange);
+  clearTapeReservation();
+  tickerHost?.remove?.();
+  tickerHost = null;
+  tickerShadow = null;
+  tickerBar = null;
+}
 
 function reportLifecycle(stage, error) {
+  if (!extensionContextAlive) return;
   try {
     const pending = chrome.runtime.sendMessage({
-      action: "content-script-lifecycle",
-      stage,
-      origin: globalThis.location?.origin || "",
-      error: error ? { name: String(error.name || "Error"), message: String(error.message || "") } : undefined
+      type: "content-script-lifecycle",
+      payload: {
+        stage,
+        origin: globalThis.location?.origin || "",
+        error: error ? { name: String(error.name || "Error"), message: String(error.message || "") } : undefined
+      }
     });
-    if (pending?.catch) pending.catch(() => {});
-  } catch {
+    if (pending?.catch) pending.catch((sendError) => {
+      if (isContextInvalidated(sendError)) teardownForInvalidatedContext();
+    });
+  } catch (sendError) {
+    if (isContextInvalidated(sendError)) teardownForInvalidatedContext();
     // Diagnostics must never make the page integration fail.
   }
 }
@@ -44,9 +73,14 @@ function reportFatal(error) {
 }
 
 function runSafely(work) {
+  if (!extensionContextAlive) return;
   try {
     work();
   } catch (error) {
+    if (isContextInvalidated(error)) {
+      teardownForInvalidatedContext();
+      return;
+    }
     reportFatal(error);
   }
 }
@@ -77,6 +111,7 @@ function bootstrap() {
     if (!bridge) throw new Error("Content shared bridge was not loaded");
     ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } = bridge);
     reportLifecycle("loaded");
+    if (!extensionContextAlive) return;
     reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
     reducedMotionMq.addEventListener("change", onReducedMotionChange);
     init();
@@ -88,7 +123,9 @@ function bootstrap() {
 bootstrap();
 
 function init() {
+  if (!extensionContextAlive) return;
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+    if (!extensionContextAlive) return;
     try {
       const settings = data[STORAGE_KEYS.settings];
       tickerSettings = settings;
@@ -129,6 +166,7 @@ function init() {
   });
 
   chrome.storage.local.get([STORAGE_KEYS.positionsState], (data) => {
+    if (!extensionContextAlive) return;
     runSafely(() => {
       const state = data[STORAGE_KEYS.positionsState];
       latestState = state;
@@ -273,14 +311,7 @@ function observeTapeDocument() {
     );
     if (!hasRelevantChange) return;
     if (!tickerBar) return;
-    if (tapeReservation?.body !== document.body) {
-      clearTapeReservation();
-      applyTapeReservation();
-      observeTapeReservation();
-      observeTapeDocument();
-      return;
-    }
-    applyTapeReservation();
+    queueTapeReconciliation();
   }));
   tapeDocumentObserver.observe(document.documentElement, {
     childList: true,
@@ -288,6 +319,24 @@ function observeTapeDocument() {
     attributes: true,
     attributeFilter: ["open"]
   });
+}
+
+function queueTapeReconciliation() {
+  if (!extensionContextAlive || tapeReconcileTimer !== null) return;
+  tapeReconcileTimer = setTimeout(() => {
+    tapeReconcileTimer = null;
+    runSafely(() => {
+      if (!tickerBar) return;
+      if (tapeReservation?.body !== document.body) {
+        clearTapeReservation();
+        applyTapeReservation();
+        observeTapeReservation();
+        observeTapeDocument();
+        return;
+      }
+      applyTapeReservation();
+    });
+  }, 0);
 }
 
 function clearTapeReservation() {
