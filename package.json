@@ -1,0 +1,9 @@
+{
+  "name": "myticker-extension",
+  "private": true,
+  "type": "module",
+  "description": "Local development dependencies for the MyTicker browser extension",
+  "dependencies": {
+    "@phosphor-icons/react": "^2.1.10"
+  }
+}

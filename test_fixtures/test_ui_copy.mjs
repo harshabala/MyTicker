@@ -168,7 +168,7 @@ assert(!/doQuickAdd|setPlatformShortcut|enabledToggle|shortTimeAgo/.test(popupJs
 assert(!/Ticker strip|Last updated|Local only|shortcut-hint/.test(popupHtml + popupJs), "popup omits tape controls and local-only or shortcut footer copy");
 assert(/<button[^>]*id="openOptions"[^>]*aria-label="Settings"/.test(popupHtml), "popup retains one accessible Settings action");
 assert((popupHtml.match(/class="icon-btn"/g) || []).length === 1, "Settings is the popup's only header action");
-assert(/id="openOptions"[\s\S]*?<path d="M19\.14,12\.94a7\.43,7\.43/.test(popupHtml), "popup Settings action uses the standard cog silhouette");
+assert(/id="openOptions"[\s\S]*?data-icon="phosphor-gear-six"[\s\S]*?viewBox="0 0 256 256"/.test(popupHtml), "popup Settings action uses the Phosphor GearSix regular icon");
 const popupCogRule = cssRuleBodyAt(popupHtml, ".icon-btn {");
 const popupCogPressedRule = cssRuleBodyAt(popupHtml, ".icon-btn:active {");
 const popupReducedMotionCogRule = mediaRuleBody(popupHtml, "prefers-reduced-motion: reduce", ".icon-btn:active");

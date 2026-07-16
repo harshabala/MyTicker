@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 2,
+  "generatedAt": "2026-07-16T00:00:00.000Z",
+  "title": "Design System: MyTicker",
+  "extensions": {
+    "colorMeta": {
+      "gold": { "role": "primary", "displayName": "Rare Metal Gold", "canonical": "#c99724", "tonalRamp": ["#17120a", "#c99724", "#e0ae36"] },
+      "obsidian": { "role": "neutral", "displayName": "Obsidian", "canonical": "#0c0c0d", "tonalRamp": ["#0c0c0d", "#18181a", "#303033"] }
+    },
+    "motion": [
+      { "name": "ease-out", "value": "cubic-bezier(0.16, 1, 0.3, 1)", "purpose": "Short state transitions." },
+      { "name": "press", "value": "100ms", "purpose": "Immediate physical control feedback." }
+    ]
+  },
+  "narrative": {
+    "northStar": "Obsidian Gold Instrument Panel",
+    "keyCharacteristics": ["restrained", "local-first", "data-dense", "ambient"],
+    "dos": ["Use Phosphor as the sole icon family.", "Reserve gold for action and focus."],
+    "donts": ["Do not use purple gradients or blue grid meshes.", "Do not use TV-news ticker energy."]
+  }
+}
