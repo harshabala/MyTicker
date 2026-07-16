@@ -1388,6 +1388,66 @@
         border-bottom: 1px solid var(--border);
       }
       #tab-appearance .btn-row { padding: 18px 24px; }
+      .settings-disclosure {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .settings-disclosure + .settings-disclosure { margin-top: 12px; }
+      .settings-disclosure > summary {
+        display: flex;
+        align-items: center;
+        min-height: 58px;
+        padding: 0 20px;
+        cursor: pointer;
+        color: var(--text-primary);
+        font-size: .9375rem;
+        font-weight: 600;
+        list-style: none;
+      }
+      .settings-disclosure > summary::-webkit-details-marker { display: none; }
+      .settings-disclosure > summary::after {
+        content: "⌄";
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 1.125rem;
+      }
+      .settings-disclosure[open] > summary {
+        border-bottom: 1px solid var(--border);
+        color: var(--brand-gold);
+      }
+      .settings-disclosure[open] > summary::after { transform: rotate(180deg); }
+      .settings-disclosure-body { padding: 0; }
+      .settings-disclosure-body > .field,
+      .settings-disclosure-body > .card-item { margin: 0; }
+      .settings-disclosure-body .tape-size-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .settings-disclosure-body .tape-size-options label {
+        min-height: 54px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+      .settings-disclosure-body .tape-size-options label:has(input:checked) {
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+      }
+      .data-section-panel > .section {
+        padding: 18px 20px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .data-section-panel > .section + .section { margin-top: 14px; }
+      .data-section-panel > .section .section-title { margin-bottom: 8px; }
+      .data-section-panel > .section .card { border-color: var(--border); }
       #tab-portfolio .section-title { margin-bottom: 12px; }
       .portfolio-surface-summary {
         display: grid;
@@ -1455,8 +1515,8 @@
       <!-- Data & diagnostics sections are presented together by the Data tab. -->
       <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden></div>
       <div class="data-section-panel" id="tab-setup" hidden>
-      <div class="section" id="section-setup">
-        <div class="section-title">Setup status</div>
+      <details class="settings-disclosure data-disclosure" id="section-setup" open>
+        <summary>Setup status</summary>
         <div class="card">
           <div class="setup-welcome" id="setupWelcome" hidden>
             Import your broker holdings to go live. Indian stocks price automatically — no API key.
@@ -1481,7 +1541,7 @@
             </p>
           </div>
         </div>
-      </div>
+      </details>
       </div>
 
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
@@ -1595,7 +1655,8 @@
 
       <!-- Data sources -->
       <div class="data-section-panel" id="tab-market" hidden>
-      <div class="section" id="section-market">
+      <details class="settings-disclosure data-disclosure" id="section-market" open>
+        <summary>Market data</summary>
         <div class="section-title">India (automatic)</div>
         <div class="card card-provider-india">
           <div style="padding: 16px 20px 0;">
@@ -1659,7 +1720,7 @@
             <span class="status-badge" id="providerStatus"></span>
           </div>
         </div>
-      </div>
+      </details>
       </div>
       <!-- Tab: Crypto -->
       <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
@@ -1704,7 +1765,9 @@
       <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="nav-appearance" hidden>
       <div class="section">
         <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">◌</div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the live tape behaves.</p></div></div>
-        <div class="card">
+        <details class="settings-disclosure" open>
+          <summary>Display</summary>
+          <div class="settings-disclosure-body">
           <div class="card-item">
             <div class="item-left">
               <div class="item-label" id="labelShowStocks">Show stocks</div>
@@ -1723,6 +1786,11 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure" open>
+          <summary>Theme</summary>
+          <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="themeHelp">
               <legend class="field-label">Theme</legend>
@@ -1732,11 +1800,21 @@
             </fieldset>
             <div class="field-hint" id="themeHelp">System follows your browser. The live tape uses the same choice.</div>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure" open>
+          <summary>Ticker speed</summary>
+          <div class="settings-disclosure-body">
           <div class="field">
             <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
             <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
             <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure" open>
+          <summary>Tape size</summary>
+          <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
               <legend class="field-label">Tape size</legend>
@@ -1746,7 +1824,10 @@
             </fieldset>
             <div class="field-hint" id="tapeSizeHelp">Changes the tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
           </div>
-          <div class="btn-row">
+          </div>
+        </details>
+        <div class="card" style="margin-top: 14px; overflow: hidden;">
+          <div class="btn-row" style="padding: 18px 24px;">
             <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save</button>
             <span class="status-badge" id="appearanceStatus"></span>
           </div>
