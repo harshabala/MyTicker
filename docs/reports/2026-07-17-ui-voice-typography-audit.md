@@ -8,13 +8,13 @@
 
 ## Verdict
 
-Product voice is largely correct after prior finish work: providers are named truthfully, Finnhub is US-only, crypto is CoinGecko/Binance, and the popup is holdings-first. This pass fixed remaining **Critical/Important** false claims and type-scale violations. Residual items are Medium density and polish.
+Product voice is largely correct after prior finish work: providers are named truthfully, Finnhub is US-only, crypto is CoinGecko/Binance, and the popup is holdings-first. This pass fixed remaining **Critical/Important** false claims and type-scale violations. All Critical, Important, and Medium residuals from this audit are closed.
 
 | Severity | Count found | Fixed this pass | Residual |
 |---|---:|---:|---:|
 | Critical | 2 | 2 | 0 |
 | Important | 7 | 7 | 0 |
-| Medium | 8 | 0 | 8 |
+| Medium | 8 | 8 | 0 |
 
 ## Findings
 
@@ -90,3 +90,21 @@ node test_fixtures/test_ticker_render.mjs    # 40 passed
 2. Soften absolute privacy footers where providers fetch quotes.
 3. Tokenize remaining hard-coded font sizes in options chrome.
 4. Rename “View all →” or deep-link Portfolio preview.
+
+
+## Residual Medium closure (2026-07-17 follow-up)
+
+All 8 residual Medium items were implemented:
+
+| # | Item | Resolution |
+|---|---|---|
+| 1 | Crypto guidance density | Split into three bullets (catalog / providers / tape) |
+| 2 | Data tab length | Settings disclosure closed by default; Appearance keeps only Display open |
+| 3 | Mixed px font sizes | Main options/popup chrome sizes mapped to `--text-body/label/meta` tokens |
+| 4 | Fitts copy buttons | `.btn-copy-entry` min 32×32 |
+| 5 | Gear a11y name | `MyTicker settings` (test updated) |
+| 6 | View all → | Renamed `Open settings →` |
+| 7 | Absolute privacy foot | Portfolio local; quotes from named providers |
+| 8 | Tape aggregate lowercase | `text-transform: none` |
+
+**Status after this pass:** Critical 0 residual · Important 0 residual · Medium 0 residual.

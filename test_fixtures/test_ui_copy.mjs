@@ -170,7 +170,7 @@ assert(!/id="addWatchBtn"/.test(popupHtml), "popup has no quick-add header actio
 assert(!/quickAddInput|quickAddExchange|quickAddBtn/.test(popupHtml), "popup has no quick-add sheet inputs");
 assert(!/doQuickAdd|setPlatformShortcut|enabledToggle|shortTimeAgo/.test(popupJs), "popup has no quick-add, shortcut, tape-toggle, or footer-update handlers");
 assert(!/Ticker strip|Last updated|Local only|shortcut-hint/.test(popupHtml + popupJs), "popup omits tape controls and local-only or shortcut footer copy");
-assert(/<button[^>]*id="openOptions"[^>]*aria-label="Settings"/.test(popupHtml), "popup retains one accessible Settings action");
+assert(/<button[^>]*id="openOptions"[^>]*aria-label="MyTicker settings"/.test(popupHtml), "popup retains one accessible MyTicker settings action");
 assert((popupHtml.match(/class="icon-btn"/g) || []).length === 1, "Settings is the popup's only header action");
 assert(/id="openOptions"[\s\S]*?data-icon="phosphor-gear-six"[\s\S]*?viewBox="0 0 256 256"/.test(popupHtml), "popup Settings action uses the Phosphor GearSix regular icon");
 const popupCogRule = cssRuleBodyAt(popupHtml, ".icon-btn {");

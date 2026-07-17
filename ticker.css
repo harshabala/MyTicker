@@ -127,7 +127,7 @@
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
   letter-spacing: 0.01em;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .pts-scroll-wrapper {

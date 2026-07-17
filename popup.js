@@ -604,7 +604,7 @@ export function renderHoldingsPanel(container, state, status) {
     const viewAll = document.createElement("button");
     viewAll.type = "button";
     viewAll.className = "link-quiet";
-    viewAll.textContent = "View all →";
+    viewAll.textContent = "Open settings →";
     viewAll.addEventListener("click", () => openSettings());
     head.append(label, viewAll);
     section.appendChild(head);
