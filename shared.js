@@ -179,18 +179,33 @@ const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
 ]));
 
 function resolveCryptoCatalogEntry(input) {
-  const raw = String(input || "").trim().toLowerCase();
-  return CRYPTO_LOOKUP.get(raw) || CRYPTO_LOOKUP.get(raw.replace(/^binance:/, "").replace(/usdt$/, "")) || null;
+  let raw = String(input || "").trim().toLowerCase();
+  if (!raw) return null;
+  // Strip common exchange wrappers: BTCUSDT, BTC-USD, X:BTCUSD, BINANCE:BTCUSDT
+  raw = raw
+    .replace(/^binance:/, "")
+    .replace(/^coinbase:/, "")
+    .replace(/^x:/, "")
+    .replace(/[-_/]/g, "");
+  const stripped = raw
+    .replace(/(usdt|usdc|busd|fdusd|tusd|inr|usd)$/i, "");
+  return (
+    CRYPTO_LOOKUP.get(raw) ||
+    CRYPTO_LOOKUP.get(stripped) ||
+    CRYPTO_LOOKUP.get(raw.replace(/usdt$/, "").replace(/usd$/, "")) ||
+    null
+  );
 }
 
-/** Convert legacy aliases to one canonical ID, retaining the first positive quantity. */
+/** Convert aliases to canonical IDs; sum quantities when the same coin appears more than once. */
 function normalizeManualCryptoHoldings(holdings) {
   const selected = new Map();
   for (const holding of Array.isArray(holdings) ? holdings : []) {
     const coin = resolveCryptoCatalogEntry(holding?.symbol);
     const quantity = Number(holding?.quantity);
-    if (coin && Number.isFinite(quantity) && quantity > 0 && !selected.has(coin.id)) {
-      selected.set(coin.id, { symbol: coin.id, quantity });
+    if (coin && Number.isFinite(quantity) && quantity > 0) {
+      const prev = selected.get(coin.id);
+      selected.set(coin.id, { symbol: coin.id, quantity: (prev?.quantity || 0) + quantity });
     }
   }
   return [...selected.values()];

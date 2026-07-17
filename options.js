@@ -1,5 +1,14 @@
 import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, migrateSettings, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
-import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
+import {
+  BROKER_PRESETS,
+  parseCsv,
+  mapRowsToHoldings,
+  diagnoseCsvImport,
+  CRYPTO_EXPORT_PRESETS,
+  detectCryptoExportPreset,
+  mapRowsToCryptoHoldings,
+  diagnoseCryptoCsvImport
+} from "./csvParser.js";
 import {
   getSetupStatus,
   markWizardStep,
@@ -36,7 +45,13 @@ const cryptoManualField = document.getElementById("cryptoManualField");
 const cryptoSearchEl = document.getElementById("cryptoSearch");
 const cryptoSearchResultsEl = document.getElementById("cryptoSearchResults");
 const cryptoSelectedChipsEl = document.getElementById("cryptoSelectedChips");
+const cryptoDropZone = document.getElementById("cryptoDropZone");
+const cryptoCsvFileEl = document.getElementById("cryptoCsvFile");
+const cryptoImportCsvButton = document.getElementById("cryptoImportCsvButton");
+const cryptoImportStatusEl = document.getElementById("cryptoImportStatus");
+const CRYPTO_FINDER_LABEL = "Add via Finder / File Explorer";
 let selectedCrypto = [];
+let cryptoImportInFlight = false;
 const watchlistTypeEl = document.getElementById("watchlistType");
 const watchlistExchangeEl = document.getElementById("watchlistExchange");
 const watchlistInputEl = document.getElementById("watchlistInput");
@@ -289,6 +304,27 @@ function init() {
     if (file) handleImportCsv(file);
     // Allow re-selecting the same file later
     csvFileEl.value = "";
+  });
+
+  cryptoImportCsvButton?.addEventListener("click", () => cryptoCsvFileEl?.click());
+  cryptoDropZone?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cryptoDropZone.classList.add("dragover");
+  });
+  cryptoDropZone?.addEventListener("dragleave", () => cryptoDropZone.classList.remove("dragover"));
+  cryptoDropZone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cryptoDropZone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleCryptoCsvImport(file);
+    else showToast("No file in that drop. Use Add via Finder / File Explorer.", "error");
+  });
+  cryptoCsvFileEl?.addEventListener("change", () => {
+    const file = cryptoCsvFileEl.files?.[0];
+    if (file) handleCryptoCsvImport(file);
+    cryptoCsvFileEl.value = "";
   });
 
   const importSampleBtn = document.getElementById("importSampleButton");
@@ -1269,6 +1305,92 @@ function handleSaveCrypto() {
       refreshSetupUI();
     });
   });
+}
+
+function getCryptoImportMode() {
+  const checked = document.querySelector('input[name="cryptoImportMode"]:checked');
+  return checked?.value === "replace" ? "replace" : "merge";
+}
+
+function setCryptoImportButtonBusy(busy) {
+  if (!cryptoImportCsvButton) return;
+  cryptoImportCsvButton.disabled = !!busy;
+  if (busy) {
+    cryptoImportCsvButton.textContent = "Importing…";
+    return;
+  }
+  cryptoImportCsvButton.replaceChildren();
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("ui-icon");
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
+  icon.append(use);
+  cryptoImportCsvButton.append(icon, document.createTextNode(CRYPTO_FINDER_LABEL));
+}
+
+/**
+ * Import a crypto wallet/holdings CSV into manual selection.
+ * Only CRYPTO_CATALOG coins are kept; quotes remain CoinGecko + Binance.
+ */
+async function handleCryptoCsvImport(file) {
+  if (cryptoImportInFlight || !(file instanceof File || file instanceof Blob)) return;
+  if (file.size > 500_000) {
+    showToast("CSV is too large (max 500 KB).", "error");
+    return;
+  }
+  cryptoImportInFlight = true;
+  setCryptoImportButtonBusy(true);
+  try {
+    const text = await readFileAsText(file);
+    const rows = parseCsv(text);
+    const presetId = detectCryptoExportPreset(rows) || "generic_crypto";
+    const diag = diagnoseCryptoCsvImport(rows, presetId);
+    if (diag) {
+      showToast(diag, "error");
+      if (cryptoImportStatusEl) cryptoImportStatusEl.textContent = "";
+      return;
+    }
+    const draft = mapRowsToCryptoHoldings(rows, presetId);
+    const imported = normalizeManualCryptoHoldings(draft);
+    if (!imported.length) {
+      showToast(
+        "No supported coins found. Catalog is BTC, ETH, BNB, XRP, and SOL only.",
+        "error"
+      );
+      return;
+    }
+    const mode = getCryptoImportMode();
+    if (mode === "replace") {
+      selectedCrypto = imported;
+    } else {
+      selectedCrypto = normalizeManualCryptoHoldings([...selectedCrypto, ...imported]);
+    }
+    if (cryptoModeEl && cryptoModeEl.value !== "manual") {
+      cryptoModeEl.value = "manual";
+      updateCryptoManualVisibility();
+    }
+    renderCryptoSelector();
+    markSettingsSaveDirty("crypto");
+    const presetName = CRYPTO_EXPORT_PRESETS[presetId]?.name || "crypto CSV";
+    const labels = imported
+      .map((h) => resolveCryptoCatalogEntry(h.symbol)?.symbol || h.symbol)
+      .join(", ");
+    const msg =
+      mode === "replace"
+        ? `Replaced manual list with ${imported.length} coin(s) from ${presetName}: ${labels}`
+        : `Merged ${imported.length} coin(s) from ${presetName}: ${labels}`;
+    showToast(msg, "success");
+    if (cryptoImportStatusEl) {
+      cryptoImportStatusEl.textContent = `${imported.length} mapped · save to apply`;
+    }
+  } catch (err) {
+    console.error("Crypto CSV import failed", err);
+    showToast(err?.message || "Could not read crypto CSV.", "error");
+  } finally {
+    cryptoImportInFlight = false;
+    setCryptoImportButtonBusy(false);
+  }
 }
 
 chrome.storage.onChanged.addListener((changes, areaName) => {

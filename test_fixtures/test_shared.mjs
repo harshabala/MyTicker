@@ -145,7 +145,7 @@ assert(resolveCryptoCatalogEntry("dogecoin") === null, "rejects unsupported cryp
 assert(normalizeCryptoConfig({ includeCrypto: false, mode: "top5" }).mode === "off", "migrates legacy disabled crypto setting to explicit off mode");
 assert(normalizeCryptoConfig({ includeCrypto: true, mode: "manual" }).mode === "manual", "keeps legacy enabled manual crypto setting");
 const migratedManual = normalizeManualCryptoHoldings([{ symbol: "BTC", quantity: 2 }, { symbol: "BINANCE:BTCUSDT", quantity: 4 }, { symbol: "ETH", quantity: 0 }]);
-assert(migratedManual.length === 1 && migratedManual[0].symbol === "bitcoin" && migratedManual[0].quantity === 2, "canonicalizes legacy manual crypto and keeps the first positive quantity per coin");
+assert(migratedManual.length === 1 && migratedManual[0].symbol === "bitcoin" && migratedManual[0].quantity === 6, "canonicalizes legacy manual crypto aliases and sums positive quantities per coin");
 
 // ── Test Suite: formatSigned ──
 console.log("\n🔢 formatSigned");
