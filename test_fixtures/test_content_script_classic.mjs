@@ -31,7 +31,7 @@ new vm.Script(bridgeSource, { filename: "contentShared.js" }).runInContext(conte
 const bridge = context.__MYTICKER_CONTENT_SHARED__;
 assert.deepEqual(
   Object.keys(bridge).sort(),
-  ["STORAGE_KEYS", "formatQuotePrice", "formatSigned", "formatSignedCurrency"],
+  ["STORAGE_KEYS", "formatQuotePrice", "formatSigned", "formatSignedCurrency", "isHostTapeExcluded", "normalizeExcludedSites"],
   "content bridge exposes only the content script API"
 );
 assert.equal(bridge.STORAGE_KEYS.settings, "pts_settings");

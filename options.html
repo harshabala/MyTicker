@@ -770,6 +770,58 @@
         gap: 8px;
         align-items: center;
       }
+      .excluded-sites-field { padding-bottom: 8px; }
+      .excluded-sites-add {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+        margin-top: 10px;
+      }
+      .excluded-sites-add input {
+        flex: 1 1 180px;
+        min-width: 0;
+      }
+      .excluded-sites-list {
+        list-style: none;
+        margin: 12px 0 0;
+        padding: 0;
+        display: grid;
+        gap: 8px;
+      }
+      .excluded-sites-list:empty { display: none; }
+      .excluded-site-chip {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 40px;
+        padding: 8px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+      .excluded-site-chip code {
+        font-size: var(--text-body);
+        color: var(--text-primary);
+      }
+      .excluded-site-remove {
+        min-height: 32px;
+        min-width: 32px;
+        padding: 4px 10px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: var(--text-meta);
+        cursor: pointer;
+      }
+      .excluded-site-remove:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+      .excluded-site-remove:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+      #excludedSitesEmpty[hidden] { display: none; }
       .crypto-selector-guidance {
         margin: 0;
         padding-top: 2px;
@@ -2654,6 +2706,24 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure" open>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Hidden sites</span></summary>
+          <div class="settings-disclosure-body">
+            <div class="field excluded-sites-field">
+              <label class="field-label" for="excludedSiteInput">Hide Ticker Tape on these sites</label>
+              <p class="field-hint" id="excludedSitesHelp">
+                Add domains where the tape should never show (for example <code>youtube.com</code> or <code>chatgpt.com</code>).
+                Subdomains match automatically. The popup still works everywhere.
+              </p>
+              <div class="excluded-sites-add">
+                <input type="text" id="excludedSiteInput" autocomplete="off" placeholder="youtube.com" aria-describedby="excludedSitesHelp" />
+                <button type="button" class="btn btn-secondary btn-pressable" id="addExcludedSiteButton">Add site</button>
+              </div>
+              <ul class="excluded-sites-list" id="excludedSitesList" aria-live="polite"></ul>
+              <p class="field-hint" id="excludedSitesEmpty">No excluded sites yet. Tape shows on all pages when enabled.</p>
+            </div>
           </div>
         </details>
         <details class="settings-disclosure">
