@@ -2804,7 +2804,20 @@
             <ul class="tips-list">
               <li><strong>Ticker Tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
               <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
-              <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
+              <li><strong>Current release:</strong> v0.5.0 adds copyable Logs, Hidden sites, crypto wallet CSV import (export formats only), and a Ticker Tape on/off control. Crypto quote providers remain CoinGecko and Binance only; Coinbase and DeFiLlama are not live price APIs.</li>
+            </ul>
+          </div>
+        </details>
+        <details class="settings-disclosure data-disclosure">
+          <summary>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-question"></use></svg>Why the tape can cover some sites</span>
+          </summary>
+          <div class="diagnostics-body">
+            <ul class="tips-list">
+              <li><strong>What MyTicker does:</strong> on most pages it reserves space by pushing document flow down by the tape height, so content is not permanently hidden under the strip.</li>
+              <li><strong>Where that is less reliable:</strong> some apps (for example ChatGPT image tools, complex dashboards, or video players) use <em>fixed</em> or full-viewport shells. Those layers ignore normal page margin, so top toolbars can still sit under the tape.</li>
+              <li><strong>What you can do:</strong> Appearance → <strong>Hidden sites</strong> — add domains such as <code>chatgpt.com</code> or <code>youtube.com</code> so the tape never mounts there. The popup still works. You can also turn off <strong>Show Ticker Tape</strong> globally and use only the popup.</li>
+              <li><strong>Fullscreen video:</strong> the tape already hides on fullscreen media where possible so it does not cover the player.</li>
             </ul>
           </div>
         </details>
@@ -2848,10 +2861,10 @@
         <div class="section-title">Troubleshooting</div>
         <div class="card">
           <ul class="tips-list">
-            <li><strong>File permission / Error reading file:</strong> use <em>Import my holdings</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
+            <li><strong>File permission / Error reading file:</strong> use <em>Add via Finder / File Explorer</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
             <li><strong>Missing Exchange/Currency columns:</strong> Zerodha-style exports are fine — we default NSE + INR when those columns are absent.</li>
             <li><strong>Empty strip:</strong> confirm holdings on Portfolio, then open any http(s) tab and wait for the next alarm refresh (or re-open the popup).</li>
-            <li>Setup errors appear in <strong>Data &amp; diagnostics</strong> when something fails mid-import or fetch.</li>
+            <li><strong>Tape covers page controls:</strong> some sites use fixed app shells (ChatGPT tools, dense SPAs). Use Appearance → Hidden sites, or see <strong>Why the tape can cover some sites</strong> under Logs help. Setup errors appear in <strong>Data &amp; diagnostics → Logs</strong> when something fails mid-import or fetch.</li>
           </ul>
         </div>
       </div>

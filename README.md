@@ -5,13 +5,25 @@
 <h1 align="center">MyTicker</h1>
 
 <p align="center">
-  <strong>Your stocks and crypto on every page — a live ticker strip with real portfolio P&amp;L.</strong>
+  <strong>Your stocks and crypto on every page — a live Ticker Tape with real portfolio P&amp;L.</strong>
 </p>
 
 <p align="center">
   <img src="https://img.shields.io/badge/manifest-v3-blue" alt="Manifest V3" />
-  <img src="https://img.shields.io/badge/version-0.3.0-green" alt="Version" />
+  <img src="https://img.shields.io/badge/version-0.5.0-green" alt="Version" />
   <img src="https://img.shields.io/badge/license-MIT-gray" alt="License" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/ticker-tape-in-action.png" width="900" alt="MyTicker Ticker Tape running at the top of a market news site" />
+</p>
+
+<p align="center">
+  <img src="docs/screenshots/popup-on-moneycontrol.png" width="900" alt="MyTicker popup scoreboard over Moneycontrol with live day P&amp;L" />
+</p>
+
+<p align="center">
+  <em>Left to right: ambient Ticker Tape on the web · popup day P&amp;L while you browse.</em>
 </p>
 
 ---
