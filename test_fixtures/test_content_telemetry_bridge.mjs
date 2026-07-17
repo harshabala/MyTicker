@@ -12,10 +12,15 @@ globalThis.chrome = {
       set: async (values) => Object.entries(values).forEach(([key, value]) => local.set(key, value))
     },
     sync: {
-      get: (_keys, callback) => callback({})
+      get: (_keys, callback) => {
+        if (callback) callback({});
+        return Promise.resolve({});
+      },
+      set: async () => {}
     }
   },
   runtime: {
+    id: "telemetry-test-extension",
     onMessage: { addListener: (listener) => { messageListener = listener; } },
     onInstalled: { addListener() {} },
     openOptionsPage() {}
@@ -29,11 +34,13 @@ globalThis.chrome = {
 await import(`../background.js?content-telemetry-test=${Date.now()}`);
 assert.ok(messageListener, "background registers a runtime message listener");
 messageListener({
-  action: "content-script-lifecycle",
-  stage: "fatal-error",
-  origin: "https://untrusted.example/path?secret=1",
-  error: { name: "TypeError", message: "Failed at https://untrusted.example/path?secret=1" }
-}, { url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
+  type: "content-script-lifecycle",
+  payload: {
+    stage: "fatal-error",
+    origin: "https://www.linkedin.com",
+    error: { name: "TypeError", message: "Failed at https://untrusted.example/path?secret=1" }
+  }
+}, { id: "telemetry-test-extension", tab: {}, frameId: 0, url: "https://www.linkedin.com/feed/update/urn:li:activity:1" });
 await new Promise((resolve) => setTimeout(resolve, 0));
 
 const status = local.get("pts_content_script_status");
@@ -44,5 +51,10 @@ const log = local.get("pts_diagnostics_log");
 assert.equal(log.at(-1).event, "content-script-lifecycle", "records an aggregate lifecycle log entry");
 assert.equal(log.at(-1).stage, "fatal-error", "records the lifecycle stage without page details");
 assert.equal("origin" in log.at(-1), false, "does not persist page origin in the aggregate log");
+
+messageListener({ type: "content-script-lifecycle", payload: { stage: "loaded", origin: "https://www.linkedin.com" } }, { id: "telemetry-test-extension", frameId: 0, url: "https://www.linkedin.com/feed" });
+messageListener({ type: "content-script-lifecycle", payload: { stage: "loaded", origin: "https://www.linkedin.com" } }, { id: "foreign-extension", tab: {}, frameId: 0, url: "https://www.linkedin.com/feed" });
+await new Promise((resolve) => setTimeout(resolve, 0));
+assert.equal(local.get("pts_content_script_status").stage, "fatal-error", "missing tab and mismatched extension id lifecycle senders are rejected");
 
 console.log("content telemetry bridge: passed");

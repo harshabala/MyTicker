@@ -70,7 +70,7 @@
         border-radius: 0;
         background: transparent;
         color: var(--text-tertiary);
-        font-size: 13px;
+        font-size: var(--text-body);
         font-weight: 500;
         font-family: inherit;
         letter-spacing: -0.01em;
@@ -156,7 +156,7 @@
       }
 
       .page-header-text p {
-        font-size: 13px;
+        font-size: var(--text-body);
         color: var(--text-secondary);
         margin-top: 4px;
         line-height: 1.4;
@@ -260,20 +260,22 @@
       }
 
       .card-item .item-desc {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-tertiary);
         margin-top: 2px;
       }
 
       /* Inputs */
+      input:not([type]),
       input[type="text"],
+      input[type="search"],
       input[type="number"],
       input[type="password"],
       select,
       textarea {
         width: 100%;
         padding: 10px 12px;
-        font-size: 13px;
+        font-size: var(--text-body);
         font-family: inherit;
         border-radius: var(--radius-sm);
         border: 1px solid var(--border);
@@ -283,7 +285,9 @@
         transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
       }
 
+      input:not([type]):focus,
       input[type="text"]:focus,
+      input[type="search"]:focus,
       input[type="number"]:focus,
       input[type="password"]:focus,
       select:focus,
@@ -309,7 +313,7 @@
       textarea {
         resize: vertical;
         font-family: 'SF Mono', 'Menlo', 'Monaco', monospace;
-        font-size: 12px;
+        font-size: var(--text-label);
         line-height: 1.5;
       }
 
@@ -324,14 +328,14 @@
       }
 
       .field-label {
-        font-size: 13px;
+        font-size: var(--text-body);
         font-weight: 500;
         margin-bottom: 6px;
         color: var(--text-secondary);
       }
 
       .field-hint {
-        font-size: 11px;
+        font-size: var(--text-meta);
         color: var(--text-tertiary);
         margin-top: 4px;
       }
@@ -349,7 +353,7 @@
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-secondary);
       }
 
@@ -398,26 +402,15 @@
       }
 
       .setup-welcome {
-        padding: 0 16px;
-        font-size: 13px;
+        padding: 14px 16px;
+        font-size: var(--text-body);
         line-height: 1.5;
         color: var(--text-secondary);
-        border-bottom: 1px solid transparent;
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
-        transition:
-          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
-          opacity var(--motion-fast, 150ms) ease,
-          padding var(--motion-medium, 250ms) var(--ease-out, ease),
-          border-color var(--motion-fast, 150ms) ease;
+        border-bottom: 1px solid var(--border);
       }
 
       .setup-welcome.is-visible {
-        padding: 14px 16px;
-        max-height: 120px;
-        opacity: 1;
-        border-bottom-color: var(--border);
+        display: block;
       }
 
       .setup-status.setup-complete-shimmer {
@@ -449,7 +442,7 @@
       }
 
       .wizard-step {
-        font-size: 12px;
+        font-size: var(--text-label);
         font-weight: 500;
         letter-spacing: -0.01em;
         padding: 8px 12px;
@@ -488,14 +481,14 @@
       }
 
       .wizard-hint {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-secondary);
         margin-bottom: 10px;
         line-height: 1.45;
       }
 
       .golden-path-lead {
-        padding: 28px 28px 24px;
+        padding: 20px;
         margin: 0;
         border-bottom: 1px solid var(--border);
       }
@@ -510,7 +503,7 @@
       }
 
       .golden-path-hint {
-        font-size: 13px;
+        font-size: var(--text-body);
         color: var(--text-secondary);
         line-height: 1.55;
         margin-bottom: 0;
@@ -536,7 +529,7 @@
 
       .golden-path-note {
         margin-top: 16px;
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-tertiary);
         line-height: 1.5;
         max-width: 52ch;
@@ -544,12 +537,12 @@
 
       .import-formats {
         margin: 0;
-        padding: 16px 28px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--border);
         background: transparent;
       }
       .import-formats summary {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-secondary);
         cursor: pointer;
         padding: 4px 0;
@@ -563,7 +556,7 @@
       }
 
       .golden-path-sample {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--brand-gold);
         text-decoration: none;
       }
@@ -577,7 +570,7 @@
       }
 
       .more-formats summary {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-secondary);
         cursor: pointer;
         padding: 6px 0;
@@ -590,39 +583,28 @@
       }
 
       .import-stats-line {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-secondary);
         line-height: 1.4;
       }
 
       .import-stats-note {
-        font-size: 11px;
+        font-size: var(--text-meta);
         color: var(--text-tertiary);
         line-height: 1.4;
         margin-top: 4px;
       }
 
       .warn-banner {
-        padding: 0 16px;
-        font-size: 12px;
+        padding: 12px 16px;
+        font-size: var(--text-label);
         color: var(--yellow);
         background: rgba(255, 214, 10, 0.08);
-        border-bottom: 1px solid transparent;
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
-        transition:
-          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
-          opacity var(--motion-fast, 150ms) ease,
-          padding var(--motion-medium, 250ms) var(--ease-out, ease),
-          border-color var(--motion-fast, 150ms) ease;
+        border-bottom: 1px solid var(--border);
       }
 
       .warn-banner.visible {
-        padding: 12px 16px;
-        max-height: 96px;
-        opacity: 1;
-        border-bottom-color: var(--border);
+        display: block;
       }
 
       .section-highlight {
@@ -633,22 +615,11 @@
       }
 
       #cryptoManualField {
-        max-height: 0;
-        opacity: 0;
-        overflow: hidden;
         margin: 0;
-        padding-top: 0;
-        padding-bottom: 0;
-        transition:
-          max-height var(--motion-medium, 250ms) var(--ease-out, ease),
-          opacity var(--motion-fast, 150ms) ease,
-          padding var(--motion-medium, 250ms) var(--ease-out, ease);
       }
 
       #cryptoManualField.is-open {
-        max-height: none;
-        overflow: visible;
-        opacity: 1;
+        display: block;
       }
 
       .crypto-selector {
@@ -704,7 +675,7 @@
         background: var(--bg-surface);
         color: var(--text-primary);
         font: inherit;
-        font-size: 12px;
+        font-size: var(--text-label);
         line-height: 1.2;
       }
 
@@ -751,6 +722,54 @@
         color: var(--text-primary);
       }
 
+      .crypto-guidance-list {
+        margin: 0;
+        padding-left: 1.1rem;
+        display: grid;
+        gap: 6px;
+      }
+      .crypto-guidance-list li {
+        margin: 0;
+        line-height: 1.45;
+      }
+      .crypto-import-block {
+        margin-top: 16px;
+        padding: 14px 12px 12px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+      }
+      .crypto-import-hint { margin: 6px 0 12px; }
+      .crypto-import-mode {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px 16px;
+        margin: 0 0 12px;
+        padding: 0;
+        border: 0;
+      }
+      .crypto-import-mode-option {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 32px;
+        font-size: var(--text-body);
+        color: var(--text-secondary);
+        cursor: pointer;
+      }
+      .crypto-drop-zone {
+        margin: 0 0 12px;
+        min-height: 120px;
+      }
+      .crypto-import-actions {
+        padding: 0;
+        margin: 0;
+        border: 0;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
       .crypto-selector-guidance {
         margin: 0;
         padding-top: 2px;
@@ -759,37 +778,6 @@
       .preview-container.preview-updating {
         opacity: 0.55;
         transition: opacity var(--motion-fast, 150ms) ease;
-      }
-
-      details.crypto-details > summary {
-        cursor: pointer;
-        padding: 14px 16px;
-        font-size: 14px;
-        font-weight: 500;
-        list-style: none;
-      }
-
-      details.crypto-details > summary::-webkit-details-marker {
-        display: none;
-      }
-
-      details.crypto-details[open] summary {
-        border-bottom: 1px solid var(--border);
-      }
-
-      details.crypto-details > div {
-        display: grid;
-        grid-template-rows: 0fr;
-        transition: grid-template-rows var(--motion-medium, 250ms) var(--ease-out, ease);
-      }
-
-      details.crypto-details[open] > div {
-        grid-template-rows: 1fr;
-      }
-
-      details.crypto-details > div > * {
-        overflow: hidden;
-        min-height: 0;
       }
 
       /* Classic iOS switch — thumb vertically centered */
@@ -846,7 +834,7 @@
       .btn {
         padding: 10px 16px;
         min-height: 36px;
-        font-size: 13px;
+        font-size: var(--text-body);
         font-weight: 600;
         letter-spacing: -0.01em;
         font-family: inherit;
@@ -897,10 +885,10 @@
       .drop-zone {
         border: 1px dashed var(--border);
         border-radius: var(--radius-sm);
-        padding: 40px 28px;
+        padding: 32px 20px;
         text-align: center;
         cursor: pointer;
-        margin: 20px 28px 12px;
+        margin: 16px 20px 12px;
         background: var(--bg-inset);
         transition:
           border-color var(--motion-fast, 150ms) var(--ease-out, ease),
@@ -919,7 +907,7 @@
       }
 
       .drop-zone .drop-icon {
-        font-size: 12px;
+        font-size: var(--text-label);
         font-weight: 700;
         letter-spacing: 0.08em;
         color: var(--text-tertiary);
@@ -936,7 +924,7 @@
       }
 
       .drop-zone .drop-hint {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-tertiary);
         margin-top: 10px;
         line-height: 1.5;
@@ -947,7 +935,7 @@
       }
 
       #section-import .btn-row {
-        padding: 12px 28px 28px;
+        padding: 12px 20px 20px;
         gap: 10px;
         flex-wrap: wrap;
       }
@@ -956,14 +944,28 @@
         padding: 10px 16px;
       }
       #section-import .import-stats {
-        margin: 0 28px 24px;
+        margin: 0 20px 16px;
         padding: 12px 0 0;
       }
       #section-import > .section-title {
         margin-bottom: 14px;
       }
       .preview-section-pad {
-        padding-top: 8px;
+        padding-top: 12px;
+      }
+      .select-inline {
+        width: auto;
+        min-width: 140px;
+      }
+      .select-inline-wide {
+        width: auto;
+        min-width: 160px;
+      }
+      .preview-card-head {
+        padding: 16px 20px;
+      }
+      .code-gold {
+        color: var(--brand-gold);
       }
 
       .drop-zone input[type="file"] {
@@ -972,7 +974,7 @@
 
       /* Status badge */
       .status-badge {
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--green);
         font-weight: 500;
         transition: opacity 0.3s ease;
@@ -1010,7 +1012,7 @@
       .preview-table {
         width: 100%;
         border-collapse: collapse;
-        font-size: 12px;
+        font-size: var(--text-label);
         table-layout: fixed;
       }
 
@@ -1051,7 +1053,7 @@
       .preview-empty {
         padding: 20px;
         text-align: center;
-        font-size: 12px;
+        font-size: var(--text-label);
         color: var(--text-tertiary);
       }
 
@@ -1065,7 +1067,7 @@
         border: 1px solid var(--border);
         padding: 10px 20px;
         border-radius: 999px;
-        font-size: 13px;
+        font-size: var(--text-body);
         font-weight: 500;
         box-shadow: none;
         transition:
@@ -1088,7 +1090,6 @@
       }
 
       @media (prefers-reduced-motion: reduce) {
-        details.crypto-details > div,
         .setup-welcome,
         .warn-banner,
         .toast,
@@ -1096,6 +1097,10 @@
         #cryptoManualField {
           transition: none !important;
           animation: none !important;
+        }
+
+        .toggle-slider::before {
+          transition: none !important;
         }
 
         .toast {
@@ -1206,7 +1211,7 @@
         border-bottom: 1px solid var(--border);
       }
       .error-log-count {
-        font-size: 12px;
+        font-size: var(--text-label);
         font-weight: 600;
         color: var(--red);
         flex: 1;
@@ -1222,7 +1227,7 @@
         align-items: start;
         padding: 8px 16px;
         border-bottom: 1px solid rgba(255,255,255,0.04);
-        font-size: 11px;
+        font-size: var(--text-meta);
       }
       .error-log-entry:last-child { border-bottom: none; }
       .error-log-time {
@@ -1240,10 +1245,13 @@
       .btn-copy-entry {
         background: none;
         border: 1px solid var(--border);
-        border-radius: 4px;
+        border-radius: var(--radius-sm, 8px);
         color: var(--text-tertiary);
-        font-size: 10px;
-        padding: 2px 8px;
+        font-size: var(--text-meta);
+        font-weight: var(--weight-label, 500);
+        padding: 6px 10px;
+        min-height: 32px;
+        min-width: 32px;
         cursor: pointer;
         flex-shrink: 0;
         font-family: inherit;
@@ -1251,6 +1259,64 @@
         transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
       }
       .btn-copy-entry:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+      .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        margin-right: 2px;
+        vertical-align: -3px;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .drop-zone-icon {
+        width: 28px;
+        height: 28px;
+        color: var(--brand-gold);
+      }
+      .drop-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .logs-errors-host:empty { display: none; }
+      .logs-errors-host {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .logs-errors-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .logs-errors-title {
+        margin: 0;
+        color: var(--red);
+        font-size: var(--text-body);
+        font-weight: 600;
+      }
+      .logs-errors-card {
+        padding: 0;
+        overflow: hidden;
+      }
+      #section-error-log[hidden] { display: none !important; }
+      #section-error-log .error-log-bar {
+        border-bottom: 0;
+        padding: 0;
+        gap: 8px;
+      }
+      #section-error-log .error-log-bar .btn {
+        min-height: 32px;
+        font-size: var(--text-meta);
+        padding: 6px 10px;
+      }
 
       /* Tips section (expanded tab) */
       .tips-list {
@@ -1260,7 +1326,7 @@
       }
 
       .tips-list li {
-        font-size: 13px;
+        font-size: var(--text-body);
         color: var(--text-secondary);
         margin-bottom: 0;
         line-height: 1.55;
@@ -1289,10 +1355,863 @@
       }
 
       /* Footer */
+      /* ── Instrument-panel refinement ──
+         Shared presentation layer: existing tabs and settings logic remain intact. */
+      .page {
+        max-width: 980px;
+        padding: 2.5rem 1.5rem 3.25rem;
+      }
+      .page-header {
+        gap: 14px;
+        margin-bottom: 24px;
+      }
+      .page-header img {
+        width: 44px;
+        height: 44px;
+        border-radius: 11px;
+      }
+      .page-header-text h1 {
+        font-size: 1.625rem;
+        font-weight: 700;
+        letter-spacing: -0.03em;
+        text-wrap: balance;
+      }
+      .page-header-text p { max-width: 62ch; }
+      .settings-tabs {
+        margin-bottom: 26px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .settings-tab {
+        flex: 1 1 0;
+        min-height: 54px;
+        padding: 15px 12px 13px;
+        text-align: center;
+      }
+      .settings-tab[aria-selected="true"] {
+        color: var(--text-primary);
+      }
+      .settings-tab[aria-selected="true"]::after {
+        left: 16px;
+        right: 16px;
+        background: var(--brand-gold);
+      }
+      .section { margin-bottom: 22px; }
+      .section-title {
+        display: flex;
+        align-items: baseline;
+        gap: 10px;
+        margin: 0 0 12px;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .section-title::after { display: none; }
+      .section-intro {
+        display: grid;
+        grid-template-columns: 36px 1fr;
+        gap: 12px;
+        align-items: start;
+        margin: 0 0 16px;
+      }
+      .section-intro-mark {
+        width: 36px;
+        height: 36px;
+        display: grid;
+        place-items: center;
+        border: 1px solid var(--border);
+        border-radius: 10px;
+        color: var(--text-secondary);
+        background: var(--bg-inset);
+        font-size: 18px;
+      }
+      .section-intro-mark .ui-icon {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
+      }
+      .section-intro h2 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: 1.125rem;
+        font-weight: 600;
+        letter-spacing: -0.015em;
+      }
+      .section-intro p {
+        margin: 3px 0 0;
+        color: var(--text-secondary);
+        font-size: .875rem;
+      }
+      .panel-heading {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+        font-size: .9375rem;
+        font-weight: 600;
+      }
+      .panel-heading span { color: var(--text-secondary); font-weight: 500; }
+      .card {
+        border-color: var(--border);
+        background: var(--bg-surface);
+        box-shadow: var(--material-elevated-shadow);
+      }
+      .settings-card { padding: 0; overflow: hidden; }
+      .form-stack { gap: 0; }
+      .form-stack .field,
+      .settings-card > .field,
+      .settings-card > .card-item {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .form-stack .field {
+        display: grid;
+        grid-template-columns: minmax(160px, .85fr) minmax(220px, 1.15fr);
+        column-gap: 16px;
+        align-items: start;
+      }
+      .form-stack .field-label { padding-top: 9px; }
+      .form-stack .field-hint { grid-column: 2; margin-top: 7px; }
+      .form-action-row {
+        padding: 16px 20px !important;
+        background: var(--bg-inset);
+      }
+      .form-action-row .btn-primary { min-width: 190px; justify-content: center; }
+      .watchlist-action { width: 100%; min-width: 0 !important; }
+      .configured-list {
+        margin: 0;
+        padding: 12px 20px;
+        background: var(--bg-inset);
+        border-top: 1px solid var(--border);
+      }
+      .configured-list:empty::before {
+        content: "Your saved symbols will appear here.";
+        color: var(--text-secondary);
+      }
+      .card-item { padding: 16px 20px; }
+      .field { padding: 16px 20px; }
+      .field-label { font-size: .875rem; color: var(--text-primary); }
+      .field-hint { color: var(--text-secondary); }
+      input, select {
+        min-height: 44px;
+        border-color: var(--border);
+        background: var(--bg-inset);
+      }
+      input:focus, select:focus { border-color: var(--brand-gold); }
+      .btn-primary {
+        min-height: 44px;
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
+      }
+      .btn-secondary { min-height: 40px; }
+      .preview-container { border-color: var(--border); }
+      #tab-appearance > .section > .card,
+      #tab-crypto > .section > .card,
+      .data-section-panel > .section > .card {
+        overflow: hidden;
+      }
+      #tab-appearance .card-item,
+      #tab-appearance .field {
+        padding: 16px 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-appearance .btn-row { padding: 16px 20px; }
+      #tab-crypto .card-item,
+      #tab-crypto .field,
+      #tab-crypto .btn-row {
+        padding: 16px 20px;
+      }
+      #tab-crypto .card-item {
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-crypto #cryptoManualField {
+        padding: 0 20px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-crypto .crypto-selector {
+        gap: 12px;
+        padding: 16px;
+      }
+      .settings-disclosure {
+        overflow: hidden;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .settings-disclosure + .settings-disclosure { margin-top: 12px; }
+      .settings-disclosure > summary {
+        display: flex;
+        align-items: center;
+        min-height: 58px;
+        padding: 0 20px;
+        cursor: pointer;
+        color: var(--text-primary);
+        font-size: .9375rem;
+        font-weight: 600;
+        list-style: none;
+      }
+      .settings-disclosure > summary::-webkit-details-marker { display: none; }
+      .settings-disclosure > summary::after {
+        content: "⌄";
+        margin-left: auto;
+        color: var(--text-secondary);
+        font-size: 1.125rem;
+      }
+      .data-summary-status {
+        margin-left: auto;
+        margin-right: 12px;
+        color: var(--text-secondary);
+        font-size: .75rem;
+        font-weight: 500;
+        white-space: nowrap;
+      }
+      .settings-disclosure[open] > summary {
+        border-bottom: 1px solid var(--border);
+        color: var(--text-primary);
+      }
+      .settings-disclosure[open] > summary::after { transform: rotate(180deg); }
+      .settings-disclosure-body { padding: 0; }
+      .settings-disclosure-body > .field,
+      .settings-disclosure-body > .card-item { margin: 0; }
+      .settings-disclosure-body .tape-size-options {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 10px;
+      }
+      .settings-disclosure-body .tape-size-options label {
+        position: relative;
+        min-height: 54px;
+        display: grid;
+        place-items: center;
+        text-align: center;
+        padding: 10px 8px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        font-size: var(--text-label);
+        font-weight: 500;
+        cursor: pointer;
+        transition:
+          border-color var(--motion-fast, 150ms) var(--ease-out, ease),
+          background var(--motion-fast, 150ms) var(--ease-out, ease),
+          color var(--motion-fast, 150ms) var(--ease-out, ease),
+          box-shadow var(--motion-fast, 150ms) var(--ease-out, ease);
+      }
+      .settings-disclosure-body .tape-size-options label input[type="radio"] {
+        position: absolute;
+        opacity: 0;
+        width: 1px;
+        height: 1px;
+        margin: 0;
+        pointer-events: none;
+      }
+      .settings-disclosure-body .tape-size-options label:hover {
+        border-color: var(--border-strong, var(--border));
+        color: var(--text-primary);
+      }
+      .settings-disclosure-body .tape-size-options label:has(input:checked) {
+        border-color: var(--brand-gold);
+        color: var(--brand-gold);
+        background: var(--brand-gold-muted);
+        box-shadow: inset 0 0 0 1px var(--brand-gold);
+      }
+      .settings-disclosure-body .tape-size-options label:has(input:focus-visible) {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+      .speed-control {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        min-height: 40px;
+      }
+      .speed-control input[type="range"] {
+        flex: 1 1 auto;
+        min-width: 0;
+        height: 32px;
+        margin: 0;
+        accent-color: var(--brand-gold);
+        cursor: pointer;
+      }
+      .speed-control input[type="range"]:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 3px;
+        border-radius: 999px;
+      }
+      .speed-value-wrap {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        flex: 0 0 auto;
+      }
+      .speed-value-wrap input[type="number"] {
+        width: 4.5rem;
+        min-height: 40px;
+        text-align: end;
+        font-variant-numeric: tabular-nums;
+        font-weight: 500;
+      }
+      .speed-unit {
+        font-size: var(--text-label);
+        color: var(--text-tertiary);
+        font-weight: 500;
+      }
+      .data-section-panel {
+        margin: 0;
+        min-width: 0;
+      }
+      .data-section-panel > .section {
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .data-section-panel > .section + .section { margin-top: 12px; }
+      .data-section-panel > .section .section-title { margin-bottom: 8px; }
+      .data-section-panel > .section .card { border-color: var(--border); }
+      #tab-data.is-active { display: block; }
+      .ui-icon {
+        width: 20px;
+        height: 20px;
+        flex: 0 0 20px;
+        fill: currentColor;
+      }
+      .summary-label {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+      }
+      .summary-label .ui-icon { width: 18px; height: 18px; }
+      .data-page-heading {
+        display: flex;
+        align-items: flex-end;
+        justify-content: space-between;
+        gap: 20px;
+        margin: 0 0 16px;
+        padding: 0 2px;
+      }
+      .data-page-heading .eyebrow {
+        margin: 0 0 4px;
+        color: var(--text-secondary);
+        font-size: .75rem;
+        font-weight: 600;
+        letter-spacing: .02em;
+      }
+      .data-page-heading h2 {
+        margin: 0;
+        color: var(--text-primary);
+        font-size: clamp(1.35rem, 2vw, 1.65rem);
+        font-weight: 700;
+        letter-spacing: -.02em;
+        line-height: 1.2;
+      }
+      .data-page-heading p:not(.eyebrow) {
+        max-width: 58ch;
+        margin: 6px 0 0;
+        color: var(--text-secondary);
+        font-size: .875rem;
+        line-height: 1.45;
+      }
+      .data-page-health {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 34px;
+        padding: 0 12px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        color: var(--text-secondary);
+        background: var(--bg-inset);
+        font-size: .75rem;
+        font-weight: 600;
+        white-space: nowrap;
+      }
+      .data-page-health > span {
+        width: 7px;
+        height: 7px;
+        border-radius: 50%;
+        background: var(--text-secondary);
+      }
+      .data-page-health.is-healthy {
+        color: var(--green);
+        border-color: color-mix(in srgb, var(--green) 40%, var(--border));
+        background: color-mix(in srgb, var(--green) 10%, transparent);
+      }
+      .data-page-health.is-healthy > span { background: var(--green); }
+      .data-workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .data-workspace > * { min-width: 0; }
+      #tab-data > #tab-setup,
+      #tab-data > #tab-market,
+      #tab-data > #tab-diagnostics,
+      #tab-data > #tab-tips,
+      #tab-data > #section-error-log { width: 100%; }
+      #tab-data > #tab-setup,
+      #tab-data > #tab-market,
+      #tab-data > #tab-diagnostics,
+      #tab-data > #tab-tips { margin: 0; }
+      #tab-data .data-disclosure { margin: 0; }
+      #tab-data .data-disclosure + .data-disclosure { margin-top: 12px; }
+
+      .data-surface {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+        overflow: hidden;
+      }
+      .data-surface-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-surface-head h3 {
+        margin: 0;
+        font-size: .9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -.01em;
+      }
+      #section-setup .setup-welcome {
+        margin: 0;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        line-height: 1.45;
+        background: var(--bg-inset);
+      }
+      #section-setup .setup-status {
+        display: grid;
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 12px;
+        padding: 16px 20px;
+      }
+      #section-setup .status-pill,
+      #section-setup .status-card {
+        min-height: 76px;
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding: 12px 14px;
+        text-align: left;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+      }
+      #section-setup .status-card .ui-icon {
+        align-self: center;
+        color: var(--brand-gold);
+      }
+      #section-setup .status-card .status-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      #section-setup .status-card .status-value {
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      #section-setup .status-card .status-meta {
+        color: var(--text-secondary);
+        font-size: .75rem;
+        font-weight: 500;
+        line-height: 1.3;
+      }
+      #section-setup .status-card.ok {
+        border-color: color-mix(in srgb, var(--green) 42%, var(--border));
+      }
+      #section-setup .status-card.ok .ui-icon { color: var(--green); }
+
+      .data-actions {
+        padding: 0 20px 16px;
+        border-top: 1px solid var(--border);
+      }
+      .data-actions .data-subhead {
+        margin: 14px 0 10px;
+        font-size: .8125rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .data-action-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        align-items: center;
+      }
+      .data-action-row .btn {
+        min-height: 40px;
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .data-action-row .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .data-action-row .btn-secondary { background: transparent; }
+      #section-setup .wizard-hint {
+        display: block;
+        margin: 10px 0 0;
+        color: var(--text-secondary);
+        font-size: .75rem;
+        line-height: 1.4;
+      }
+      #section-setup .wizard-steps { display: contents; }
+      #section-setup .wizard-step {
+        min-height: 40px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        font-weight: 600;
+        padding: 0 14px;
+        cursor: pointer;
+      }
+      #section-setup .wizard-step.active,
+      #section-setup .wizard-step.is-next {
+        border-color: var(--brand-gold);
+        background: var(--brand-gold);
+        color: var(--brand-gold-ink);
+      }
+      #section-setup .wizard-step.done {
+        border-color: color-mix(in srgb, var(--green) 40%, var(--border));
+        color: var(--green);
+        background: transparent;
+      }
+      #section-setup .wizard-step:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+
+      .provider-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .provider-row {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+        background: var(--bg-surface);
+      }
+      .provider-row:first-child { border-top: 0; }
+      .provider-row-main {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .provider-row-copy { min-width: 0; flex: 1; }
+      .provider-name {
+        font-size: .9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -.01em;
+      }
+      .provider-sub {
+        margin-top: 4px;
+        font-size: .75rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+      .provider-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .provider-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        font-size: .6875rem;
+        font-weight: 600;
+      }
+      .provider-badge {
+        font-size: .6875rem;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        padding: 4px 8px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        border: 1px solid transparent;
+      }
+      .provider-badge.auto {
+        background: color-mix(in srgb, var(--green) 12%, transparent);
+        color: var(--green);
+        border-color: color-mix(in srgb, var(--green) 28%, transparent);
+      }
+      .provider-badge.optional {
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        border-color: var(--border);
+      }
+      .provider-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .provider-row-actions .btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .provider-row-actions .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .provider-detail {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .provider-detail .field {
+        padding: 12px 0;
+        border-bottom: 0;
+      }
+      .provider-detail .field + .field { border-top: 1px solid var(--border); }
+      .provider-detail .btn-row {
+        padding: 12px 0 0;
+        border-top: 1px solid var(--border);
+        margin-top: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .provider-detail .btn-row .btn {
+        min-height: 40px;
+      }
+      /* US Finnhub key: compact by default, expand on demand */
+      .provider-key-disclosure {
+        margin-top: 14px;
+      }
+      .provider-key-disclosure > summary {
+        list-style: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        font-weight: 600;
+        width: fit-content;
+        user-select: none;
+      }
+      .provider-key-disclosure > summary::-webkit-details-marker,
+      .provider-key-disclosure > summary::marker {
+        display: none;
+        content: "";
+      }
+      .provider-key-disclosure > summary .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .provider-key-disclosure > summary:hover {
+        color: var(--text-primary);
+        border-color: color-mix(in srgb, var(--text-secondary) 40%, var(--border));
+      }
+      .provider-key-disclosure > summary:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+      .provider-key-disclosure[open] > summary {
+        color: var(--text-primary);
+        border-color: var(--border);
+        background: var(--bg-inset);
+      }
+      .provider-key-disclosure .provider-detail {
+        margin-top: 12px;
+        padding: 12px 0 0;
+      }
+      .card.card-provider-india,
+      .card.card-provider-us {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        margin: 0;
+      }
+
+      .data-inline-note {
+        padding: 14px 20px;
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        line-height: 1.45;
+      }
+      .data-settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .data-settings-row:first-child { border-top: 0; }
+      .data-settings-row .item-label {
+        font-size: .875rem;
+        font-weight: 600;
+        color: var(--text-primary);
+      }
+      .data-settings-row .item-desc {
+        margin-top: 2px;
+        font-size: .75rem;
+        color: var(--text-secondary);
+      }
+      .data-settings-row select,
+      .data-settings-row input[type="number"] {
+        width: auto;
+        min-width: 120px;
+        min-height: 40px;
+      }
+      .data-privacy-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px 16px;
+        color: var(--text-tertiary);
+        font-size: .75rem;
+      }
+      .data-privacy-foot .ui-icon { width: 14px; height: 14px; flex: 0 0 14px; }
+
+      #diagnosticsOutput {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 250px;
+        overflow: auto;
+        margin: 0;
+        padding: 14px 16px;
+        background: var(--bg-inset);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      }
+      .diagnostics-body {
+        padding: 16px 20px 18px;
+      }
+      .diagnostics-body .field-hint { margin: 0 0 12px; }
+      .diagnostics-body .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 0 0;
+        margin: 0;
+        border: 0;
+      }
+      #tab-diagnostics { display: block; }
+      #tab-diagnostics .section { margin: 0 0 12px; }
+      #tab-tips { display: block; }
+      #tab-tips .section { margin: 0 0 12px; }
+      #tab-tips .tips-list { columns: 1; }
+      #tab-tips .settings-disclosure .card,
+      #tab-tips .help-disclosure .card {
+        padding: 16px 20px;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
+      @media (max-width: 760px) {
+        .data-page-heading { align-items: flex-start; flex-direction: column; }
+        #section-setup .setup-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .data-settings-row { flex-direction: column; align-items: stretch; }
+        .provider-row-main { flex-direction: column; }
+      }
+      @media (max-width: 480px) {
+        #section-setup .setup-status { grid-template-columns: 1fr; }
+        .data-action-row .btn,
+        #section-setup .wizard-step { width: 100%; justify-content: center; }
+      }
+
+      #tab-portfolio .section-title { margin-bottom: 12px; }
+      #tab-portfolio,
+      #tab-watchlist,
+      #tab-crypto {
+        display: none;
+      }
+      #tab-portfolio.is-active,
+      #tab-watchlist.is-active,
+      #tab-crypto.is-active {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
+      .portfolio-surface-summary {
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        margin: 0;
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+      }
+      .portfolio-surface-summary > div {
+        min-width: 0;
+        padding: 16px 20px;
+        border-right: 1px solid var(--border);
+      }
+      .portfolio-surface-summary > div:last-child { border-right: 0; }
+      .portfolio-surface-summary span { display: block; color: var(--text-secondary); font-size: .75rem; }
+      .portfolio-surface-summary strong { display: block; margin-top: 2px; font-size: 1rem; }
+      @media (max-width: 680px) {
+        .portfolio-surface-summary { grid-template-columns: repeat(2, 1fr); }
+        .portfolio-surface-summary > div:nth-child(2) { border-right: 0; }
+        .portfolio-surface-summary > div:nth-child(-n+2) { border-bottom: 1px solid var(--border); }
+      }
+      .page-footer {
+        display: flex;
+        justify-content: center;
+        gap: 12px;
+        padding: 20px 12px 0;
+        border-top: 1px solid var(--border);
+      }
+      @media (max-width: 680px) {
+        .page { padding: 1.5rem 1rem 2.5rem; }
+        .settings-tabs { overflow-x: auto; padding: 0; }
+        .settings-tab { flex: 0 0 auto; min-width: 112px; }
+        .form-stack .field { display: block; }
+        .form-stack .field-label { padding-top: 0; }
+        .form-stack .field-hint { margin-top: 7px; }
+      }
       .page-footer {
         text-align: center;
         padding-top: 16px;
-        font-size: 11px;
+        font-size: var(--text-meta);
         color: var(--text-tertiary);
         line-height: 1.6;
       }
@@ -1304,7 +2223,7 @@
         <img src="icons/icon48.png" alt="MyTicker" />
         <div class="page-header-text">
           <h1>MyTicker settings</h1>
-          <p>Set up your portfolio, follow markets, and tune the live tape.</p>
+          <p>Set up your portfolio, follow markets, and view the Ticker Tape.</p>
         </div>
       </div>
 
@@ -1317,83 +2236,124 @@
       </nav>
 
       <!-- Data & diagnostics sections are presented together by the Data tab. -->
-      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden></div>
+      <div class="tab-panel" id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden>
+        <header class="data-page-heading">
+          <div>
+            <p class="eyebrow">MyTicker</p>
+            <h2>Data &amp; diagnostics</h2>
+            <p>Everything in one place. Easy to scan. Expand only what you need.</p>
+          </div>
+          <div class="data-page-health" id="dataPageHealth"><span aria-hidden="true"></span>Checking status</div>
+        </header>
+        <div class="data-workspace" id="dataWorkspace"></div>
+      </div>
       <div class="data-section-panel" id="tab-setup" hidden>
-      <div class="section" id="section-setup">
-        <div class="section-title">Setup status</div>
-        <div class="card">
+        <section class="data-surface" id="section-setup" aria-labelledby="setupStatusTitle">
+          <div class="data-surface-head">
+            <h3 id="setupStatusTitle">Setup status</h3>
+          </div>
           <div class="setup-welcome" id="setupWelcome" hidden>
             Import your broker holdings to go live. Indian stocks price automatically — no API key.
           </div>
           <div class="setup-status" id="setupStatus">
-            <div class="status-pill pending" id="statusHoldings">○ Holdings</div>
-            <div class="status-pill pending" id="statusLive">○ Live prices</div>
-            <div class="status-pill pending" id="statusSync">○ Last sync</div>
-            <div class="status-pill pending" id="statusApi">○ India prices (auto)</div>
+            <div class="status-card pending" id="statusHoldings" data-icon="ph-folder" data-label="Holdings">Holdings</div>
+            <div class="status-card pending" id="statusLive" data-icon="ph-chart-line-up" data-label="Live prices">Live prices</div>
+            <div class="status-card pending" id="statusSync" data-icon="ph-arrows-clockwise" data-label="Sync">Last sync</div>
+            <div class="status-card pending" id="statusApi" data-icon="ph-globe" data-label="India prices">India prices</div>
           </div>
-          <div class="warn-banner" id="rateLimitWarn">
+          <div class="warn-banner" id="rateLimitWarn" hidden>
             Large portfolio with a Finnhub key: free tier is ~60 calls/min. Prefer a 2+ minute refresh.
           </div>
-          <div class="setup-wizard" id="setupWizard">
-            <div class="wizard-steps">
-              <button type="button" class="wizard-step active" data-step="2" id="wizStep2" aria-current="step">1. Import holdings</button>
-              <button type="button" class="wizard-step" data-step="3" id="wizStep3">2. Go live</button>
-              <button type="button" class="wizard-step" data-step="1" id="wizStep1">US key (optional)</button>
+          <div class="data-actions" id="setupWizard">
+            <h3 class="data-subhead">Quick actions</h3>
+            <div class="data-action-row wizard-steps">
+              <button type="button" class="btn btn-primary btn-pressable wizard-step active" data-step="2" id="wizStep2" aria-current="step">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+                Import holdings
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable wizard-step" data-step="3" id="wizStep3">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-lightning"></use></svg>
+                Go live
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable wizard-step" data-step="1" id="wizStep1">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-key"></use></svg>
+                Manage keys
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable" id="quickDiagnosticsButton">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>
+                Open logs
+              </button>
             </div>
             <p class="wizard-hint" id="wizardHint">
               Start by importing a Zerodha / Groww / Upstox holdings CSV. NSE/BSE prices load without Finnhub.
             </p>
           </div>
-        </div>
-      </div>
+        </section>
       </div>
 
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
         <div class="section">
-          <div class="section-title">Watchlist</div>
+          <div class="section-intro">
+            <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-plus"></use></svg></div>
+            <div><h2>Add a ticker</h2><p>Choose a market and exchange, then add a ticker to track.</p></div>
+          </div>
           <div class="card settings-card">
+            <div class="panel-heading">Add a ticker <span>Market data stays local</span></div>
             <div class="form-stack">
               <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
               <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
-              <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
+              <div class="field"><label class="field-label" for="watchlistInput">Ticker or crypto</label><input type="text" id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
               <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
             </div>
-            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
+            <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable watchlist-action" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
             <div id="watchlistConfigured" class="configured-list field-hint"></div>
           </div>
         </div>
       </div>
-      <div class="section" id="section-error-log" style="display:none">
-        <div class="section-title" style="color: var(--red)">Setup errors</div>
-        <div class="card" style="padding: 0; overflow: hidden;">
+      <!-- Setup errors surface inside Data → Logs (kept as stable id for consolidateDataPanels). -->
+      <div class="section" id="section-error-log" hidden>
+        <div class="logs-errors-head">
+          <div class="section-title logs-errors-title">Setup errors</div>
           <div class="error-log-bar">
             <span class="error-log-count" id="errorLogCount"></span>
-            <button class="btn btn-secondary" id="copyAllErrorsButton" style="font-size:11px; padding:5px 10px;">Copy all</button>
-            <button class="btn btn-secondary" id="clearErrorLogButton" style="font-size:11px; padding:5px 10px;">Clear</button>
+            <button type="button" class="btn btn-secondary" id="copyAllErrorsButton">Copy errors</button>
+            <button type="button" class="btn btn-secondary" id="clearErrorLogButton">Clear</button>
           </div>
+        </div>
+        <div class="card logs-errors-card">
           <div id="errorLogList" class="error-log-list"></div>
         </div>
       </div>
       <!-- Tab: Portfolio -->
       <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
+      <div class="portfolio-surface-summary" aria-label="Portfolio status">
+        <div><span>Holdings imported</span><strong id="portfolioSummaryCount">—</strong></div>
+        <div><span>Broker</span><strong id="portfolioSummaryBroker">—</strong></div>
+        <div><span>Exchange</span><strong id="portfolioSummaryExchange">—</strong></div>
+        <div><span>Storage</span><strong>Local only</strong></div>
+      </div>
       <div class="section" id="section-import">
-        <div class="section-title">Portfolio import</div>
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg></div>
+          <div><h2>Import holdings</h2><p>Zerodha holdings export is recommended.</p></div>
+        </div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--brand-gold);">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below to import automatically. NSE symbols get <code class="code-gold">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
-              <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
-                Import my holdings
-              </button>
               <button type="button" class="btn btn-secondary btn-pressable" id="importSampleButton">
                 Import demo sample
               </button>
+              <!-- Kept for one-click packaged user CSV; not shown as a second Import CTA. -->
+              <button type="button" class="btn btn-secondary btn-pressable" id="importUserHoldingsButton" hidden>
+                Import packaged holdings
+              </button>
             </div>
             <p class="golden-path-note">
-              One-click import avoids browser file-permission issues. Or drop a local broker CSV below.
+              Drop a broker CSV on the zone below, or choose a file with Finder / File Explorer.
             </p>
           </div>
 
@@ -1404,7 +2364,7 @@
                 <div class="item-label">Broker preset</div>
                 <div class="item-desc">Match your CSV format if auto-detect misses</div>
               </div>
-              <select id="brokerPreset" style="width: auto; min-width: 140px;">
+              <select id="brokerPreset" class="select-inline">
                 <option value="zerodha" selected>Zerodha</option>
                 <option value="groww">Groww</option>
                 <option value="upstox">Upstox</option>
@@ -1413,16 +2373,21 @@
             </div>
           </details>
 
-          <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drop CSV file here or press Enter to browse">
-            <div class="drop-icon" aria-hidden="true">CSV</div>
-            <div class="drop-text">Drop holdings CSV here, or click to browse</div>
+          <div class="drop-zone" id="dropZone" role="region" aria-label="Drop holdings CSV here to import automatically">
+            <div class="drop-icon" aria-hidden="true">
+              <svg class="ui-icon drop-zone-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+            </div>
+            <div class="drop-text">Drop holdings CSV here to import</div>
             <div class="drop-hint">Recommended: Zerodha holdings export · also Groww, Upstox, generic</div>
             <input type="file" id="csvFile" accept=".csv,text/csv" />
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary btn-pressable" id="importCsvButton">Import holdings</button>
-            <button class="btn btn-secondary btn-pressable" id="clearHoldingsButton">Clear all</button>
+            <button type="button" class="btn btn-primary btn-pressable" id="importCsvButton">
+              <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+              Add via Finder / File Explorer
+            </button>
+            <button type="button" class="btn btn-secondary btn-pressable" id="clearHoldingsButton">Clear all</button>
             <span class="status-badge" id="csvStatus"></span>
           </div>
 
@@ -1431,9 +2396,12 @@
       </div>
 
       <div class="section preview-section-pad">
-        <div class="section-title">Holdings preview</div>
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-folder"></use></svg></div>
+          <div><h2>Holdings preview</h2><p>Header stays fixed while rows scroll.</p></div>
+        </div>
         <div class="card">
-          <div class="card-item" style="padding: 16px 20px;">
+          <div class="card-item preview-card-head">
             <div class="item-left">
               <div class="item-label">Current portfolio</div>
               <div class="item-desc">Header stays fixed while rows scroll</div>
@@ -1449,73 +2417,148 @@
 
       <!-- Data sources -->
       <div class="data-section-panel" id="tab-market" hidden>
-      <div class="section" id="section-market">
-        <div class="section-title">India (automatic)</div>
-        <div class="card card-provider-india">
-          <div style="padding: 16px 20px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">NSE &amp; BSE</div>
-                <div class="provider-sub">Yahoo Finance · no API key</div>
+      <details class="settings-disclosure data-disclosure" id="section-market" open>
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Market data providers</span>
+          <span class="data-summary-status">India · US</span>
+        </summary>
+        <div class="provider-list">
+          <div class="provider-row card card-provider-india">
+            <div class="provider-row-main">
+              <div class="provider-row-copy">
+                <div class="provider-card-header" style="margin:0;">
+                  <div>
+                    <div class="provider-name">India (Automatic)</div>
+                    <div class="provider-sub">Powered by Yahoo Finance · No API key required</div>
+                  </div>
+                </div>
+                <div class="provider-chip-row" aria-label="Exchanges">
+                  <span class="provider-chip">NSE</span>
+                  <span class="provider-chip">BSE</span>
+                </div>
               </div>
-              <span class="provider-badge auto">Auto</span>
+              <span class="provider-badge auto">Active</span>
             </div>
-            <div class="field-hint" style="margin-bottom: 14px;">All .NS and .BO symbols from your broker CSV are fetched automatically after import.</div>
+            <div class="provider-row-actions">
+              <button class="btn btn-secondary btn-pressable" id="testIndiaButton">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-wifi-high"></use></svg>
+                Test connection
+              </button>
+              <span class="status-badge" id="indiaStatus"></span>
+            </div>
+            <div class="provider-detail">
+              <div class="field-hint" style="margin:0;">All .NS and .BO symbols from your broker CSV are fetched automatically after import.</div>
+            </div>
           </div>
-          <div class="btn-row" style="padding: 0 20px 16px;">
-            <button class="btn btn-secondary btn-pressable" id="testIndiaButton">Test connection</button>
-            <span class="status-badge" id="indiaStatus"></span>
-          </div>
-        </div>
 
-        <div class="section-title" style="margin-top: 20px;">United States (optional)</div>
-        <div class="card card-provider-us">
-          <div style="padding: 16px 20px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">NYSE &amp; NASDAQ</div>
-                <div class="provider-sub">Finnhub · free key for US equities</div>
+          <div class="provider-row card card-provider-us">
+            <div class="provider-row-main">
+              <div class="provider-row-copy">
+                <div class="provider-card-header" style="margin:0;">
+                  <div>
+                    <div class="provider-name">United States (Optional)</div>
+                    <div class="provider-sub">Powered by Finnhub · Free key required. Live US prices require Finnhub.</div>
+                  </div>
+                </div>
+                <div class="provider-chip-row" aria-label="Exchanges">
+                  <span class="provider-chip">NYSE</span>
+                  <span class="provider-chip">NASDAQ</span>
+                </div>
               </div>
               <span class="provider-badge optional">Optional</span>
             </div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="finnhubApiKey">Finnhub API key</label>
-            <div class="input-with-icon">
-              <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" autocomplete="off" />
-              <button type="button" id="toggleApiKeyVisibility" class="input-eye-btn" aria-label="Show API key" title="Show / hide key">
-                <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
-            <input type="number" id="refreshMinutes" placeholder="5" min="1" max="60" />
-            <div class="field-hint">How often the background worker refreshes quotes (via chrome.alarms).</div>
-          </div>
-          <div class="btn-row" style="padding: 0 20px 16px;">
-            <button class="btn btn-primary btn-pressable" id="saveProviderButton">Save</button>
-            <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
-            <span class="status-badge" id="providerStatus"></span>
+            <details class="provider-key-disclosure" id="section-finnhub-key">
+              <summary class="provider-key-summary">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-key"></use></svg>
+                Manage Finnhub key
+              </summary>
+              <div class="provider-detail">
+                <div class="field">
+                  <label class="field-label" for="finnhubApiKey">Finnhub API key</label>
+                  <div class="input-with-icon">
+                    <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" autocomplete="off" />
+                    <button type="button" id="toggleApiKeyVisibility" class="input-eye-btn" aria-label="Show API key" title="Show / hide key">
+                      <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye"></use></svg>
+                    </button>
+                  </div>
+                  <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · kept encrypted on this device · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+                </div>
+                <div class="field" aria-labelledby="vaultProtectionTitle">
+                  <div class="field-label" id="vaultProtectionTitle">Protect your Finnhub key</div>
+                  <label class="sr-only" for="vaultUnlockCode">Create unlock code</label>
+                  <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
+                  <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
+                  <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary btn-pressable" id="saveProviderButton">Create unlock code</button>
+                  <button class="btn btn-secondary btn-pressable" id="unlockVaultButton">Unlock key</button>
+                  <button class="btn btn-secondary btn-pressable" id="lockVaultButton">Lock key</button>
+                  <button class="btn btn-secondary btn-pressable" id="replaceVaultButton">Replace key</button>
+                  <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
+                  <span class="status-badge" id="providerStatus"></span>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
+      </details>
+      <details class="settings-disclosure data-disclosure">
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg>Crypto prices</span>
+          <span class="data-summary-status">CoinGecko · Binance fallback</span>
+        </summary>
+        <div class="settings-disclosure-body">
+          <div class="data-inline-note">Crypto quotes use CoinGecko first and Binance only for mapped liquid pairs. No Finnhub key is required. Configure symbols on the Crypto tab.</div>
+        </div>
+      </details>
+      <details class="settings-disclosure data-disclosure" id="section-data-settings">
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-gear-six"></use></svg>Settings</span>
+          <span class="data-summary-status">Refresh · Storage</span>
+        </summary>
+        <div class="settings-disclosure-body">
+          <div class="data-settings-row">
+            <div>
+              <div class="item-label"><label for="refreshMinutes">Refresh interval</label></div>
+              <div class="item-desc">How often quotes refresh in the background</div>
+            </div>
+            <input type="number" id="refreshMinutes" placeholder="5" min="1" max="60" aria-describedby="refreshMinutesHelp" />
+          </div>
+          <div class="data-settings-row">
+            <div>
+              <div class="item-label">Storage</div>
+              <div class="item-desc">All data stays on this browser</div>
+            </div>
+            <span class="provider-badge auto">Local (chrome.storage.local)</span>
+          </div>
+          <p class="field-hint" id="refreshMinutesHelp" style="padding: 0 20px 4px;">Background worker refreshes via chrome.alarms. Prefer 2+ minutes for large US books.</p>
+          <div class="data-privacy-foot">
+            <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-lock-simple"></use></svg>
+            Private by design. Portfolio stays on this device; live quotes come only from named providers.
+          </div>
+        </div>
+      </details>
       </div>
-      </div>
+
       <!-- Tab: Crypto -->
       <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
       <div class="section" id="section-crypto">
-        <div class="section-title">Crypto (advanced)</div>
-        <div class="card crypto-details" id="cryptoDetails">
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg></div>
           <div>
+            <h2>Crypto (advanced)</h2>
+            <p>Optional third strip group after holdings and watchlist.</p>
+          </div>
+        </div>
+        <div class="card crypto-details settings-card" id="cryptoDetails">
+          <div class="panel-heading">Crypto list <span>CoinGecko primary · Binance fallback</span></div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label">Crypto list</div>
+              <div class="item-label" id="labelCryptoMode">Mode</div>
+              <div class="item-desc">Off, Top 5, or a manual selection</div>
             </div>
-            <select id="cryptoMode" style="width: auto; min-width: 160px;">
+            <select id="cryptoMode" class="select-inline-wide" aria-labelledby="labelCryptoMode">
               <option value="off">Off</option>
               <option value="top5">Top 5</option>
               <option value="manual">Manual</option>
@@ -1525,20 +2568,52 @@
             <section class="crypto-selector" aria-label="Manual crypto selection">
               <div class="crypto-search-region">
                 <label class="field-label" for="cryptoSearch">Search supported crypto</label>
-                <input id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
+                <input type="text" id="cryptoSearch" autocomplete="off" placeholder="BTC, Bitcoin, ethereum…" />
                 <div id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"></div>
               </div>
               <div class="crypto-selected-region">
                 <div class="crypto-region-label">Selected coins</div>
                 <div id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"></div>
               </div>
-              <div class="field-hint crypto-selector-guidance">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
+              <div class="crypto-import-block" aria-label="Import crypto holdings CSV">
+                <div class="crypto-region-label">Import wallet CSV</div>
+                <p class="field-hint crypto-import-hint">
+                  Drop an export from <strong>Binance</strong>, <strong>Coinbase</strong>, <strong>CoinDCX</strong>, or <strong>WazirX</strong>.
+                  Only catalog coins (BTC, ETH, BNB, XRP, SOL) are kept. Live quotes still use CoinGecko primary and Binance fallback — not those apps as price APIs.
+                </p>
+                <fieldset class="crypto-import-mode" aria-label="Import mode">
+                  <legend class="sr-only">Import mode</legend>
+                  <label class="crypto-import-mode-option"><input type="radio" name="cryptoImportMode" value="merge" checked /> Merge (add quantities)</label>
+                  <label class="crypto-import-mode-option"><input type="radio" name="cryptoImportMode" value="replace" /> Replace manual list</label>
+                </fieldset>
+                <div class="drop-zone crypto-drop-zone" id="cryptoDropZone" role="region" aria-label="Drop crypto holdings CSV here to import">
+                  <div class="drop-icon" aria-hidden="true">
+                    <svg class="ui-icon drop-zone-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+                  </div>
+                  <div class="drop-text">Drop crypto CSV here to import</div>
+                  <div class="drop-hint">Wallet / holdings export · symbol + quantity columns</div>
+                  <input type="file" id="cryptoCsvFile" accept=".csv,text/csv" />
+                </div>
+                <div class="btn-row crypto-import-actions">
+                  <button type="button" class="btn btn-primary btn-pressable" id="cryptoImportCsvButton">
+                    <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+                    Add via Finder / File Explorer
+                  </button>
+                  <span class="status-badge" id="cryptoImportStatus"></span>
+                </div>
+              </div>
+              <div class="field-hint crypto-selector-guidance">
+                <ul class="crypto-guidance-list">
+                  <li><strong>Top 5:</strong> BTC, ETH, BNB, XRP, SOL — BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana.</li>
+                  <li><strong>Providers:</strong> CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs.</li>
+                  <li><strong>Tape:</strong> No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</li>
+                </ul>
+              </div>
             </section>
           </div>
-          <div class="btn-row">
+          <div class="btn-row form-action-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>
             <span class="status-badge" id="cryptoStatus"></span>
-          </div>
           </div>
         </div>
       </div>
@@ -1547,8 +2622,20 @@
       <!-- Tab: Appearance -->
       <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="nav-appearance" hidden>
       <div class="section">
-        <div class="section-title">Appearance</div>
-        <div class="card">
+        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg></div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the Ticker Tape behaves.</p></div></div>
+        <details class="settings-disclosure" open>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker Tape</span></summary>
+          <div class="settings-disclosure-body">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label" id="labelTickerTapeEnabled">Show Ticker Tape</div>
+              <div class="item-desc">Ambient strip on web pages. Turn off to use only the popup.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="tickerTapeEnabled" checked aria-labelledby="labelTickerTapeEnabled" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
           <div class="card-item">
             <div class="item-left">
               <div class="item-label" id="labelShowStocks">Show stocks</div>
@@ -1567,6 +2654,11 @@
               <span class="toggle-slider"></span>
             </label>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure">
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Theme</span></summary>
+          <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="themeHelp">
               <legend class="field-label">Theme</legend>
@@ -1574,62 +2666,87 @@
               <label><input type="radio" name="theme" value="light" /> Light</label>
               <label><input type="radio" name="theme" value="dark" /> Dark</label>
             </fieldset>
-            <div class="field-hint" id="themeHelp">System follows your browser. The live tape uses the same choice.</div>
+            <div class="field-hint" id="themeHelp">System follows your browser. The Ticker Tape uses the same choice.</div>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure">
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker Tape speed</span></summary>
+          <div class="settings-disclosure-body">
           <div class="field">
-            <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
-            <input type="number" id="tickerSpeed" placeholder="40" min="5" max="300" />
-            <div class="field-hint">Lower = faster scroll. Minimum 5 seconds.</div>
+            <label class="field-label" for="tickerSpeed">Seconds per loop</label>
+            <div class="speed-control">
+              <input type="range" id="tickerSpeedRange" min="5" max="300" step="1" value="40" aria-label="Ticker Tape speed" aria-valuemin="5" aria-valuemax="300" aria-controls="tickerSpeed" />
+              <div class="speed-value-wrap">
+                <input type="number" id="tickerSpeed" min="5" max="300" step="1" value="40" inputmode="numeric" />
+                <span class="speed-unit" aria-hidden="true">s</span>
+              </div>
+            </div>
+            <div class="field-hint">Lower = faster scroll. Range 5–300 seconds.</div>
           </div>
+          </div>
+        </details>
+        <details class="settings-disclosure">
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Ticker Tape size</span></summary>
+          <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
-              <legend class="field-label">Tape size</legend>
+              <legend class="field-label">Ticker Tape size</legend>
               <label><input type="radio" name="tapeScale" value="compact" /> Compact (0.92×)</label>
               <label><input type="radio" name="tapeScale" value="comfortable" checked /> Comfortable (1.08×)</label>
               <label><input type="radio" name="tapeScale" value="large" /> Large (1.20×)</label>
             </fieldset>
-            <div class="field-hint" id="tapeSizeHelp">Changes the tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
+            <div class="field-hint" id="tapeSizeHelp">Changes the Ticker Tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
           </div>
-          <div class="btn-row">
-            <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save</button>
+          </div>
+        </details>
+        <div class="card" style="margin-top: 14px; overflow: hidden;">
+          <div class="btn-row" style="padding: 18px 24px;">
+            <button class="btn btn-primary btn-pressable" id="saveAppearanceButton">Save changes</button>
             <span class="status-badge" id="appearanceStatus"></span>
           </div>
         </div>
       </div>
       </div>
 
-      <!-- Diagnostics -->
+      <!-- Logs (diagnostics + setup errors) -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
-        <div class="section">
-          <div class="section-title">Diagnostics</div>
-          <div class="card" style="padding: 20px;">
-            <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
-            <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
-            <div class="btn-row" style="padding: 14px 0 0;">
-              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy diagnostics</button>
+        <details class="settings-disclosure data-disclosure" id="section-diagnostics" open>
+          <summary>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Logs</span>
+            <span class="data-summary-status" id="diagnosticsSummaryStatus">Copy-safe operational log</span>
+          </summary>
+          <div class="diagnostics-body">
+            <p class="field-hint">One place for operational logs. Safe to copy: build, counts, provider availability, poll health, and refresh lifecycle. Never includes keys, quantities, prices, or portfolio values. Setup errors appear below when something fails.</p>
+            <pre id="diagnosticsOutput" aria-live="polite"></pre>
+            <div class="btn-row">
+              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy log</button>
               <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
             </div>
+            <div id="logsErrorsHost" class="logs-errors-host"></div>
           </div>
-        </div>
-        <div class="section">
-          <div class="section-title">What changed</div>
-          <div class="card" style="padding: 20px 24px;">
+        </details>
+        <details class="settings-disclosure data-disclosure">
+          <summary>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-question"></use></svg>Quick help · What changed</span>
+          </summary>
+          <div class="diagnostics-body">
             <ul class="tips-list">
-              <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
+              <li><strong>Ticker Tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
               <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
               <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
             </ul>
           </div>
-        </div>
+        </details>
       </div>
       <!-- Reference notes live with data & diagnostics. -->
       <div class="data-section-panel" id="tab-tips" hidden>
       <div class="section">
         <div class="section-title">Getting started</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>India-first:</strong> Import a Zerodha / Groww / Upstox holdings CSV on the <strong>Portfolio</strong> tab. NSE/BSE symbols get <code style="color: var(--text-secondary);">.NS</code> / <code style="color: var(--text-secondary);">.BO</code> and price automatically via Yahoo — no API key.</li>
-            <li><strong>Toggle the strip:</strong> Use the popup or <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>.</li>
+            <li><strong>Toggle the Ticker Tape:</strong> Press <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: var(--text-meta); border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>, or use Appearance → Show Ticker Tape. Open the popup for your day P&amp;L summary.</li>
             <li><strong>Pause scroll:</strong> Hover the ticker strip to freeze it while you read a symbol.</li>
             <li><strong>Re-import</strong> whenever your broker holdings change — import merges/replaces the stored portfolio on this device.</li>
           </ul>
@@ -1637,18 +2754,18 @@
       </div>
       <div class="section">
         <div class="section-title">US stocks, watchlist &amp; crypto</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li>A <strong>Finnhub</strong> key is still required for US equities under <strong>Market data</strong> (optional for pure India portfolios).</li>
             <li>Crypto uses <strong>CoinGecko</strong> first for supported canonical assets and <strong>Binance</strong> only as a fallback for mapped liquid assets; no Finnhub key is required for those quotes.</li>
-            <li>Your manually added watchlist uses the symbol and exchange you select in the popup. It appears as the second strip group, after holdings; crypto follows as the third group when enabled.</li>
+            <li>Your watchlist uses the symbol and exchange you select on the <strong>Watchlist</strong> tab. It appears as the second strip group, after holdings; crypto follows as the third group when enabled. The popup is for reviewing quotes, not adding symbols.</li>
             <li>Free Finnhub tiers are rate-limited (~60 calls/min). Prefer a 2+ minute refresh for large US books.</li>
           </ul>
         </div>
       </div>
       <div class="section">
         <div class="section-title">How MyTicker works</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>Service worker</strong> fetches quotes on a <code style="color: var(--text-secondary);">chrome.alarms</code> schedule (not <code style="color: var(--text-secondary);">setInterval</code>), so fetches continue when the worker sleeps.</li>
             <li><strong>Content script</strong> injects a closed <strong>Shadow DOM</strong> ticker at the top of pages so host CSS cannot break the strip (and vice versa).</li>
@@ -1659,7 +2776,7 @@
       </div>
       <div class="section">
         <div class="section-title">Troubleshooting</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>File permission / Error reading file:</strong> use <em>Import my holdings</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
             <li><strong>Missing Exchange/Currency columns:</strong> Zerodha-style exports are fine — we default NSE + INR when those columns are absent.</li>

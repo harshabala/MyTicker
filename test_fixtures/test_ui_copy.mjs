@@ -13,16 +13,24 @@ function assert(condition, message) {
   }
 }
 
-const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
+const [popupHtml, popupJs, optionsHtml, optionsJs, brandCss, motionCss, tickerCss, manifestSource, priceProvidersSource, backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, sharedSource, vaultSource, readmeSource, privacySource, storeListingSource] = await Promise.all([
   readFile(new URL("../popup.html", import.meta.url), "utf8"),
   readFile(new URL("../popup.js", import.meta.url), "utf8"),
   readFile(new URL("../options.html", import.meta.url), "utf8"),
   readFile(new URL("../options.js", import.meta.url), "utf8"),
   readFile(new URL("../brand.css", import.meta.url), "utf8"),
+  readFile(new URL("../motion.css", import.meta.url), "utf8"),
   readFile(new URL("../ticker.css", import.meta.url), "utf8"),
   readFile(new URL("../manifest.json", import.meta.url), "utf8"),
   readFile(new URL("../priceProviders.js", import.meta.url), "utf8"),
   readFile(new URL("../background.js", import.meta.url), "utf8"),
+  readFile(new URL("../contentScript.js", import.meta.url), "utf8"),
+  readFile(new URL("../contentShared.js", import.meta.url), "utf8"),
+  readFile(new URL("../csvParser.js", import.meta.url), "utf8"),
+  readFile(new URL("../metrics.js", import.meta.url), "utf8"),
+  readFile(new URL("../onboarding.js", import.meta.url), "utf8"),
+  readFile(new URL("../shared.js", import.meta.url), "utf8"),
+  readFile(new URL("../vault.js", import.meta.url), "utf8"),
   readFile(new URL("../README.md", import.meta.url), "utf8"),
   readFile(new URL("../PRIVACY.md", import.meta.url), "utf8"),
   readFile(new URL("../STORE_LISTING.md", import.meta.url), "utf8")
@@ -83,11 +91,48 @@ assert(optionsHtml.includes("<h1>MyTicker settings</h1>"), "uses canonical MyTic
 assert(manifest.name === "MyTicker", "uses canonical MyTicker name in the extension manifest");
 assert(manifest.action?.default_title === "MyTicker", "uses canonical MyTicker name in the extension action title");
 assert(manifest.version === "0.5.0", "ships the unmistakable 0.5.0 diagnostics build");
+
+console.log("\n🎞️ Tape motion safety");
+assert(!contentScriptSource.includes("BODY_TRANSITION_ATTR") && !/offsetHeight/.test(contentScriptSource) && !/style\.transition\s*=\s*`margin-top/.test(contentScriptSource), "reserves and restores page layout immediately without animating margin or forcing a synchronous reflow");
+assert(!/body \*,\s*\n\s*body \*::before,\s*\n\s*body \*::after/.test(motionCss), "does not globally suppress every extension transition for reduced-motion users");
+assert(/@media \(prefers-reduced-motion: reduce\)[\s\S]*?\.btn-pressable:active[\s\S]*?transform:\s*none/.test(motionCss), "keeps reduced-motion policy scoped to positional button feedback");
+assert(/\.pts-ticker-bar\.pts-reduced-motion[\s\S]*?animation:\s*none[\s\S]*?transition:\s*none/.test(tickerCss), "stops tape movement and bar transitions while preserving the static readable tape");
+
+console.log("\n🔒 Release-gate privacy and extension-boundary audit");
+const expectedProviderHosts = [
+  "https://finnhub.io/*",
+  "https://query1.finance.yahoo.com/*",
+  "https://query2.finance.yahoo.com/*",
+  "https://api.coingecko.com/*",
+  "https://data-api.binance.vision/*"
+];
+assert(JSON.stringify(manifest.host_permissions) === JSON.stringify(expectedProviderHosts), "declares only the required Yahoo, CoinGecko, Binance, and Finnhub provider hosts");
+assert(manifest.content_security_policy?.extension_pages === "script-src 'self'; object-src 'self';", "pins extension pages to self-hosted scripts with an explicit MV3 CSP");
+assert(manifest.permissions?.length === 2 && manifest.permissions.includes("storage") && manifest.permissions.includes("alarms"), "requests only storage and alarms extension permissions");
+assert(manifest.web_accessible_resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.[0] === "ticker.css" && manifest.web_accessible_resources[0]?.matches?.join() === "<all_urls>", "exposes only the tape stylesheet to pages where the closed shadow-root tape needs it");
+const releaseCopy = `${readmeSource}\n${privacySource}\n${storeListingSource}`;
+for (const host of ["finnhub.io", "query1.finance.yahoo.com", "query2.finance.yahoo.com", "api.coingecko.com", "data-api.binance.vision"]) {
+  assert(releaseCopy.includes(host), `discloses the ${host} remote host`);
+}
+assert(/all pages[\s\S]{0,160}(?:reserve space|before page content)/i.test(releaseCopy), "explains all-page tape access as early layout reservation before page content");
+assert(/encrypted[\s\S]{0,120}(?:local|browser)[\s\S]{0,160}(?:session|restart)/i.test(releaseCopy), "discloses the encrypted local Finnhub vault and session-only unlock after restart");
+assert(/no portfolio telemetry/i.test(releaseCopy), "explicitly rules out portfolio telemetry");
+const extensionSource = [backgroundSource, contentScriptSource, contentSharedSource, csvParserSource, metricsSource, onboardingSource, optionsJs, popupJs, priceProvidersSource, sharedSource, vaultSource].join("\n");
+assert(!/\beval\s*\(|new\s+Function\s*\(|https?:\/\/[^\s'"`]+\.js/i.test(extensionSource), "contains no unsafe dynamic code or remotely hosted JavaScript");
+assert(!/innerHTML\s*=\s*`[^`]*\$\{/m.test(extensionSource), "keeps HTML insertion free of interpolated values");
 for (const tab of ["portfolio", "watchlist", "crypto", "data", "appearance"]) {
   assert(optionsHtml.includes(`data-tab="${tab}"`), `includes ${tab} in the task-based settings navigation`);
 }
 assert(!optionsHtml.includes('data-tab="setup"') && !optionsHtml.includes('data-tab="market"') && !optionsHtml.includes('data-tab="optional"'), "replaces implementation-oriented settings tabs with task-based navigation");
 assert(optionsHtml.includes('id="copyDiagnosticsButton"'), "includes a copy diagnostics button");
+assert(optionsHtml.includes("Protect your Finnhub key") && optionsHtml.includes('id="saveProviderButton">Create unlock code') && optionsHtml.includes('id="unlockVaultButton"') && optionsHtml.includes('id="lockVaultButton"') && optionsHtml.includes('id="replaceVaultButton"'), "offers clear compact encrypted Finnhub create, unlock, lock, and replace controls");
+assert(/<details class="provider-key-disclosure" id="section-finnhub-key">/.test(optionsHtml) && !/<details class="provider-key-disclosure" id="section-finnhub-key"[^>]*\sopen/.test(optionsHtml), "US Finnhub key form is nested in a disclosure closed by default");
+assert(optionsHtml.includes("Manage Finnhub key") && optionsHtml.includes('id="finnhubApiKey"') && optionsHtml.includes('id="vaultUnlockCode"') && optionsHtml.includes('id="vaultUnlockConfirm"') && optionsHtml.includes('id="vaultStatus"') && optionsHtml.includes('id="testConnectionButton"') && optionsHtml.includes('id="providerStatus"') && optionsHtml.includes('id="vaultProtectionTitle"') && optionsHtml.includes('id="toggleApiKeyVisibility"'), "preserves Manage Finnhub key control and all Finnhub vault element IDs");
+assert(optionsJs.includes("openFinnhubKeyDisclosure") && optionsJs.includes("sectionFinnhubKey.open = true") && optionsJs.includes("sectionMarket.open = true") && optionsJs.includes("step === 1 ? (sectionFinnhubKey || sectionMarket)"), "Manage keys wizard opens Data market section and the US key disclosure");
+assert(optionsHtml.includes('id="testIndiaButton"') && optionsHtml.includes('id="indiaStatus"'), "keeps India provider test controls compact and available");
+assert(!optionsJs.includes('finnhubApiKeyEl.value = savedKey') && optionsJs.includes('sendVaultMessage("vault-status")'), "does not preload the Finnhub key and requests non-secret vault status");
+assert(optionsJs.includes('"key unlocked" : "key locked") : "not configured"'), "diagnostics distinguish Finnhub not-configured, locked, and unlocked states");
+assert(optionsJs.includes('sendVaultMessage("vault-test-connection")'), "tests an already unlocked Finnhub key through the worker without rendering it");
 assert(optionsHtml.includes('id="refreshDiagnosticsButton"'), "includes a refresh diagnostics button");
 assert(/<button[^>]*id="refreshDiagnosticsButton"[^>]*>Refresh<\/button>/.test(optionsHtml), "Diagnostics Refresh control is a visible button labelled Refresh");
 assert(optionsJs.includes('refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics)'), "Diagnostics Refresh control renders current diagnostics on click");
@@ -105,11 +150,20 @@ assert(visibleText.includes("Live US prices require Finnhub"), "makes the US liv
 assert(visibleText.includes("BTC / Bitcoin") && visibleText.includes("SOL / Solana"), "lists the supported canonical crypto catalog");
 assert(optionsHtml.includes('<option value="off">Off</option>') && optionsHtml.includes('<option value="top5">Top 5</option>') && optionsHtml.includes('<option value="manual">Manual</option>'), "uses explicit Off, Top 5, and Manual crypto modes");
 assert(optionsHtml.includes('id="cryptoSearch"') && optionsHtml.includes('id="cryptoSelectedChips"'), "provides searchable manual crypto selection with removable chips");
+assert(optionsHtml.includes('id="cryptoDropZone"') && optionsHtml.includes('id="cryptoImportCsvButton"'), "manual crypto mode offers CSV drop and Finder import");
+assert(optionsHtml.includes("Binance") && optionsHtml.includes("Coinbase") && optionsHtml.includes("CoinDCX") && optionsHtml.includes("WazirX"), "documents supported crypto export sources for import");
+assert(/export from <strong>Binance<\/strong>/.test(optionsHtml) || optionsHtml.includes("Drop an export from"), "crypto import copy frames exchanges as CSV exports");
 assert(/<section class="crypto-selector" aria-label="Manual crypto selection">[\s\S]*?<div class="crypto-search-region">[\s\S]*?id="cryptoSearch"[\s\S]*?id="cryptoSearchResults" class="crypto-search-results" aria-live="polite"[\s\S]*?<div class="crypto-selected-region">[\s\S]*?id="cryptoSelectedChips" class="crypto-selected-chips" aria-live="polite"[\s\S]*?<div class="[^"]*crypto-selector-guidance"/.test(optionsHtml), "contains manual crypto search, selected coins, and guidance in dedicated semantic regions");
 assert(["crypto-result-list", "crypto-result-action", "crypto-selected-chip", "crypto-chip-remove"].every((className) => optionsHtml.includes(`.${className}`)), "styles add results as compact actions and selections as removable chips");
 const cryptoSelectedRegionRule = cssRuleBodyAt(optionsHtml, ".crypto-selected-region {");
 assert(/padding:\s*10px 12px;/.test(cryptoSelectedRegionRule) && /border:\s*1px solid var\(--border\);/.test(cryptoSelectedRegionRule) && /background:\s*var\(--bg-surface\);/.test(cryptoSelectedRegionRule), "gives selected crypto chips their own padded inset region");
-assert(/#cryptoManualField\.is-open\s*\{[\s\S]*?max-height:\s*none;[\s\S]*?overflow:\s*visible;/.test(optionsHtml), "allows the open manual crypto selector to grow without clipping its results or guidance");
+const setupWelcomeRule = cssRuleBodyAt(optionsHtml, ".setup-welcome {");
+const warnBannerRule = cssRuleBodyAt(optionsHtml, ".warn-banner {");
+const cryptoManualFieldRule = cssRuleBodyAt(optionsHtml, "#cryptoManualField {");
+assert(!/transition\s*:/.test(setupWelcomeRule) && !/max-height|padding:\s*0/.test(setupWelcomeRule), "shows setup guidance instantly instead of animating layout properties");
+assert(!/transition\s*:/.test(warnBannerRule) && !/max-height|padding:\s*0/.test(warnBannerRule), "shows rate-limit guidance instantly instead of animating layout properties");
+assert(!/transition\s*:/.test(cryptoManualFieldRule) && !/max-height|padding-(?:top|bottom)\s*:/.test(cryptoManualFieldRule), "shows the manual crypto selector instantly without clipping or layout animation");
+assert(optionsJs.includes("setupWelcomeEl.hidden = !showWelcome") && optionsJs.includes("rateLimitWarnEl.hidden = !status.rateLimitRisk"), "uses native hidden state for instantaneous setup disclosures");
 const cryptoResultActionRule = cssRuleBodyAt(optionsHtml, ".crypto-result-action {");
 const cryptoChipRemoveRule = cssRuleBodyAt(optionsHtml, ".crypto-chip-remove {");
 assert(/min-height:\s*32px;/.test(cryptoResultActionRule) && /width:\s*32px;/.test(cryptoChipRemoveRule) && /height:\s*32px;/.test(cryptoChipRemoveRule), "keeps crypto add and remove controls at a 32px minimum target");
@@ -119,9 +173,9 @@ assert(!/id="addWatchBtn"/.test(popupHtml), "popup has no quick-add header actio
 assert(!/quickAddInput|quickAddExchange|quickAddBtn/.test(popupHtml), "popup has no quick-add sheet inputs");
 assert(!/doQuickAdd|setPlatformShortcut|enabledToggle|shortTimeAgo/.test(popupJs), "popup has no quick-add, shortcut, tape-toggle, or footer-update handlers");
 assert(!/Ticker strip|Last updated|Local only|shortcut-hint/.test(popupHtml + popupJs), "popup omits tape controls and local-only or shortcut footer copy");
-assert(/<button[^>]*id="openOptions"[^>]*aria-label="Settings"/.test(popupHtml), "popup retains one accessible Settings action");
+assert(/<button[^>]*id="openOptions"[^>]*aria-label="MyTicker settings"/.test(popupHtml), "popup retains one accessible MyTicker settings action");
 assert((popupHtml.match(/class="icon-btn"/g) || []).length === 1, "Settings is the popup's only header action");
-assert(/id="openOptions"[\s\S]*?<path d="M19\.14,12\.94a7\.43,7\.43/.test(popupHtml), "popup Settings action uses the standard cog silhouette");
+assert(/id="openOptions"[\s\S]*?data-icon="phosphor-gear-six"[\s\S]*?viewBox="0 0 256 256"/.test(popupHtml), "popup Settings action uses the Phosphor GearSix regular icon");
 const popupCogRule = cssRuleBodyAt(popupHtml, ".icon-btn {");
 const popupCogPressedRule = cssRuleBodyAt(popupHtml, ".icon-btn:active {");
 const popupReducedMotionCogRule = mediaRuleBody(popupHtml, "prefers-reduced-motion: reduce", ".icon-btn:active");
@@ -142,6 +196,8 @@ assert(/\btransition\s*:\s*none\s*;/.test(reducedMotionTickerExit), "reduced-mot
 assert(popupJs.includes("watch-asset") && popupJs.includes("formatWatchlistAssetLabel"), "popup renders a human-readable asset label for each watchlist item");
 assert(popupHtml.includes("grid-template-columns: minmax(0, 1fr) auto auto auto auto"), "watchlist grid reserves a column for asset metadata without wrapping remove");
 assert(optionsJs.includes("cryptoManualField.hidden = !open") && optionsJs.includes("cryptoManualField.inert = !open"), "non-manual crypto controls are hidden and inert");
+const reducedMotionOptions = mediaRuleBody(optionsHtml, "prefers-reduced-motion: reduce", ".toggle-slider::before");
+assert(/transition\s*:\s*none\s*!important\s*;/.test(reducedMotionOptions), "reduced-motion preferences make toggle-thumb position changes immediate");
 assert(optionsJs.includes('resultList.className = "crypto-result-list"') && optionsJs.includes('button.className = "crypto-result-action"') && optionsJs.includes('chip.className = "crypto-selected-chip"') && optionsJs.includes('remove.className = "crypto-chip-remove"'), "renders the manual crypto controls with their contained selector semantics");
 assert(!priceProvidersSource.includes("US/crypto: Finnhub"), "price provider header describes the implemented crypto providers");
 for (const [name, source] of Object.entries({ backgroundSource, readmeSource, privacySource, storeListingSource })) {
@@ -176,6 +232,11 @@ assert(goldThemes.every(([, tokens]) => ["text-tertiary", "bg", "bg-surface"].ev
 assert(/\.checklist-item\.done \.check-icon\s*\{[\s\S]*?background:\s*var\(--bg-surface\)[\s\S]*?color:\s*var\(--green\)/.test(popupHtml) && goldThemes.every(([, tokens]) => ["green", "bg-surface"].every((name) => tokens[name]) && contrastRatio(tokens.green, tokens["bg-surface"]) >= 4.5), "keeps the 11px success glyph at WCAG AA contrast against its resolved neutral checklist chip background");
 assert((brandCss.match(/--brand-gold:/g) || []).length === 4 && (brandCss.match(/--brand-gold-hover:/g) || []).length === 4, "declares gold tokens once per canonical theme layer without overridden duplicates");
 assert(!/transition:\s*all\s+0\.15s\s+ease/.test(optionsHtml + popupHtml), "uses motion tokens and explicit transition properties instead of transition-all");
+assert(!/grid-template-rows\s*:/.test(optionsHtml) && !/details\.crypto-details\s*>\s*div\s*\{[\s\S]*?transition:/.test(optionsHtml), "opens crypto details immediately instead of animating layout geometry");
+assert(/target\.scrollIntoView\(\{ behavior: prefersReducedMotion\(\) \? "auto" : "smooth", block: "start" \}\)/.test(optionsJs), "uses an instant wizard scroll for reduced-motion users");
+assert(/\.btn-copy-entry\s*\{[\s\S]*?transition:\s*color var\(--motion-fast\) var\(--ease-out\), border-color var\(--motion-fast\) var\(--ease-out\);/.test(optionsHtml), "limits copy affordance motion to its color and border changes");
+assert(!/fadeOutView\(/.test(popupJs) && !/waitMs\(/.test(popupJs), "does not make popup state changes wait for a symmetric fade-out");
+assert(/function mountView\(container, viewEl, viewName, \{ animate = false \} = \{\}\)/.test(popupJs), "keeps popup view mounting immediate unless a deliberate transition is requested");
 assert(/html\[data-theme="dark"\]\s*\{[\s\S]*?--bg:\s*#0c0c0d;[\s\S]*?--bg-surface:\s*#18181a;/.test(brandCss), "uses graphite and obsidian rather than slate-blue dark surfaces");
 assert(/\.tab\[aria-selected="true"\]::after\s*\{[\s\S]*?background:\s*var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the selected popup tab underline");
 assert(/\.icon-btn:focus-visible\s*\{[\s\S]*?var\(--brand-gold\)/.test(popupHtml), "uses MyTicker gold for the Settings gear focus ring");
@@ -204,9 +265,12 @@ assert(optionsJs.includes('return requested ? (["setup", "market", "diagnostics"
 assert(optionsHtml.includes('id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-data"'), "Data tab controls its single composite panel");
 assert((optionsHtml.match(/role="tabpanel" aria-labelledby="nav-data"/g) || []).length === 1, "Data tab is the label for exactly one tabpanel");
 assert(optionsHtml.includes('id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden'), "Data sections are wrapped by the composite Data tabpanel");
-assert(optionsJs.includes('["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"]') && optionsJs.includes('dataPanel.append(section)'), "moves all Data sections into the composite panel before tab activation");
+assert(optionsJs.includes('["tab-setup", "tab-market", "tab-diagnostics", "tab-tips"]') && optionsJs.includes('dataPanel.append(section)') && optionsJs.includes('logsErrorsHost') && optionsJs.includes('section-error-log'), "moves Data sections into the composite panel and nests setup errors under Logs");
 assert(/\.toggle-switch\s*\{[\s\S]*?height: 32px;/.test(optionsHtml), "toggle controls provide a 32px minimum hit area");
-assert(optionsHtml.includes('<legend class="field-label">Tape size</legend>'), "uses the concise Tape size label");
+assert(optionsHtml.includes('<legend class="field-label">Ticker Tape size</legend>'), "uses the Ticker Tape size label");
+assert(optionsHtml.includes('id="tickerTapeEnabled"') && optionsHtml.includes("Show Ticker Tape"), "offers a Ticker Tape on/off control in Appearance");
+assert(optionsHtml.includes("Add via Finder / File Explorer"), "uses a single Finder/File Explorer import path under the drop zone");
+assert(optionsHtml.includes(">Logs</span>") || optionsHtml.includes(">Logs</"), "unifies diagnostics under Logs");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");
@@ -219,9 +283,13 @@ assert(/\.form-action-row\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Setti
 assert(/\.configured-list\s*\{[^}]*padding:\s*12px\s+14px/.test(optionsHtml), "Configured watchlist state has a padded list container");
 assert(/\.configured-list\.field-hint\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Configured watchlist spacing overrides the later helper-text margin");
 assert(/\.btn-row\.form-action-row\s*\{[^}]*padding:\s*0/.test(optionsHtml), "Watchlist action-row padding explicitly overrides the base button row");
-const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || "";
-assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, symbol/hint, error, action, then configured-list order");
-assert(optionsJs.includes('button.textContent = saved ? "Saved ✓" : "Save"') && optionsJs.includes('function setSettingsSaveFeedback(scope, saved, message = "")'), "Crypto and Appearance Save controls provide persistent saved feedback");
+const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || optionsHtml.match(/id="tab-watchlist"[\s\S]*?<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/)?.[1] || "";
+assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, ticker/hint, error, action, then configured-list order");
+assert(optionsJs.includes('function setSettingsSaveFeedback(scope, saved, message = "")') && optionsJs.includes('"Saved ✓"') && optionsJs.includes('scope === "appearance" ? "Save changes" : "Save"'), "Crypto and Appearance Save controls provide persistent saved feedback");
+assert(optionsHtml.includes('id="saveAppearanceButton">Save changes</button>') && optionsHtml.includes('id="saveCryptoButton">Save</button>'), "Appearance uses Save changes; Crypto keeps Save");
+assert(optionsHtml.includes('id="tickerSpeedRange"') && optionsHtml.includes('id="tickerSpeed"') && /id="tickerSpeedRange"[^>]*min="5"[^>]*max="300"/.test(optionsHtml) && /id="tickerSpeed"[^>]*min="5"[^>]*max="300"/.test(optionsHtml), "ticker speed exposes linked range and number controls from 5 to 300");
+assert(optionsJs.includes("setTickerSpeedControls") && optionsJs.includes("tickerSpeedRangeEl"), "options.js keeps range and number ticker speed controls in sync");
+assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('--brand-gold-muted') && /tape-size-options label:has\(input:checked\)[\s\S]*?border-color:\s*var\(--brand-gold\)/.test(optionsHtml), "selected theme/tape-size options use gold outline selection styling");
 assert(optionsJs.includes('if (!storageSaveSucceeded())') && optionsJs.includes('setSettingsSaveFeedback("appearance", true)') && optionsJs.includes('setSettingsSaveFeedback("crypto", true)'), "only marks settings saved after each storage write succeeds");
 assert(optionsJs.includes('markSettingsSaveDirty("appearance")') && optionsJs.includes('markSettingsSaveDirty("crypto")'), "returns saved controls to Save when their relevant settings change");
 assert(optionsJs.includes('selectedCrypto.push({ symbol: coin.id, quantity: 1 });\n        markSettingsSaveDirty("crypto")') && optionsJs.includes('selectedCrypto = selectedCrypto.filter((entry) => entry.symbol !== item.symbol);\n      markSettingsSaveDirty("crypto")'), "manual crypto additions and removals reset the saved acknowledgement");

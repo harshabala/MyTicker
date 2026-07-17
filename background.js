@@ -11,11 +11,17 @@ import {
   withTickerItems,
   hydrateTickerQuoteItems,
   appendDiagnosticLogEntry
-  , normalizeCryptoConfig
+  , normalizeCryptoConfig,
+  migrateSettings
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
+import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial } from "./vault.js";
+
+const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
+const FINNHUB_SESSION_KEY = "pts_finnhub_vault_aes_material";
+const LEGACY_FINNHUB_KEY = "pts_price_api_key";
 
 const DEFAULT_TOP5_CRYPTO = ["bitcoin", "ethereum", "binancecoin", "ripple", "solana"];
 const CRYPTO_ID_BY_SYMBOL = {
@@ -63,6 +69,7 @@ async function savePollHealth() {
 }
 
 let pollHealthLoaded = false;
+let settingsMigrationInFlight = null;
 
 async function recordDiagnostic(entry) {
   const data = await chrome.storage.local.get([STORAGE_KEYS.diagnosticsLog]);
@@ -92,17 +99,116 @@ function sanitizeContentError(error) {
 }
 
 async function recordContentLifecycle(message, sender) {
-  if (!CONTENT_LIFECYCLE_STAGES.has(message?.stage)) return;
+  if (!CONTENT_LIFECYCLE_STAGES.has(message?.payload?.stage) || !isTrustedContentSender(sender, message.payload)) return;
   const timestamp = Date.now();
   const status = {
-    origin: safeOrigin(sender?.url) || safeOrigin(message.origin),
-    stage: message.stage,
+    origin: safeOrigin(sender.url),
+    stage: message.payload.stage,
     timestamp
   };
-  const error = sanitizeContentError(message.error);
+  const error = sanitizeContentError(message.payload.error);
   if (error) status.error = error;
   await chrome.storage.local.set({ [STORAGE_KEYS.contentScriptStatus]: status });
-  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.stage });
+  await recordDiagnostic({ timestamp, event: "content-script-lifecycle", stage: message.payload.stage });
+}
+
+function isTrustedExtensionSender(sender) {
+  const id = String(chrome.runtime.id || "");
+  return !!id && sender?.id === id && String(sender?.url || "").startsWith(`chrome-extension://${id}/`);
+}
+
+function isTrustedContentSender(sender, payload) {
+  const senderOrigin = safeOrigin(sender?.url);
+  return sender?.id === chrome.runtime.id && !!sender?.tab && sender?.frameId === 0 && /^https?:\/\//.test(senderOrigin) && senderOrigin === safeOrigin(payload?.origin);
+}
+
+async function getVaultStatus() {
+  const [local, session] = await Promise.all([
+    chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]),
+    chrome.storage.session.get([FINNHUB_SESSION_KEY])
+  ]);
+  return { configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]), unlocked: !!session[FINNHUB_SESSION_KEY] };
+}
+
+async function createOrReplaceVault(payload) {
+  const code = String(payload?.unlockCode || "");
+  const apiKey = String(payload?.apiKey || "").trim();
+  if (code.length < 6 || !apiKey) throw new Error("Invalid vault input");
+  const record = await createVaultRecord(apiKey, code);
+  await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
+  const material = await deriveVaultKeyMaterial(record, code);
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
+  await chrome.storage.local.remove(LEGACY_FINNHUB_KEY);
+  return getVaultStatus();
+}
+
+async function unlockVault(payload) {
+  const code = String(payload?.unlockCode || "");
+  if (code.length < 6) throw new Error("Invalid unlock code");
+  const local = await chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]);
+  let record = local[FINNHUB_VAULT_KEY];
+  if (local[FINNHUB_VAULT_KEY]) {
+    // Validate the code before storing derived material; plaintext stays local.
+    const material = await deriveVaultKeyMaterial(record, code);
+    await decryptVaultRecordWithMaterial(record, material);
+    await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
+    return getVaultStatus();
+  } else if (local[LEGACY_FINNHUB_KEY]) {
+    const apiKey = String(local[LEGACY_FINNHUB_KEY]).trim();
+    record = await createVaultRecord(apiKey, code);
+    await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
+    await chrome.storage.local.remove(LEGACY_FINNHUB_KEY);
+  } else {
+    throw new Error("Vault not configured");
+  }
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: await deriveVaultKeyMaterial(record, code) });
+  return getVaultStatus();
+}
+
+async function lockVault() {
+  await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
+  return getVaultStatus();
+}
+
+async function getUnlockedFinnhubKey() {
+  const [local, session] = await Promise.all([
+    chrome.storage.local.get([FINNHUB_VAULT_KEY]),
+    chrome.storage.session.get([FINNHUB_SESSION_KEY])
+  ]);
+  if (!local[FINNHUB_VAULT_KEY] || !session[FINNHUB_SESSION_KEY]) return "";
+  return decryptVaultRecordWithMaterial(local[FINNHUB_VAULT_KEY], session[FINNHUB_SESSION_KEY]);
+}
+
+async function testVaultConnection() {
+  const apiKey = await getUnlockedFinnhubKey();
+  if (!apiKey) throw new Error("Vault locked");
+  const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`);
+  if (!response.ok) throw new Error("Finnhub request failed");
+  const quote = await response.json();
+  if (!Number.isFinite(quote?.c)) throw new Error("Finnhub quote unavailable");
+  return { symbol: "AAPL", price: quote.c };
+}
+
+async function migrateStoredSettings() {
+  if (settingsMigrationInFlight) return settingsMigrationInFlight;
+  const migration = (async () => {
+    const data = await chrome.storage.sync.get([STORAGE_KEYS.settings, STORAGE_KEYS.settingsSchema]);
+    const previous = data[STORAGE_KEYS.settings];
+    const migrated = migrateSettings(previous);
+    // Chrome Sync has no compare-and-swap for an object value. Never replace
+    // pts_settings during worker startup: that could overwrite a newer Options
+    // or command write. Persist the migration version independently instead.
+    if (data[STORAGE_KEYS.settingsSchema] !== migrated.schemaVersion) {
+      await chrome.storage.sync.set({ [STORAGE_KEYS.settingsSchema]: migrated.schemaVersion });
+    }
+    return migrated;
+  })();
+  settingsMigrationInFlight = migration;
+  try {
+    return await migration;
+  } finally {
+    if (settingsMigrationInFlight === migration) settingsMigrationInFlight = null;
+  }
 }
 
 function providerQuoteCounts(quotes) {
@@ -126,33 +232,45 @@ async function ensurePollHealthLoaded() {
 ensurePollHealthLoaded();
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
-  if (message?.action === "content-script-lifecycle") {
+  if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload || typeof message.payload !== "object") return;
+  if (message.type === "content-script-lifecycle") {
     recordContentLifecycle(message, sender).catch((err) => {
       console.warn("[MyTicker] could not record content lifecycle", err);
     });
     return;
   }
-  if (message?.action === "poll-now") {
+  if (message.type === "poll-now" && isTrustedExtensionSender(sender)) {
     handlePricePoll().then(() => sendResponse({ ok: true })).catch((err) => {
       console.error("[MyTicker] poll-now failed", err);
-      sendResponse({ ok: false, error: String(err) });
+      sendResponse({ ok: false, error: "Unable to refresh prices" });
     });
+    return true;
+  }
+  if (!isTrustedExtensionSender(sender)) return;
+  if (message.type === "vault-status") {
+    getVaultStatus().then((status) => sendResponse({ ok: true, status }));
+    return true;
+  }
+  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock"].includes(message.type)) {
+    const action = message.type === "vault-unlock" ? unlockVault
+      : message.type === "vault-lock" ? lockVault : createOrReplaceVault;
+    action(message.payload).then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault operation failed" }));
+    return true;
+  }
+  if (message.type === "vault-test-connection") {
+    testVaultConnection().then((result) => sendResponse({ ok: true, result })).catch(() => sendResponse({ ok: false, error: "Unable to test Finnhub connection" }));
     return true;
   }
 });
 
 chrome.runtime.onInstalled.addListener((details) => {
-  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    if (!data[STORAGE_KEYS.settings]) {
-      chrome.storage.sync.set({ [STORAGE_KEYS.settings]: DEFAULT_SETTINGS });
-    }
-    const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+  migrateStoredSettings().then((settings) => {
     const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
     chrome.alarms.create("price-poll", {
       delayInMinutes: 0.1,
       periodInMinutes: interval
     });
-  });
+  }).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
   if (details.reason === "install") {
     chrome.storage.local.set({
@@ -167,8 +285,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 });
 
 // Re-create alarm on service worker startup (MV3 workers restart frequently).
-chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-  const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+migrateStoredSettings().then((settings) => {
   const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
   chrome.alarms.get("price-poll", (existing) => {
     if (!existing) {
@@ -178,7 +295,7 @@ chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
       });
     }
   });
-});
+}).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
   if (alarm.name === "price-poll") {
@@ -189,7 +306,7 @@ chrome.alarms.onAlarm.addListener((alarm) => {
 chrome.commands.onCommand.addListener((command) => {
   if (command === "toggle-myticker") {
     chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-      const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+      const settings = migrateSettings(data[STORAGE_KEYS.settings]);
       const next = { ...settings, enabled: !settings.enabled };
       chrome.storage.sync.set({ [STORAGE_KEYS.settings]: next });
     });
@@ -208,8 +325,7 @@ async function handlePricePoll() {
       chrome.storage.local.get([
         STORAGE_KEYS.holdings,
         STORAGE_KEYS.watchlist,
-        STORAGE_KEYS.priceHistory,
-        "pts_price_api_key"
+        STORAGE_KEYS.priceHistory
       ])
     ]);
 
@@ -241,7 +357,7 @@ async function handlePricePoll() {
     const priceHistory = localData[STORAGE_KEYS.priceHistory] || {};
 
     // India (.NS/.BO) quotes via Yahoo without a key; Finnhub is optional for US symbols. Crypto uses CoinGecko with mapped Binance fallback.
-    const apiKeyOverride = (localData["pts_price_api_key"] || "").trim();
+    const apiKeyOverride = await getUnlockedFinnhubKey();
     const apiConfig = {
       apiKey: apiKeyOverride,
       baseUrl: "https://finnhub.io/api/v1"

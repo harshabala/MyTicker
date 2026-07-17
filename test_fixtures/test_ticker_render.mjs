@@ -31,6 +31,16 @@ class EventTarget {
   }
 }
 
+class StyleDeclaration {
+  constructor() { this.properties = new Map(); this.priorities = new Map(); }
+  setProperty(name, value, priority = "") { this.properties.set(name, String(value)); this.priorities.set(name, String(priority)); }
+  getPropertyValue(name) { return this.properties.get(name) || ""; }
+  getPropertyPriority(name) { return this.priorities.get(name) || ""; }
+  removeProperty(name) { const value = this.getPropertyValue(name); this.properties.delete(name); this.priorities.delete(name); return value; }
+  get marginTop() { return this.getPropertyValue("margin-top"); }
+  set marginTop(value) { this.setProperty("margin-top", value); }
+}
+
 class Element extends EventTarget {
   constructor(tagName) {
     super();
@@ -39,7 +49,7 @@ class Element extends EventTarget {
     this.parentNode = null;
     this.attributes = new Map();
     this.dataset = {};
-    this.style = { setProperty() {} };
+    this.style = new StyleDeclaration();
     this.className = "";
     this.classList = {
       add: (...names) => { this.className = `${this.className} ${names.join(" ")}`.trim(); },
@@ -63,7 +73,7 @@ class Element extends EventTarget {
   hasAttribute(name) { return this.attributes.has(name); }
   removeAttribute(name) { this.attributes.delete(name); }
   attachShadow() { this.shadowRootForTest = new Element("shadow-root"); return this.shadowRootForTest; }
-  getBoundingClientRect() { return { top: 0 }; }
+  getBoundingClientRect() { return { top: 0, height: 0 }; }
   get offsetHeight() { return 0; }
   get offsetWidth() { return 0; }
   get textContent() { return this._textContent || this.children.map((child) => child.textContent).join(""); }
@@ -77,6 +87,10 @@ class TestDocument extends EventTarget {
     this.body = null;
   }
   createElement(tagName) { return new Element(tagName); }
+  querySelector(selector) {
+    if (selector === "main") return this.chatgptShell;
+    return selector === "dialog[open]" && this.chatgptDialog?.hasAttribute("open") ? this.chatgptDialog : null;
+  }
 }
 
 const state = {
@@ -90,12 +104,34 @@ const state = {
   ]
 };
 const requestedTapeSize = process.env.TAPE_SCALE === "compact" ? "compact" : "large";
-const expectedTapeOffset = requestedTapeSize === "compact" ? 31.28 : 40.8;
 const lifecycleMessages = [];
 let settingsChangeListener;
+let resizeObserver;
+let documentObserver;
 globalThis.document = new TestDocument();
 globalThis.window = { matchMedia: () => ({ matches: false, addEventListener() {} }) };
-globalThis.requestAnimationFrame = (callback) => callback();
+globalThis.location = { hostname: "chatgpt.com", origin: "https://chatgpt.com" };
+globalThis.innerWidth = 1200;
+globalThis.innerHeight = 800;
+globalThis.ResizeObserver = class {
+  constructor(callback) { this.callback = callback; this.disconnected = false; resizeObserver = this; }
+  observe(target) { this.target = target; }
+  disconnect() { this.disconnected = true; }
+};
+globalThis.MutationObserver = class {
+  constructor(callback) { this.callback = callback; this.disconnected = false; documentObserver = this; }
+  observe(target, options) { this.target = target; this.options = options; }
+  disconnect() { this.disconnected = true; }
+  trigger(records) { this.callback(records, this); }
+};
+globalThis.getComputedStyle = (element) => ({
+  marginTop: element.style.getPropertyValue("margin-top") || "0px",
+  position: element.style.getPropertyValue("position") || "static"
+});
+globalThis.requestAnimationFrame = (callback) => { callback(); return null; };
+globalThis.cancelAnimationFrame = () => {};
+globalThis.setTimeout = (callback) => { callback(); return null; };
+globalThis.clearTimeout = () => {};
 globalThis.chrome = {
   runtime: {
     getURL: (path) => path,
@@ -120,7 +156,12 @@ assert(tickerCss.includes('.pts-ticker-bar[data-theme="light"]') && tickerCss.in
 
 await import(`../contentScript.js?test=${Date.now()}`);
 document.body = new Element("body");
-document.body.getBoundingClientRect = () => ({ top: 12 });
+document.body.getBoundingClientRect = () => ({ top: 999 });
+document.body.style.setProperty("margin-top", "12px", "important");
+document.documentElement.style.setProperty("scroll-padding-top", "7px", "important");
+document.documentElement.style.setProperty("--myticker-tape-reservation", "18px", "important");
+document.chatgptShell = new Element("main");
+document.chatgptShell.id = "myticker-chatgpt-shell";
 document.documentElement.appendChild(document.body);
 document.dispatchEvent({ type: "DOMContentLoaded" });
 
@@ -131,8 +172,48 @@ assert(Boolean(host), "mounts after the body becomes available");
 assert(host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"))?.getAttribute("data-tape-size") === requestedTapeSize, `applies the selected ${requestedTapeSize} tape size to the tape root`);
 const tickerBar = host?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"));
 const tickerParts = tickerBar?._ptsParts;
+tickerBar.getBoundingClientRect = () => ({ top: 0, height: 53 });
+resizeObserver?.callback();
 assert(tickerParts?.scrollWrapper?.getAttribute("tabindex") === "0" && tickerParts.scrollWrapper.getAttribute("role") === "group" && tickerParts.scrollWrapper.getAttribute("aria-label"), "provides a labelled focusable tape strip so keyboard focus pauses the marquee");
-assert(Math.abs(Number.parseFloat(document.body.style.marginTop) - (12 + expectedTapeOffset)) < 0.001, `uses the selected ${requestedTapeSize} tape height for the initial body offset`);
+assert(document.body.style.marginTop === "65px", "reserves the measured tape height in addition to the original body margin");
+assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "53px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "53px", "publishes the measured reservation to browser scrolling and the document custom property");
+assert(document.body.style.getPropertyPriority("margin-top") === "important" && document.documentElement.style.getPropertyPriority("scroll-padding-top") === "important" && document.documentElement.style.getPropertyPriority("--myticker-tape-reservation") === "important", "owns active reservation styles with important priority");
+assert(document.chatgptShell.className === "" && document.chatgptShell.style.getPropertyValue("padding-top") === "", "leaves the normal-flow ChatGPT main shell unchanged");
+assert(!document.documentElement.className.includes("myticker-chatgpt-tape-reserved"), "does not apply the ChatGPT adapter to the document root");
+assert(Boolean(resizeObserver?.target) && Boolean(documentObserver?.target), "observes tape size and document lifecycle changes");
+assert(documentObserver?.options?.attributes && documentObserver.options.attributeFilter?.includes("open"), "observes dialog open attribute changes without polling");
+document.chatgptDialog = new Element("dialog");
+document.chatgptDialog.setAttribute("open", "");
+document.chatgptDialog.style.setProperty("position", "fixed");
+document.chatgptDialog.style.setProperty("top", "2px", "important");
+document.chatgptDialog.style.setProperty("inset", "1px", "important");
+document.chatgptDialog.style.setProperty("height", "90vh", "important");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 20, left: 20, width: 400, height: 300, right: 420, bottom: 320 });
+documentObserver?.trigger([{ type: "attributes", attributeName: "open", target: document.chatgptDialog }]);
+assert(!document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "1px", "leaves a small fixed open dialog entirely untouched");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 0, left: 0, width: 1200, height: 800, right: 1200, bottom: 800 });
+documentObserver?.trigger([{ type: "attributes", attributeName: "open", target: document.chatgptDialog }]);
+assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "53px 0 0", "offsets only the open full-screen ChatGPT dialog once");
+assert(document.chatgptDialog.style.getPropertyPriority("inset") === "important" && document.chatgptDialog.style.getPropertyPriority("height") === "important", "owns active dialog offsets with important priority");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 53, left: 0, width: 1200, height: 747, right: 1200, bottom: 800 });
+tickerBar.getBoundingClientRect = () => ({ top: 0, height: 61 });
+resizeObserver?.callback();
+assert(document.body.style.marginTop === "73px" && document.documentElement.style.getPropertyValue("scroll-padding-top") === "61px", "reconciles the layout reservation when the measured tape height changes");
+assert(document.chatgptDialog.style.getPropertyValue("inset") === "61px 0 0" && document.chatgptDialog.style.getPropertyValue("height") === "calc(100% - 61px)", "updates the dialog offset once when the tape resizes");
+document.chatgptDialog.getBoundingClientRect = () => ({ top: 61, left: 0, width: 1200, height: 739, right: 1200, bottom: 800 });
+documentObserver?.trigger([{ type: "attributes", attributeName: "open", target: document.chatgptDialog }]);
+assert(document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("inset") === "61px 0 0", "retains the tracked dialog reservation during document reconciliation after it shifts");
+document.chatgptDialog.removeAttribute("open");
+documentObserver?.trigger([{ type: "attributes", attributeName: "open", target: document.chatgptDialog }]);
+assert(!document.chatgptDialog.className.includes("myticker-chatgpt-tape-reserved") && document.chatgptDialog.style.getPropertyValue("top") === "2px" && document.chatgptDialog.style.getPropertyPriority("top") === "important", "restores the dialog exactly when it closes");
+const previousBody = document.body;
+const previousResizeObserver = resizeObserver;
+document.body = new Element("body");
+document.body.getBoundingClientRect = () => ({ top: 700 });
+document.body.style.setProperty("margin-top", "9px", "important");
+document.documentElement.appendChild(document.body);
+documentObserver?.trigger([{ type: "childList", target: document.documentElement }]);
+assert(previousBody.style.marginTop === "12px" && document.body.style.marginTop === "70px" && previousResizeObserver.disconnected, "restores the replaced body and moves reservation ownership to the new body");
 assert(rendered.includes("Apple"), "renders cached ticker item after delayed mount");
 assert(rendered.includes("210.00"), "renders cached current price after delayed mount");
 assert(rendered.includes("₹1,450.00"), "renders Indian holdings in rupees");
@@ -143,16 +224,43 @@ assert(rendered.includes("stale"), "shows an item-level stale indicator");
 
 console.log("\n📡 content lifecycle telemetry");
 const contentStages = lifecycleMessages
-  .filter((message) => message.action === "content-script-lifecycle")
-  .map((message) => message.stage);
+  .filter((message) => message.type === "content-script-lifecycle")
+  .map((message) => message.payload?.stage);
 assert(contentStages.includes("loaded"), "reports that the content script loaded");
 assert(contentStages.includes("storage-settings-read"), "reports that settings were read");
 assert(contentStages.includes("mount-success"), "reports successful ticker mounting");
 assert(contentStages.includes("render-success"), "reports successful ticker rendering");
 
+const queuedFrames = [];
+const cancelledFrames = [];
+globalThis.requestAnimationFrame = (callback) => { queuedFrames.push(callback); return queuedFrames.length; };
+globalThis.cancelAnimationFrame = (id) => { cancelledFrames.push(id); };
+documentObserver?.trigger([{ type: "childList", target: document.documentElement }]);
+documentObserver?.trigger([{ type: "childList", target: document.documentElement }]);
+assert(queuedFrames.length === 1, "coalesces rapid document reconciliation into one animation frame");
+settingsChangeListener({ pts_settings: { newValue: { enabled: false } } }, "sync");
+assert(cancelledFrames.length === 1, "cancels a queued reconciliation when the tape is disabled");
+globalThis.requestAnimationFrame = (callback) => { callback(); return null; };
+globalThis.cancelAnimationFrame = () => {};
+
+const deferredTimers = [];
+globalThis.setTimeout = (callback) => { deferredTimers.push(callback); return deferredTimers.length; };
+globalThis.clearTimeout = (id) => { deferredTimers[id - 1] = null; };
+settingsChangeListener({ pts_settings: { newValue: { enabled: true } } }, "sync");
+const reenabledHost = document.documentElement.children.find((child) => child.id === "pts-ticker-container");
+const reenabledBar = reenabledHost?.shadowRootForTest?.children.find((child) => child.className.includes("pts-ticker-bar"));
+assert(Boolean(reenabledHost) && reenabledBar?.className.includes("pts-ticker-visible") && !reenabledBar.className.includes("pts-ticker-exiting"), "rapid re-enable cancels the pending tape exit and restores visibility");
+for (const callback of deferredTimers) callback?.();
+assert(document.documentElement.children.includes(reenabledHost), "a cancelled exit timer cannot remove the re-enabled tape host");
+globalThis.setTimeout = (callback) => { callback(); return null; };
+globalThis.clearTimeout = () => {};
+
 settingsChangeListener({ pts_settings: { newValue: { enabled: false } } }, "sync");
 document.body.dispatchEvent({ type: "transitionend", propertyName: "margin-top" });
-assert(document.body.style.marginTop === "12px", "restores the original page offset after the tape is disabled");
+assert(document.body.style.marginTop === "9px", "restores the original page offset after the tape is disabled");
+assert(document.documentElement.style.getPropertyValue("scroll-padding-top") === "7px" && document.documentElement.style.getPropertyValue("--myticker-tape-reservation") === "18px", "restores original document inline reservation values exactly");
+assert(document.body.style.getPropertyPriority("margin-top") === "important" && document.documentElement.style.getPropertyPriority("scroll-padding-top") === "important" && document.documentElement.style.getPropertyPriority("--myticker-tape-reservation") === "important", "restores inline reservation priorities exactly");
+assert(Boolean(resizeObserver?.disconnected) && Boolean(documentObserver?.disconnected), "cleans up the dialog adapter and both observers when disabled");
 
 console.log(`\n${passed} passed, ${failed} failed`);
 process.exit(failed ? 1 : 0);

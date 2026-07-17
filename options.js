@@ -1,5 +1,14 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
-import { BROKER_PRESETS, parseCsv, mapRowsToHoldings, diagnoseCsvImport } from "./csvParser.js";
+import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, migrateSettings, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
+import {
+  BROKER_PRESETS,
+  parseCsv,
+  mapRowsToHoldings,
+  diagnoseCsvImport,
+  CRYPTO_EXPORT_PRESETS,
+  detectCryptoExportPreset,
+  mapRowsToCryptoHoldings,
+  diagnoseCryptoCsvImport
+} from "./csvParser.js";
 import {
   getSetupStatus,
   markWizardStep,
@@ -15,11 +24,15 @@ const csvStatusEl = document.getElementById("csvStatus");
 const dropZone = document.getElementById("dropZone");
 
 const finnhubApiKeyEl = document.getElementById("finnhubApiKey");
+const vaultUnlockCodeEl = document.getElementById("vaultUnlockCode");
+const vaultUnlockConfirmEl = document.getElementById("vaultUnlockConfirm");
+const vaultStatusEl = document.getElementById("vaultStatus");
 const refreshMinutesEl = document.getElementById("refreshMinutes");
 const providerStatusEl = document.getElementById("providerStatus");
 const testConnectionButton = document.getElementById("testConnectionButton");
 
 const tickerSpeedEl = document.getElementById("tickerSpeed");
+const tickerSpeedRangeEl = document.getElementById("tickerSpeedRange");
 const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
 const themeEls = document.querySelectorAll('input[name="theme"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
@@ -32,7 +45,13 @@ const cryptoManualField = document.getElementById("cryptoManualField");
 const cryptoSearchEl = document.getElementById("cryptoSearch");
 const cryptoSearchResultsEl = document.getElementById("cryptoSearchResults");
 const cryptoSelectedChipsEl = document.getElementById("cryptoSelectedChips");
+const cryptoDropZone = document.getElementById("cryptoDropZone");
+const cryptoCsvFileEl = document.getElementById("cryptoCsvFile");
+const cryptoImportCsvButton = document.getElementById("cryptoImportCsvButton");
+const cryptoImportStatusEl = document.getElementById("cryptoImportStatus");
+const CRYPTO_FINDER_LABEL = "Add via Finder / File Explorer";
 let selectedCrypto = [];
+let cryptoImportInFlight = false;
 const watchlistTypeEl = document.getElementById("watchlistType");
 const watchlistExchangeEl = document.getElementById("watchlistExchange");
 const watchlistInputEl = document.getElementById("watchlistInput");
@@ -42,6 +61,8 @@ const watchlistConfiguredEl = document.getElementById("watchlistConfigured");
 
 const showStocksEl = document.getElementById("showStocks");
 const showCryptoEl = document.getElementById("showCrypto");
+const tickerTapeEnabledEl = document.getElementById("tickerTapeEnabled");
+const FINDER_BUTTON_LABEL = "Add via Finder / File Explorer";
 const refreshPreviewButton = document.getElementById("refreshPreviewButton");
 const holdingsPreviewEl = document.getElementById("holdingsPreview");
 
@@ -57,13 +78,14 @@ const statusLiveEl = document.getElementById("statusLive");
 const rateLimitWarnEl = document.getElementById("rateLimitWarn");
 const wizardHintEl = document.getElementById("wizardHint");
 const sectionMarket = document.getElementById("section-market");
+const sectionFinnhubKey = document.getElementById("section-finnhub-key");
 const sectionImport = document.getElementById("section-import");
 const diagnosticsOutputEl = document.getElementById("diagnosticsOutput");
 const copyDiagnosticsButton = document.getElementById("copyDiagnosticsButton");
 const refreshDiagnosticsButton = document.getElementById("refreshDiagnosticsButton");
 
-const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+const EYE_OPEN_SVG = `<svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye"></use></svg>`;
+const EYE_CLOSED_SVG = `<svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye-slash"></use></svg>`;
 
 const WIZARD_HINTS = {
   1: "Optional: add a Finnhub key if you hold US equities. Crypto quotes do not need it.",
@@ -76,6 +98,48 @@ const WIZARD_NEXT_LABELS = {
   2: "Import holdings",
   3: "Go live"
 };
+
+function prefersReducedMotion() {
+  return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
+}
+
+const BROKER_SUMMARY_LABELS = {
+  zerodha: "Zerodha",
+  groww: "Groww",
+  upstox: "Upstox",
+  generic: "Generic CSV"
+};
+
+function formatBrokerSummary(holdings) {
+  if (!holdings?.length) return "—";
+  const ids = [...new Set(holdings.map((h) => String(h.brokerId || "").toLowerCase()).filter(Boolean))];
+  if (!ids.length) return "Imported";
+  if (ids.length === 1) return BROKER_SUMMARY_LABELS[ids[0]] || ids[0];
+  return "Mixed";
+}
+
+function formatExchangeSummary(holdings) {
+  if (!holdings?.length) return "—";
+  const exchanges = new Set();
+  for (const h of holdings) {
+    const exchange = String(h.exchange || "").toUpperCase();
+    if (exchange === "NSE" || exchange === "BSE") exchanges.add(exchange);
+    else if (String(h.symbol || "").endsWith(".NS")) exchanges.add("NSE");
+    else if (String(h.symbol || "").endsWith(".BO")) exchanges.add("BSE");
+    else if (h.currency === "USD" || (!String(h.symbol || "").includes(".") && h.currency !== "INR")) exchanges.add("US");
+  }
+  if (!exchanges.size) return "Local book";
+  return [...exchanges].sort().join(" / ");
+}
+
+function updatePortfolioSummary(holdings = []) {
+  const countEl = document.getElementById("portfolioSummaryCount");
+  const brokerEl = document.getElementById("portfolioSummaryBroker");
+  const exchangeEl = document.getElementById("portfolioSummaryExchange");
+  if (countEl) countEl.textContent = String(holdings.length);
+  if (brokerEl) brokerEl.textContent = formatBrokerSummary(holdings);
+  if (exchangeEl) exchangeEl.textContent = formatExchangeSummary(holdings);
+}
 
 init();
 
@@ -90,20 +154,12 @@ function init() {
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
     const settings = data[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
 
-    // Load API key from local storage (canonical source).
-    chrome.storage.local.get(["pts_price_api_key"], (localData) => {
-      const savedKey = localData["pts_price_api_key"] || "";
-      finnhubApiKeyEl.value = savedKey;
-      if (savedKey) {
-        testConnectionButton.disabled = false;
-        testConnectionButton.title = "";
-      }
-    });
+    refreshVaultStatus();
 
     refreshMinutesEl.value = String(
       settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes
     );
-    tickerSpeedEl.value = String(
+    setTickerSpeedControls(
       settings.tickerStyleConfig?.tickerSpeed ||
         DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
     );
@@ -122,6 +178,9 @@ function init() {
 
     const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
     showStocksEl.checked = filters.showStocks !== false;
+    if (tickerTapeEnabledEl) {
+      tickerTapeEnabledEl.checked = settings.enabled !== false;
+    }
     showCryptoEl.checked = filters.showCrypto !== false;
 
     updateCryptoManualVisibility();
@@ -129,16 +188,23 @@ function init() {
 
   // Show existing holdings count on load
   chrome.storage.local.get([STORAGE_KEYS.holdings], (localData) => {
-    const count = (localData[STORAGE_KEYS.holdings] || []).length;
-    if (count > 0) {
-      csvStatusEl.textContent = `${count} holdings`;
+    const holdings = localData[STORAGE_KEYS.holdings] || [];
+    updatePortfolioSummary(holdings);
+    if (holdings.length > 0) {
+      csvStatusEl.textContent = `${holdings.length} holdings`;
     }
   });
 
   // Event listeners
-  importCsvButton.addEventListener("click", () => handleImportCsv());
+  importCsvButton.addEventListener("click", () => {
+    // Finder / File Explorer path — drop zone auto-imports without this button.
+    csvFileEl?.click();
+  });
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
+  document.getElementById("unlockVaultButton").addEventListener("click", handleUnlockVault);
+  document.getElementById("lockVaultButton").addEventListener("click", handleLockVault);
+  document.getElementById("replaceVaultButton").addEventListener("click", () => handleSaveProvider(true));
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
   saveAppearanceButton.addEventListener("click", handleSaveAppearance);
   saveCryptoButton.addEventListener("click", handleSaveCrypto);
@@ -147,8 +213,19 @@ function init() {
   testConnectionButton.addEventListener("click", handleTestConnection);
   copyDiagnosticsButton?.addEventListener("click", copyDiagnostics);
   refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics);
+  document.getElementById("quickDiagnosticsButton")?.addEventListener("click", () => {
+    switchSettingsTab("data");
+    const diagnostics = document.getElementById("section-diagnostics");
+    if (diagnostics) {
+      diagnostics.open = true;
+      requestAnimationFrame(() => {
+        diagnostics.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+      });
+    }
+    renderDiagnostics();
+  });
 
-  // Eye-toggle for API key visibility
+  // Eye-toggle for API key visibility (Phosphor)
   document.getElementById("toggleApiKeyVisibility").addEventListener("click", () => {
     const isPassword = finnhubApiKeyEl.type === "password";
     finnhubApiKeyEl.type = isPassword ? "text" : "password";
@@ -182,34 +259,36 @@ function init() {
     markSettingsSaveDirty("crypto");
   });
   cryptoSearchEl?.addEventListener("input", renderCryptoSelector);
-  [showStocksEl, showCryptoEl].forEach((input) => input?.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  [showStocksEl, showCryptoEl, tickerTapeEnabledEl].forEach((input) =>
+    input?.addEventListener("change", () => markSettingsSaveDirty("appearance"))
+  );
   themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
-  tickerSpeedEl?.addEventListener("input", () => markSettingsSaveDirty("appearance"));
+  tickerSpeedEl?.addEventListener("input", () => {
+    syncTickerSpeedFromNumber();
+    markSettingsSaveDirty("appearance");
+  });
+  tickerSpeedEl?.addEventListener("change", () => {
+    setTickerSpeedControls(tickerSpeedEl.value);
+    markSettingsSaveDirty("appearance");
+  });
+  tickerSpeedRangeEl?.addEventListener("input", () => {
+    setTickerSpeedControls(tickerSpeedRangeEl.value);
+    markSettingsSaveDirty("appearance");
+  });
   watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
-  // Drag-and-drop / file pick — pass File objects directly (avoid double-read races)
-  dropZone.addEventListener("click", (e) => {
-    // Don't steal clicks from nested controls
-    if (e.target === csvFileEl) return;
-    csvFileEl.click();
-  });
-  dropZone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      csvFileEl.click();
-    }
-  });
-  dropZone.addEventListener("dragover", (e) => {
+  // Drop zone auto-imports. Finder button opens the file picker separately.
+  dropZone?.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.stopPropagation();
     dropZone.classList.add("dragover");
   });
-  dropZone.addEventListener("dragleave", () => {
+  dropZone?.addEventListener("dragleave", () => {
     dropZone.classList.remove("dragover");
   });
-  dropZone.addEventListener("drop", (e) => {
+  dropZone?.addEventListener("drop", (e) => {
     e.preventDefault();
     e.stopPropagation();
     dropZone.classList.remove("dragover");
@@ -217,12 +296,35 @@ function init() {
     if (file) {
       handleImportCsv(file);
     } else {
-      showToast("No file found in that drop. Try Browse or Import sample.", "error");
+      showToast("No file found in that drop. Use Add via Finder / File Explorer.", "error");
     }
   });
-  csvFileEl.addEventListener("change", () => {
+  csvFileEl?.addEventListener("change", () => {
     const file = csvFileEl.files?.[0];
     if (file) handleImportCsv(file);
+    // Allow re-selecting the same file later
+    csvFileEl.value = "";
+  });
+
+  cryptoImportCsvButton?.addEventListener("click", () => cryptoCsvFileEl?.click());
+  cryptoDropZone?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cryptoDropZone.classList.add("dragover");
+  });
+  cryptoDropZone?.addEventListener("dragleave", () => cryptoDropZone.classList.remove("dragover"));
+  cryptoDropZone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    cryptoDropZone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) handleCryptoCsvImport(file);
+    else showToast("No file in that drop. Use Add via Finder / File Explorer.", "error");
+  });
+  cryptoCsvFileEl?.addEventListener("change", () => {
+    const file = cryptoCsvFileEl.files?.[0];
+    if (file) handleCryptoCsvImport(file);
+    cryptoCsvFileEl.value = "";
   });
 
   const importSampleBtn = document.getElementById("importSampleButton");
@@ -310,12 +412,45 @@ const DATA_PANEL_IDS = new Set(["setup", "market", "diagnostics", "tips"]);
 
 function consolidateDataPanels() {
   const dataPanel = document.getElementById("tab-data");
-  if (!dataPanel) return;
-  ["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
+  const workspace = document.getElementById("dataWorkspace");
+  if (!dataPanel || !workspace) return;
+  ["tab-setup", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
     const section = document.getElementById(id);
     if (!section) return;
     section.removeAttribute("hidden");
     dataPanel.append(section);
+    workspace.append(section);
+  });
+  // Nest setup errors inside Logs so diagnostics + errors share one surface.
+  const errorLog = document.getElementById("section-error-log");
+  const logsHost = document.getElementById("logsErrorsHost");
+  if (errorLog && logsHost) {
+    logsHost.append(errorLog);
+  } else if (errorLog && workspace) {
+    errorLog.removeAttribute("hidden");
+    workspace.append(errorLog);
+  }
+  document.querySelectorAll("#tab-tips .section").forEach((section) => {
+    if (section.dataset.disclosureReady === "true") return;
+    const heading = section.querySelector(".section-title");
+    const card = section.querySelector(".card");
+    if (!heading || !card) return;
+    const details = document.createElement("details");
+    details.className = "settings-disclosure data-disclosure help-disclosure";
+    const summary = document.createElement("summary");
+    const label = document.createElement("span");
+    label.className = "summary-label";
+    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    icon.classList.add("ui-icon");
+    icon.setAttribute("aria-hidden", "true");
+    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+    use.setAttribute("href", "icons/phosphor-symbols.svg#ph-question");
+    icon.append(use);
+    label.append(icon, document.createTextNode(heading.textContent));
+    summary.append(label);
+    details.append(summary, card);
+    section.dataset.disclosureReady = "true";
+    section.replaceWith(details);
   });
 }
 
@@ -415,8 +550,7 @@ async function renderDiagnostics() {
       STORAGE_KEYS.positionsState,
       STORAGE_KEYS.pollHealth,
       STORAGE_KEYS.diagnosticsLog,
-      STORAGE_KEYS.contentScriptStatus,
-      "pts_price_api_key"
+      STORAGE_KEYS.contentScriptStatus
     ])
   ]);
   const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
@@ -428,7 +562,8 @@ async function renderDiagnostics() {
   const providerResults = [...log].reverse().find((entry) => entry.event === "provider-results");
   const contentStatus = localData[STORAGE_KEYS.contentScriptStatus] || {};
   const cryptoEnabled = !!settings.cryptoConfig?.includeCrypto && settings.portfolioFilters?.showCrypto !== false;
-  const finnhubConfigured = !!String(localData["pts_price_api_key"] || "").trim();
+  const vaultResponse = await sendVaultMessage("vault-status");
+  const vaultStatus = vaultResponse?.status || { configured: false, unlocked: false };
   const buildVersion = chrome.runtime.getManifest?.().version || "0.5.0";
   const lines = [
     `MyTicker diagnostics · build v${buildVersion}`,
@@ -442,7 +577,7 @@ async function renderDiagnostics() {
     `CoinGecko: primary crypto source · ${cryptoEnabled ? "eligible when supported crypto is enabled" : "crypto disabled"} · ${providerResultLine(providerResults, "coinGeckoQuotes", "result")}`,
     `Binance: fallback for mapped liquid crypto only · ${cryptoEnabled ? "available" : "crypto disabled"} · ${providerResultLine(providerResults, "binanceQuotes", "result")}`,
     `Yahoo Finance: automatic for .NS/.BO · available · ${providerResultLine(providerResults, "yahooQuotes", "result")}`,
-    `Finnhub: US equities · ${finnhubConfigured ? "API key configured" : "no API key configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
+    `Finnhub: US equities · ${vaultStatus.configured ? (vaultStatus.unlocked ? "key unlocked" : "key locked") : "not configured"} · ${providerResultLine(providerResults, "finnhubQuotes", "result")}`,
     "",
     "Recent refresh lifecycle (safe operational counts only):"
   ];
@@ -464,9 +599,9 @@ async function copyDiagnostics() {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    showToast("Diagnostics copied", "success");
+    showToast("Log copied", "success");
   } catch {
-    showToast("Could not copy diagnostics. Select the text and copy it manually.", "error");
+    showToast("Could not copy log. Select the text and copy it manually.", "error");
   }
 }
 
@@ -477,6 +612,11 @@ function wireWizardSteps() {
       goToWizardStep(step);
     });
   });
+}
+
+function openFinnhubKeyDisclosure() {
+  if (sectionMarket) sectionMarket.open = true;
+  if (sectionFinnhubKey) sectionFinnhubKey.open = true;
 }
 
 function goToWizardStep(step) {
@@ -494,12 +634,15 @@ function goToWizardStep(step) {
   if (tabId) {
     switchSettingsTab(tabId);
   }
-  const target = step === 1 ? sectionMarket : step === 2 ? sectionImport : null;
+  if (step === 1) {
+    openFinnhubKeyDisclosure();
+  }
+  const target = step === 1 ? (sectionFinnhubKey || sectionMarket) : step === 2 ? sectionImport : null;
   if (target) {
     // Wait a frame so the target tab is visible before highlighting.
     requestAnimationFrame(() => {
       target.classList.add("section-highlight");
-      target.scrollIntoView({ behavior: "smooth", block: "start" });
+      target.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
       setTimeout(() => target.classList.remove("section-highlight"), 2000);
     });
   }
@@ -508,28 +651,54 @@ function goToWizardStep(step) {
 
 async function refreshSetupUI() {
   const status = await getSetupStatus();
+  const dataPageHealth = document.getElementById("dataPageHealth");
+  if (dataPageHealth) {
+    const healthy = status.hasLiveData && status.hasHoldings;
+    dataPageHealth.classList.toggle("is-healthy", healthy);
+    dataPageHealth.lastChild.textContent = healthy
+      ? "All systems operational"
+      : status.hasHoldings
+        ? "Finish setup to go live"
+        : "Import holdings to begin";
+  }
 
   if (setupWelcomeEl) {
     const showWelcome = status.firstInstall || !status.complete;
-    setupWelcomeEl.hidden = false;
+    setupWelcomeEl.hidden = !showWelcome;
     setupWelcomeEl.classList.toggle("is-visible", showWelcome);
   }
 
-  setPill(statusHoldingsEl, status.hasHoldings, `Holdings (${status.holdingsCount})`);
-  setPill(statusLiveEl, status.hasLiveData, "Live prices");
-  setPill(statusSyncEl, status.lastFetch > 0, `Sync ${formatLastSync(status.lastFetch)}`);
-  // API key is optional — only highlight when US symbols need it
+  setStatusCard(
+    statusHoldingsEl,
+    status.hasHoldings,
+    status.hasHoldings ? String(status.holdingsCount || 0) : "—",
+    status.hasHoldings ? "Imported" : "Not imported"
+  );
+  setStatusCard(
+    statusLiveEl,
+    status.hasLiveData,
+    status.hasLiveData ? "On" : "Off",
+    status.hasLiveData ? "Streaming" : "Waiting"
+  );
+  setStatusCard(
+    statusSyncEl,
+    status.lastFetch > 0,
+    status.lastFetch > 0 ? formatLastSync(status.lastFetch) : "—",
+    status.lastFetch > 0 ? "Updated" : "No sync yet"
+  );
+  // India prices are automatic; flag only when a US key is required and missing.
   if (statusApiEl) {
     if (status.needsUsKey && !status.hasApiKey) {
-      setPill(statusApiEl, false, "US key (optional)");
+      setStatusCard(statusApiEl, false, "Needed", "US key optional");
     } else if (status.hasApiKey) {
-      setPill(statusApiEl, true, "US key");
+      setStatusCard(statusApiEl, true, "Ready", "US + India");
     } else {
-      setPill(statusApiEl, true, "India prices (auto)");
+      setStatusCard(statusApiEl, true, "Auto", "Yahoo Finance");
     }
   }
 
   if (rateLimitWarnEl) {
+    rateLimitWarnEl.hidden = !status.rateLimitRisk;
     rateLimitWarnEl.classList.toggle("visible", status.rateLimitRisk);
   }
 
@@ -622,9 +791,31 @@ async function renderImportStats() {
 }
 
 function setPill(el, ok, label) {
+  // Back-compat wrapper for any remaining callers.
+  setStatusCard(el, ok, label, el?.dataset?.label || "");
+}
+
+function setStatusCard(el, ok, value, meta) {
   if (!el) return;
-  el.className = `status-pill ${ok ? "ok" : "pending"}`;
-  el.textContent = `${ok ? "✓" : "○"} ${label}`;
+  el.className = `status-card ${ok ? "ok" : "pending"}`;
+  const icon = el.dataset.icon || "ph-chart-line-up";
+  el.replaceChildren();
+  const iconEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  iconEl.classList.add("ui-icon");
+  iconEl.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `icons/phosphor-symbols.svg#${icon}`);
+  iconEl.append(use);
+  const copy = document.createElement("span");
+  copy.className = "status-copy";
+  const valueEl = document.createElement("span");
+  valueEl.className = "status-value";
+  valueEl.textContent = value;
+  const metaEl = document.createElement("span");
+  metaEl.className = "status-meta";
+  metaEl.textContent = meta || el.dataset.label || "";
+  copy.append(valueEl, metaEl);
+  el.append(iconEl, copy);
 }
 
 function updateCryptoManualVisibility() {
@@ -724,7 +915,7 @@ async function handleImportCsv(fileOverride = null) {
       : csvFileEl.files?.[0];
 
   if (!file) {
-    showToast("Please choose a CSV file, or click Import sample CSV.", "error");
+    showToast("Please choose a CSV file, or import the demo sample.", "error");
     return;
   }
   if (file.size > 500_000) {
@@ -737,8 +928,7 @@ async function handleImportCsv(fileOverride = null) {
   }
 
   importInFlight = true;
-  importCsvButton.disabled = true;
-  importCsvButton.textContent = "Importing…";
+  setFinderButtonBusy(true);
 
   let presetKey = brokerPresetEl.value || "zerodha";
   try {
@@ -747,14 +937,30 @@ async function handleImportCsv(fileOverride = null) {
   } catch (err) {
     console.error("Failed to read/import CSV", err);
     const detail = err?.message || String(err);
-    showToast(`Could not read file (${detail}). Try Import sample CSV instead.`, "error");
+    showToast(`Could not read file (${detail}). Try the demo sample instead.`, "error");
     await recordImportResult(presetKey, false);
     await renderImportStats();
   } finally {
     importInFlight = false;
-    importCsvButton.disabled = false;
-    importCsvButton.textContent = "Import holdings";
+    setFinderButtonBusy(false);
   }
+}
+
+function setFinderButtonBusy(busy) {
+  if (!importCsvButton) return;
+  importCsvButton.disabled = !!busy;
+  if (busy) {
+    importCsvButton.textContent = "Importing…";
+    return;
+  }
+  importCsvButton.replaceChildren();
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("ui-icon");
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
+  icon.append(use);
+  importCsvButton.append(icon, document.createTextNode(FINDER_BUTTON_LABEL));
 }
 
 /**
@@ -765,8 +971,7 @@ async function handleImportCsv(fileOverride = null) {
 async function handleImportPackagedCsv(relativePath, presetHint = "zerodha") {
   if (importInFlight) return;
   importInFlight = true;
-  importCsvButton.disabled = true;
-  importCsvButton.textContent = "Importing…";
+  setFinderButtonBusy(true);
   try {
     const url = chrome.runtime.getURL(relativePath);
     const resp = await fetch(url);
@@ -783,8 +988,7 @@ async function handleImportPackagedCsv(relativePath, presetHint = "zerodha") {
     await renderImportStats();
   } finally {
     importInFlight = false;
-    importCsvButton.disabled = false;
-    importCsvButton.textContent = "Import holdings";
+    setFinderButtonBusy(false);
   }
 }
 
@@ -833,6 +1037,7 @@ async function processCsvText(text, presetKeyHint = "zerodha") {
       : `Imported ${holdings.length} holdings (${preset.name})`;
   showToast(msg, "success");
   if (csvStatusEl) csvStatusEl.textContent = `${holdings.length} holdings`;
+  updatePortfolioSummary(holdings);
   await recordImportResult(presetKey, true);
   await renderImportStats();
   await markWizardStep(3);
@@ -844,13 +1049,33 @@ async function processCsvText(text, presetKeyHint = "zerodha") {
 function handleClearHoldings() {
   chrome.storage.local.remove([STORAGE_KEYS.holdings, STORAGE_KEYS.positionsState, STORAGE_KEYS.priceHistory], () => {
     csvStatusEl.textContent = "";
+    updatePortfolioSummary([]);
     showToast("All holdings cleared", "success");
     handleRefreshPreview();
   });
 }
 
-function handleSaveProvider() {
+function sendVaultMessage(type, payload = {}) {
+  return new Promise((resolve) => chrome.runtime.sendMessage({ type, payload }, resolve));
+}
+
+async function refreshVaultStatus() {
+  const response = await sendVaultMessage("vault-status");
+  const status = response?.status || { configured: false, unlocked: false };
+  if (vaultStatusEl) vaultStatusEl.textContent = !status.configured ? "No encrypted Finnhub key configured." : status.unlocked ? "Finnhub key unlocked for this browser session." : "Finnhub key locked. Unlock after browser restart.";
+  testConnectionButton.disabled = !status.unlocked;
+  testConnectionButton.title = status.unlocked ? "" : "Unlock your key first";
+  return status;
+}
+
+async function handleSaveProvider(replace = false) {
   const apiKey = finnhubApiKeyEl.value.trim();
+  const unlockCode = vaultUnlockCodeEl.value;
+  const confirmation = vaultUnlockConfirmEl.value;
+  if (unlockCode.length < 6 || unlockCode !== confirmation || !apiKey) {
+    showToast("Enter a key and matching 6+ character unlock code", "error");
+    return;
+  }
   const refreshMinutes = Math.min(60, Math.max(1, Number(refreshMinutesEl.value) || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes));
 
   chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
@@ -861,8 +1086,16 @@ function handleSaveProvider() {
       refreshMinutes
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
-      chrome.storage.local.set({ pts_price_api_key: apiKey }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, async () => {
+      const vaultResponse = await sendVaultMessage(replace ? "vault-replace" : "vault-create", { apiKey, unlockCode });
+      if (!vaultResponse?.ok) {
+        showToast("Could not encrypt and save the Finnhub key", "error");
+        return;
+      }
+      finnhubApiKeyEl.value = "";
+      vaultUnlockCodeEl.value = "";
+      vaultUnlockConfirmEl.value = "";
+      await refreshVaultStatus();
         chrome.alarms.clear("price-poll", () => {
           chrome.alarms.create("price-poll", {
             delayInMinutes: 0.1,
@@ -875,18 +1108,26 @@ function handleSaveProvider() {
         markWizardStep(2);
         requestImmediatePoll();
         refreshSetupUI();
-      });
     });
   });
 }
 
-async function handleTestConnection() {
-  const apiKey = finnhubApiKeyEl.value.trim();
-  if (!apiKey) {
-    showToast("Enter an API key first", "error");
-    return;
-  }
+async function handleUnlockVault() {
+  const response = await sendVaultMessage("vault-unlock", { unlockCode: vaultUnlockCodeEl.value });
+  if (!response?.ok) { showToast("Unlock code was not accepted", "error"); return; }
+  vaultUnlockCodeEl.value = "";
+  await refreshVaultStatus();
+  showToast("Finnhub key unlocked", "success");
+  requestImmediatePoll();
+}
 
+async function handleLockVault() {
+  await sendVaultMessage("vault-lock");
+  await refreshVaultStatus();
+  showToast("Finnhub key locked", "success");
+}
+
+async function handleTestConnection() {
   testConnectionButton.textContent = "Testing…";
   testConnectionButton.disabled = true;
   if (providerStatusEl) {
@@ -895,55 +1136,18 @@ async function handleTestConnection() {
   }
 
   try {
-    // Step 1: verify key is valid with a US stock (always on free tier)
-    const usResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (usResp.status === 401 || usResp.status === 403) {
-      const body = await usResp.json().catch(() => ({}));
-      const hint = body.error || `HTTP ${usResp.status}`;
-      showToast(`Key rejected by Finnhub: ${hint}. Regenerate at finnhub.io/dashboard.`, "error");
+    const response = await sendVaultMessage("vault-test-connection");
+    if (!response?.ok) {
+      showToast("Unable to test the Finnhub connection. Unlock your saved key and try again.", "error");
       return;
     }
-    if (!usResp.ok) throw new Error(`HTTP ${usResp.status}`);
-    const usData = await usResp.json();
-    if (typeof usData.c !== "number") {
-      showToast("Key accepted but returned unexpected data. Try again.", "error");
-      return;
-    }
-
-    // Step 2: try an Indian stock — may require a paid Finnhub plan
-    const inResp = await fetch(
-      `https://finnhub.io/api/v1/quote?symbol=TCS.NS&token=${encodeURIComponent(apiKey)}`,
-      { signal: AbortSignal.timeout(8000) }
-    );
-    if (inResp.status === 403) {
-      showToast(
-        `✓ Key valid (AAPL: $${usData.c.toFixed(2)}) but Indian stocks (NSE/BSE) need a Finnhub paid plan. Free tier is US-only.`,
-        "error"
-      );
-      return;
-    }
-    if (inResp.ok) {
-      const inData = await inResp.json();
-      if (typeof inData.c === "number" && inData.c > 0) {
-        showToast(`✓ Connected: TCS.NS: ₹${inData.c.toFixed(2)} · AAPL: $${usData.c.toFixed(2)}`, "success");
-        await markWizardStep(2);
-        refreshSetupUI();
-        return;
-      }
-    }
-
-    // Key works, Indian stock returned empty — still usable
-    showToast(`✓ Key valid (AAPL: $${usData.c.toFixed(2)}). NSE quotes will be fetched on next refresh.`, "success");
-    await markWizardStep(2);
-    refreshSetupUI();
-  } catch (err) {
-    showToast(`Connection failed: ${err.message}`, "error");
+    showToast(`Finnhub connected (AAPL: $${Number(response.result?.price).toFixed(2)})`, "success");
+  } catch {
+    showToast("Unable to test the Finnhub connection. Try again.", "error");
   } finally {
     testConnectionButton.textContent = "Test connection";
     testConnectionButton.disabled = false;
+    await refreshVaultStatus();
     if (providerStatusEl && providerStatusEl.querySelector(".skeleton-inline-loader")) {
       providerStatusEl.innerHTML = "";
     }
@@ -997,14 +1201,39 @@ function saveFeedbackElements(scope) {
 function setSettingsSaveFeedback(scope, saved, message = "") {
   const { button, status, label } = saveFeedbackElements(scope);
   if (button) {
-    button.textContent = saved ? "Saved ✓" : "Save";
+    const idleLabel = scope === "appearance" ? "Save changes" : "Save";
+    button.textContent = saved ? "Saved ✓" : idleLabel;
     button.classList.toggle("is-saved", saved);
-    button.setAttribute("aria-label", saved ? `${label} saved` : `Save ${label}`);
+    button.setAttribute("aria-label", saved ? `${label} saved` : (scope === "appearance" ? "Save appearance changes" : `Save ${label}`));
   }
   if (status) {
     status.textContent = message;
     status.className = `status-badge${message ? (saved ? " success" : " error") : ""}`;
   }
+}
+
+function clampTickerSpeed(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed;
+  return Math.min(300, Math.max(5, Math.round(n)));
+}
+
+function setTickerSpeedControls(value) {
+  const speed = clampTickerSpeed(value);
+  if (tickerSpeedEl) tickerSpeedEl.value = String(speed);
+  if (tickerSpeedRangeEl) {
+    tickerSpeedRangeEl.value = String(speed);
+    tickerSpeedRangeEl.setAttribute("aria-valuenow", String(speed));
+  }
+}
+
+function syncTickerSpeedFromNumber() {
+  if (!tickerSpeedEl || tickerSpeedEl.value === "") return;
+  const n = Number(tickerSpeedEl.value);
+  if (!Number.isFinite(n) || !tickerSpeedRangeEl) return;
+  const clamped = Math.min(300, Math.max(5, n));
+  tickerSpeedRangeEl.value = String(clamped);
+  tickerSpeedRangeEl.setAttribute("aria-valuenow", String(clamped));
 }
 
 function markSettingsSaveDirty(scope) {
@@ -1016,10 +1245,8 @@ function storageSaveSucceeded() {
 }
 
 function handleSaveAppearance() {
-  const tickerSpeed = Math.min(300, Math.max(
-    5,
-    Number(tickerSpeedEl.value) || DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
-  ));
+  const tickerSpeed = clampTickerSpeed(tickerSpeedEl?.value);
+  setTickerSpeedControls(tickerSpeed);
   const selectedTapeScale = document.querySelector('input[name="tapeScale"]:checked')?.value;
   const tapeScale = normalizeTapeScale(selectedTapeScale);
   const theme = normalizeTheme(document.querySelector('input[name="theme"]:checked')?.value);
@@ -1038,8 +1265,9 @@ function handleSaveAppearance() {
       showStocks: showStocksEl.checked,
       showCrypto: showCryptoEl.checked
     };
+    settings.enabled = tickerTapeEnabledEl ? !!tickerTapeEnabledEl.checked : settings.enabled !== false;
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
         setSettingsSaveFeedback("appearance", false, "Could not save");
         showToast("Appearance could not be saved. Try again.", "error");
@@ -1048,6 +1276,7 @@ function handleSaveAppearance() {
       applyDocumentTheme(theme);
       setSettingsSaveFeedback("appearance", true);
       showToast("Appearance saved", "success");
+      requestImmediatePoll();
     });
   });
 }
@@ -1064,7 +1293,7 @@ function handleSaveCrypto() {
       manualHoldings
     };
 
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: settings }, () => {
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
         setSettingsSaveFeedback("crypto", false, "Could not save");
         showToast("Crypto settings could not be saved. Try again.", "error");
@@ -1078,12 +1307,101 @@ function handleSaveCrypto() {
   });
 }
 
+function getCryptoImportMode() {
+  const checked = document.querySelector('input[name="cryptoImportMode"]:checked');
+  return checked?.value === "replace" ? "replace" : "merge";
+}
+
+function setCryptoImportButtonBusy(busy) {
+  if (!cryptoImportCsvButton) return;
+  cryptoImportCsvButton.disabled = !!busy;
+  if (busy) {
+    cryptoImportCsvButton.textContent = "Importing…";
+    return;
+  }
+  cryptoImportCsvButton.replaceChildren();
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("ui-icon");
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
+  icon.append(use);
+  cryptoImportCsvButton.append(icon, document.createTextNode(CRYPTO_FINDER_LABEL));
+}
+
+/**
+ * Import a crypto wallet/holdings CSV into manual selection.
+ * Only CRYPTO_CATALOG coins are kept; quotes remain CoinGecko + Binance.
+ */
+async function handleCryptoCsvImport(file) {
+  if (cryptoImportInFlight || !(file instanceof File || file instanceof Blob)) return;
+  if (file.size === 0) {
+    showToast("That file is empty (0 bytes). Re-export holdings from your exchange.", "error");
+    return;
+  }
+  if (file.size > 500_000) {
+    showToast("CSV is too large (max 500 KB).", "error");
+    return;
+  }
+  cryptoImportInFlight = true;
+  setCryptoImportButtonBusy(true);
+  try {
+    const text = await readFileAsText(file);
+    const rows = parseCsv(text);
+    const presetId = detectCryptoExportPreset(rows) || "generic_crypto";
+    const diag = diagnoseCryptoCsvImport(rows, presetId);
+    if (diag) {
+      showToast(diag, "error");
+      if (cryptoImportStatusEl) cryptoImportStatusEl.textContent = "";
+      return;
+    }
+    const draft = mapRowsToCryptoHoldings(rows, presetId);
+    const imported = normalizeManualCryptoHoldings(draft);
+    if (!imported.length) {
+      showToast(
+        "No supported coins found. Catalog is BTC, ETH, BNB, XRP, and SOL only.",
+        "error"
+      );
+      return;
+    }
+    const mode = getCryptoImportMode();
+    if (mode === "replace") {
+      selectedCrypto = imported;
+    } else {
+      selectedCrypto = normalizeManualCryptoHoldings([...selectedCrypto, ...imported]);
+    }
+    if (cryptoModeEl && cryptoModeEl.value !== "manual") {
+      cryptoModeEl.value = "manual";
+      updateCryptoManualVisibility();
+    }
+    renderCryptoSelector();
+    markSettingsSaveDirty("crypto");
+    const presetName = CRYPTO_EXPORT_PRESETS[presetId]?.name || "crypto CSV";
+    const labels = imported
+      .map((h) => resolveCryptoCatalogEntry(h.symbol)?.symbol || h.symbol)
+      .join(", ");
+    const msg =
+      mode === "replace"
+        ? `Replaced manual list with ${imported.length} coin(s) from ${presetName}: ${labels}`
+        : `Merged ${imported.length} coin(s) from ${presetName}: ${labels}`;
+    showToast(msg, "success");
+    if (cryptoImportStatusEl) {
+      cryptoImportStatusEl.textContent = `${imported.length} mapped · save to apply`;
+    }
+  } catch (err) {
+    console.error("Crypto CSV import failed", err);
+    showToast(err?.message || "Could not read crypto CSV.", "error");
+  } finally {
+    cryptoImportInFlight = false;
+    setCryptoImportButtonBusy(false);
+  }
+}
+
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (
     areaName === "local" &&
     (changes[STORAGE_KEYS.holdings] ||
-      changes[STORAGE_KEYS.positionsState] ||
-      changes["pts_price_api_key"])
+      changes[STORAGE_KEYS.positionsState])
   ) {
     refreshSetupUI();
   }
@@ -1106,7 +1424,7 @@ function applyDocumentTheme(theme) {
 }
 
 function requestImmediatePoll() {
-  chrome.runtime.sendMessage({ action: "poll-now" }, () => {
+  chrome.runtime.sendMessage({ type: "poll-now", payload: {} }, () => {
     void chrome.runtime.lastError;
   });
 }
@@ -1143,6 +1461,7 @@ function handleRefreshPreview() {
       const holdings = localData[STORAGE_KEYS.holdings] || [];
       const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
       const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
+      updatePortfolioSummary(holdings);
 
       if (!holdings.length && !cryptoConfig.includeCrypto) {
         holdingsPreviewEl.replaceChildren();
@@ -1243,7 +1562,12 @@ function addToErrorLog(message) {
   const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   errorLogEntries.push({ time: timeStr, message });
 
-  if (errorLogSection) errorLogSection.style.display = "";
+  if (errorLogSection) {
+    errorLogSection.hidden = false;
+    errorLogSection.style.display = "";
+  }
+  const diagnostics = document.getElementById("section-diagnostics");
+  if (diagnostics) diagnostics.open = true;
   if (errorLogCountEl) {
     errorLogCountEl.textContent = `${errorLogEntries.length} error${errorLogEntries.length !== 1 ? "s" : ""}`;
   }
@@ -1284,7 +1608,10 @@ document.getElementById("copyAllErrorsButton")?.addEventListener("click", () => 
 document.getElementById("clearErrorLogButton")?.addEventListener("click", () => {
   errorLogEntries.length = 0;
   if (errorLogList) errorLogList.replaceChildren();
-  if (errorLogSection) errorLogSection.style.display = "none";
+  if (errorLogSection) {
+    errorLogSection.hidden = true;
+    errorLogSection.style.display = "none";
+  }
 });
 
 // Toast notification system

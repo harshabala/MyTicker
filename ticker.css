@@ -127,7 +127,7 @@
   font-variant-numeric: tabular-nums;
   border-right: 1px solid var(--pts-border, rgba(255, 255, 255, 0.1));
   letter-spacing: 0.01em;
-  text-transform: lowercase;
+  text-transform: none;
 }
 
 .pts-scroll-wrapper {
@@ -167,9 +167,9 @@
 
 .pts-group-marker {
   color: var(--pts-muted);
-  font-size: calc(9px * var(--pts-tape-scale));
-  font-weight: 700;
-  letter-spacing: 0.08em;
+  font-size: calc(11px * var(--pts-tape-scale));
+  font-weight: 600;
+  letter-spacing: 0.06em;
   text-transform: uppercase;
 }
 
@@ -187,7 +187,7 @@
 
 .pts-price { color: var(--pts-fg); }
 .pts-personal-pnl { color: var(--pts-muted); }
-.pts-item-stale { color: var(--yellow); font-size: calc(10px * var(--pts-tape-scale)); font-weight: 700; }
+.pts-item-stale { color: var(--yellow); font-size: calc(11px * var(--pts-tape-scale)); font-weight: 600; }
 
 .pts-up {
   color: var(--green, #30d158);

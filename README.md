@@ -22,7 +22,7 @@
 
 MyTicker is a small Chrome extension. After you connect a free price key and drop in your broker holdings file, a thin strip at the top of every tab shows your stocks and crypto with **today’s P&amp;L**. The popup shows the same numbers in a bigger “scoreboard” view.
 
-Nothing about your portfolio is sent to MyTicker servers — **there are no MyTicker servers**. Holdings and keys stay in this browser. Prices come from Finnhub (and related market endpoints you already configure).
+Nothing about your portfolio is sent to MyTicker servers — **there are no MyTicker servers**. Holdings stay in this browser and the optional Finnhub key is encrypted locally; only derived unlock material lives for the current browser session, so you unlock it again after a restart. There is no portfolio telemetry.
 
 ### What problems it solves
 
@@ -75,7 +75,7 @@ graph TB
         M --> POP[popup.html/js<br/>Scoreboard]
         M --> OPT[options.html/js<br/>Setup + import]
 
-        BG -->|polls| FH[Finnhub API]
+        BG -->|polls| FH[Yahoo / Finnhub / CoinGecko / Binance APIs]
         BG --> SH[shared.js<br/>P&amp;L + isActivated]
         BG --> MET[metrics.js<br/>pts_metrics local]
         BG --> STORE[(chrome.storage local/sync)]
@@ -97,8 +97,8 @@ graph TB
 ### How it works
 
 1. **Holdings** land in `chrome.storage.local` (`pts_holdings`) via `csvParser.js` presets (Zerodha golden path + Groww/Upstox/generic).
-2. **background.js** polls Finnhub on alarm `price-poll`, merges snapshots in `shared.js`, writes `pts_positions_state`.
-3. **contentScript.js** renders the strip from positions state.
+2. **background.js** polls Yahoo Finance (`query1.finance.yahoo.com` / `query2.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for unlocked US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and Binance (`data-api.binance.vision`) only as the mapped crypto fallback. It merges snapshots in `shared.js` and writes `pts_positions_state`.
+3. **contentScript.js** runs on all pages at document start to render the strip and reserve space before page content; it does not read page content. Its closed Shadow DOM loads only the `ticker.css` web-accessible stylesheet.
 4. **popup.js** is a small view machine: checklist → P&amp;L scoreboard (or empty). First success shows **Your day so far**, then normal **Today’s P&amp;L**.
 
 ### Metrics and activation (local-first)
@@ -154,9 +154,9 @@ Task checklist: [docs/TASKS.md](docs/TASKS.md) · Privacy: [PRIVACY.md](PRIVACY.
 
 ### Storage / privacy notes
 
-- Canonical API key: `pts_price_api_key` in **local** storage (not sync).
-- Metrics are counts and dates only — no symbols, quantities, or prices.
-- Network: Finnhub quotes (and any existing connection-test calls). No product telemetry.
+- Canonical API-key vault: `pts_finnhub_vault` in **local** storage, encrypted with your unlock code (not sync). Only derived unlock material is held in **session** storage and it is cleared on browser restart.
+- Metrics are counts and dates only — no symbols, quantities, prices, or portfolio telemetry.
+- Network: Yahoo Finance (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`), Finnhub (`finnhub.io`), CoinGecko (`api.coingecko.com`), and mapped Binance fallback (`data-api.binance.vision`). No product telemetry.
 
 ### Project structure
 

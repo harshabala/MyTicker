@@ -2,6 +2,7 @@
 // Run with: node test_fixtures/test_shared.mjs
 // Tests the pure-logic functions without requiring Chrome APIs.
 
+import * as shared from "../shared.js";
 import {
   STORAGE_KEYS,
   DEFAULT_SETTINGS,
@@ -54,6 +55,7 @@ function assertApprox(actual, expected, epsilon, message) {
 // ── Test Suite: STORAGE_KEYS ──
 console.log("\n🔑 STORAGE_KEYS");
 assert(STORAGE_KEYS.settings === "pts_settings", "settings key correct");
+assert(STORAGE_KEYS.settingsSchema === "pts_settings_schema_version", "settings schema marker key correct");
 assert(STORAGE_KEYS.holdings === "pts_holdings", "holdings key correct");
 assert(STORAGE_KEYS.priceHistory === "pts_price_history", "priceHistory key correct");
 assert(STORAGE_KEYS.positionsState === "pts_positions_state", "positionsState key correct");
@@ -103,6 +105,23 @@ assert(!("origin" in contentDiagnostic) && !("error" in contentDiagnostic), "con
 
 // ── Test Suite: DEFAULT_SETTINGS ──
 console.log("\n⚙️  DEFAULT_SETTINGS");
+assert(DEFAULT_SETTINGS.schemaVersion === 1, "new default settings carry schema version 1");
+assert(typeof shared.migrateSettings === "function", "exports a pure settings migration normalizer");
+const freshSettings = shared.migrateSettings?.();
+assert(freshSettings?.schemaVersion === 1 && freshSettings?.enabled === true && !("apiKey" in freshSettings.priceProviderConfig), "migrates an empty settings record to fresh secret-free defaults");
+const upgradedSettings = shared.migrateSettings?.({
+  enabled: false,
+  priceProviderConfig: { refreshMinutes: 5, apiKey: "legacy-sync-secret" },
+  finnhubApiKey: "another-secret"
+});
+assert(
+  upgradedSettings?.schemaVersion === 1 &&
+  upgradedSettings?.enabled === false &&
+  upgradedSettings?.priceProviderConfig?.refreshMinutes === 5 &&
+  !("apiKey" in (upgradedSettings?.priceProviderConfig || {})) &&
+  !("finnhubApiKey" in (upgradedSettings || {})),
+  "upgrades settings while removing legacy synced API-key fields"
+);
 assert(DEFAULT_SETTINGS.enabled === true, "enabled by default");
 assert(DEFAULT_SETTINGS.priceProvider === "finnhub", "default provider is finnhub");
 assert(DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed === 40, "default speed is 40s");
@@ -126,7 +145,7 @@ assert(resolveCryptoCatalogEntry("dogecoin") === null, "rejects unsupported cryp
 assert(normalizeCryptoConfig({ includeCrypto: false, mode: "top5" }).mode === "off", "migrates legacy disabled crypto setting to explicit off mode");
 assert(normalizeCryptoConfig({ includeCrypto: true, mode: "manual" }).mode === "manual", "keeps legacy enabled manual crypto setting");
 const migratedManual = normalizeManualCryptoHoldings([{ symbol: "BTC", quantity: 2 }, { symbol: "BINANCE:BTCUSDT", quantity: 4 }, { symbol: "ETH", quantity: 0 }]);
-assert(migratedManual.length === 1 && migratedManual[0].symbol === "bitcoin" && migratedManual[0].quantity === 2, "canonicalizes legacy manual crypto and keeps the first positive quantity per coin");
+assert(migratedManual.length === 1 && migratedManual[0].symbol === "bitcoin" && migratedManual[0].quantity === 6, "canonicalizes legacy manual crypto aliases and sums positive quantities per coin");
 
 // ── Test Suite: formatSigned ──
 console.log("\n🔢 formatSigned");

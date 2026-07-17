@@ -2,6 +2,7 @@
 
 const STORAGE_KEYS = {
   settings: "pts_settings",
+  settingsSchema: "pts_settings_schema_version",
   holdings: "pts_holdings",
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
@@ -105,10 +106,10 @@ function recordActiveDay(activeDays, now = Date.now()) {
 }
 
 const DEFAULT_SETTINGS = {
+  schemaVersion: 1,
   enabled: true,
   priceProvider: "finnhub",
   priceProviderConfig: {
-    apiKey: "",
     baseUrl: "https://finnhub.io/api/v1",
     refreshMinutes: 1
   },
@@ -129,6 +130,38 @@ const DEFAULT_SETTINGS = {
   }
 };
 
+const SETTINGS_SCHEMA_VERSION = 1;
+const LEGACY_SYNC_SECRET_FIELDS = new Set(["apiKey", "finnhubApiKey", "finnhub_key", "pts_price_api_key"]);
+
+/**
+ * Return the current, secret-free settings shape without mutating the input.
+ * API keys used to live in sync settings; deliberately drop those fields here
+ * so every migration write removes them from Chrome Sync.
+ */
+function migrateSettings(value = {}) {
+  const source = value && typeof value === "object" ? value : {};
+  const providerConfig = source.priceProviderConfig && typeof source.priceProviderConfig === "object"
+    ? source.priceProviderConfig : {};
+  const tickerStyleConfig = source.tickerStyleConfig && typeof source.tickerStyleConfig === "object"
+    ? source.tickerStyleConfig : {};
+  const cryptoConfig = source.cryptoConfig && typeof source.cryptoConfig === "object" ? source.cryptoConfig : {};
+  const portfolioFilters = source.portfolioFilters && typeof source.portfolioFilters === "object" ? source.portfolioFilters : {};
+  const cleanProviderConfig = Object.fromEntries(
+    Object.entries(providerConfig).filter(([key]) => !LEGACY_SYNC_SECRET_FIELDS.has(key))
+  );
+  const next = {
+    ...DEFAULT_SETTINGS,
+    ...Object.fromEntries(Object.entries(source).filter(([key]) => !LEGACY_SYNC_SECRET_FIELDS.has(key))),
+    schemaVersion: SETTINGS_SCHEMA_VERSION,
+    priceProviderConfig: { ...DEFAULT_SETTINGS.priceProviderConfig, ...cleanProviderConfig },
+    tickerStyleConfig: { ...DEFAULT_SETTINGS.tickerStyleConfig, ...tickerStyleConfig },
+    cryptoConfig: normalizeCryptoConfig({ ...DEFAULT_SETTINGS.cryptoConfig, ...cryptoConfig }),
+    portfolioFilters: { ...DEFAULT_SETTINGS.portfolioFilters, ...portfolioFilters }
+  };
+  delete next.priceProviderConfig.apiKey;
+  return next;
+}
+
 const TAPE_SCALES = new Set(["compact", "comfortable", "large"]);
 
 // The only crypto assets exposed by the settings controls. Keep this catalog
@@ -146,18 +179,33 @@ const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
 ]));
 
 function resolveCryptoCatalogEntry(input) {
-  const raw = String(input || "").trim().toLowerCase();
-  return CRYPTO_LOOKUP.get(raw) || CRYPTO_LOOKUP.get(raw.replace(/^binance:/, "").replace(/usdt$/, "")) || null;
+  let raw = String(input || "").trim().toLowerCase();
+  if (!raw) return null;
+  // Strip common exchange wrappers: BTCUSDT, BTC-USD, X:BTCUSD, BINANCE:BTCUSDT
+  raw = raw
+    .replace(/^binance:/, "")
+    .replace(/^coinbase:/, "")
+    .replace(/^x:/, "")
+    .replace(/[-_/]/g, "");
+  const stripped = raw
+    .replace(/(usdt|usdc|busd|fdusd|tusd|inr|usd)$/i, "");
+  return (
+    CRYPTO_LOOKUP.get(raw) ||
+    CRYPTO_LOOKUP.get(stripped) ||
+    CRYPTO_LOOKUP.get(raw.replace(/usdt$/, "").replace(/usd$/, "")) ||
+    null
+  );
 }
 
-/** Convert legacy aliases to one canonical ID, retaining the first positive quantity. */
+/** Convert aliases to canonical IDs; sum quantities when the same coin appears more than once. */
 function normalizeManualCryptoHoldings(holdings) {
   const selected = new Map();
   for (const holding of Array.isArray(holdings) ? holdings : []) {
     const coin = resolveCryptoCatalogEntry(holding?.symbol);
     const quantity = Number(holding?.quantity);
-    if (coin && Number.isFinite(quantity) && quantity > 0 && !selected.has(coin.id)) {
-      selected.set(coin.id, { symbol: coin.id, quantity });
+    if (coin && Number.isFinite(quantity) && quantity > 0) {
+      const prev = selected.get(coin.id);
+      selected.set(coin.id, { symbol: coin.id, quantity: (prev?.quantity || 0) + quantity });
     }
   }
   return [...selected.values()];
@@ -493,6 +541,8 @@ export {
   sanitizeDiagnosticEntry,
   appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
+  SETTINGS_SCHEMA_VERSION,
+  migrateSettings,
   CRYPTO_CATALOG,
   resolveCryptoCatalogEntry,
   normalizeCryptoConfig,

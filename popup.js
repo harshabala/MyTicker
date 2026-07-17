@@ -111,33 +111,18 @@ function prefersReducedMotion() {
   return window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 }
 
-function waitMs(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
-
-async function fadeOutView(viewEl) {
-  if (!viewEl || prefersReducedMotion()) return;
-  viewEl.classList.add("view-exit");
-  await Promise.race([
-    new Promise((resolve) => {
-      viewEl.addEventListener("transitionend", resolve, { once: true });
-    }),
-    waitMs(260)
-  ]);
-}
-
-function mountView(container, viewEl, viewName) {
-  viewEl.classList.add("popup-view", "view-enter");
+function mountView(container, viewEl, viewName, { animate = false } = {}) {
+  viewEl.classList.add("popup-view");
   if (viewEl.parentNode !== container) container.appendChild(viewEl);
   currentView = viewName;
-  if (!prefersReducedMotion()) {
+  // Popup data is often refreshed while keyboard navigation is in progress.
+  // Keep the default immediate; a future deliberate, non-keyboard transition
+  // must opt in and will still honor reduced-motion preferences.
+  if (animate && !prefersReducedMotion()) {
+    viewEl.classList.add("view-enter");
     requestAnimationFrame(() => {
-      requestAnimationFrame(() => {
-        viewEl.classList.remove("view-enter");
-      });
+      viewEl.classList.remove("view-enter");
     });
-  } else {
-    viewEl.classList.remove("view-enter");
   }
 }
 
@@ -205,11 +190,9 @@ async function _refreshPopupInner(container) {
 
   const loadingEl = container.querySelector(".loading-state");
   if (loadingEl) {
-    await fadeOutView(loadingEl);
     loadingEl.className = "";
     loadingEl.replaceChildren();
   } else if (outgoing) {
-    await fadeOutView(outgoing);
     outgoing.className = "";
     outgoing.replaceChildren();
   }
@@ -274,7 +257,7 @@ function getSetupSteps(status) {
     {
       done: status.hasLiveData,
       wizardStep: 2,
-      label: "Prices loading",
+      label: status.hasLiveData ? "Live prices ready" : "Prices loading",
       hint: status.hasHoldings
         ? "Fetching live prices… open any tab in a moment"
         : "Import holdings first"
@@ -426,7 +409,8 @@ function renderSetupChecklist(container, status) {
   btn.type = "button";
   btn.className = "btn-setup";
   if (!next) {
-    btn.textContent = "Open any tab to see your strip →";
+    // Checklist complete: prices/hint already say open any tab; gear CTA is Settings.
+    btn.textContent = "Open Settings →";
     btn.addEventListener("click", () => openSettings());
   } else if (next.label.startsWith("Optional")) {
     btn.textContent = "Optional: add US key →";
@@ -463,8 +447,13 @@ function renderEmptyState(container, status) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn-setup";
-  btn.textContent = isHoldingsEmpty ? "Import holdings →" : "Open Settings →";
-  btn.addEventListener("click", () => openOptionsAtWizardStep(isHoldingsEmpty ? 2 : 2));
+  if (isHoldingsEmpty) {
+    btn.textContent = "Import holdings →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(2));
+  } else {
+    btn.textContent = "Open Settings →";
+    btn.addEventListener("click", () => openSettings());
+  }
   empty.appendChild(btn);
   container.appendChild(empty);
 }
@@ -528,10 +517,15 @@ export function renderHoldingsPanel(container, state, status) {
   const heroLabel = document.createElement("div");
   heroLabel.className = "hero-label";
   heroLabel.id = "pnl-heading";
-  heroLabel.textContent = firstValue ? "Your day so far" : "Your day so far";
+  heroLabel.textContent = "Your day so far";
   const livePill = document.createElement("span");
   livePill.className = `live-pill${state.staleWarning ? " is-stale" : ""}`;
-  livePill.innerHTML = `<span class="dot"></span><span class="live-label">${state.staleWarning ? "Stale" : "Live"}</span>`;
+  const liveDot = document.createElement("span");
+  liveDot.className = "dot";
+  const liveLabel = document.createElement("span");
+  liveLabel.className = "live-label";
+  liveLabel.textContent = state.staleWarning ? "Stale" : "Live";
+  livePill.append(liveDot, liveLabel);
   heroTop.append(heroLabel, livePill);
 
   const pnlRow = document.createElement("div");
@@ -610,7 +604,7 @@ export function renderHoldingsPanel(container, state, status) {
     const viewAll = document.createElement("button");
     viewAll.type = "button";
     viewAll.className = "link-quiet";
-    viewAll.textContent = "View all →";
+    viewAll.textContent = "Open settings →";
     viewAll.addEventListener("click", () => openSettings());
     head.append(label, viewAll);
     section.appendChild(head);
@@ -636,7 +630,7 @@ export function renderWatchlistPanel(container, watchlistItems, watchlistPrices)
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "No symbols yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
+      "Nothing on your watchlist yet. Add symbols in MyTicker settings → Watchlist. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {
@@ -668,7 +662,7 @@ export function renderWatchlistPanel(container, watchlistItems, watchlistPrices)
           changeEl.className = "watch-change pnl-flat";
         }
       } else {
-        priceEl.textContent = "Unavailable";
+        priceEl.textContent = "—";
         changeEl.textContent = "Unavailable";
         changeEl.className = "watch-change pnl-flat";
       }
