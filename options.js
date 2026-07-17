@@ -86,6 +86,44 @@ function prefersReducedMotion() {
   return window.matchMedia?.("(prefers-reduced-motion: reduce)")?.matches === true;
 }
 
+const BROKER_SUMMARY_LABELS = {
+  zerodha: "Zerodha",
+  groww: "Groww",
+  upstox: "Upstox",
+  generic: "Generic CSV"
+};
+
+function formatBrokerSummary(holdings) {
+  if (!holdings?.length) return "—";
+  const ids = [...new Set(holdings.map((h) => String(h.brokerId || "").toLowerCase()).filter(Boolean))];
+  if (!ids.length) return "Imported";
+  if (ids.length === 1) return BROKER_SUMMARY_LABELS[ids[0]] || ids[0];
+  return "Mixed";
+}
+
+function formatExchangeSummary(holdings) {
+  if (!holdings?.length) return "—";
+  const exchanges = new Set();
+  for (const h of holdings) {
+    const exchange = String(h.exchange || "").toUpperCase();
+    if (exchange === "NSE" || exchange === "BSE") exchanges.add(exchange);
+    else if (String(h.symbol || "").endsWith(".NS")) exchanges.add("NSE");
+    else if (String(h.symbol || "").endsWith(".BO")) exchanges.add("BSE");
+    else if (h.currency === "USD" || (!String(h.symbol || "").includes(".") && h.currency !== "INR")) exchanges.add("US");
+  }
+  if (!exchanges.size) return "Local book";
+  return [...exchanges].sort().join(" / ");
+}
+
+function updatePortfolioSummary(holdings = []) {
+  const countEl = document.getElementById("portfolioSummaryCount");
+  const brokerEl = document.getElementById("portfolioSummaryBroker");
+  const exchangeEl = document.getElementById("portfolioSummaryExchange");
+  if (countEl) countEl.textContent = String(holdings.length);
+  if (brokerEl) brokerEl.textContent = formatBrokerSummary(holdings);
+  if (exchangeEl) exchangeEl.textContent = formatExchangeSummary(holdings);
+}
+
 init();
 
 function init() {
@@ -130,11 +168,10 @@ function init() {
 
   // Show existing holdings count on load
   chrome.storage.local.get([STORAGE_KEYS.holdings], (localData) => {
-    const count = (localData[STORAGE_KEYS.holdings] || []).length;
-    const portfolioSummaryCount = document.getElementById("portfolioSummaryCount");
-    if (portfolioSummaryCount) portfolioSummaryCount.textContent = String(count);
-    if (count > 0) {
-      csvStatusEl.textContent = `${count} holdings`;
+    const holdings = localData[STORAGE_KEYS.holdings] || [];
+    updatePortfolioSummary(holdings);
+    if (holdings.length > 0) {
+      csvStatusEl.textContent = `${holdings.length} holdings`;
     }
   });
 
@@ -941,6 +978,7 @@ async function processCsvText(text, presetKeyHint = "zerodha") {
       : `Imported ${holdings.length} holdings (${preset.name})`;
   showToast(msg, "success");
   if (csvStatusEl) csvStatusEl.textContent = `${holdings.length} holdings`;
+  updatePortfolioSummary(holdings);
   await recordImportResult(presetKey, true);
   await renderImportStats();
   await markWizardStep(3);
@@ -952,6 +990,7 @@ async function processCsvText(text, presetKeyHint = "zerodha") {
 function handleClearHoldings() {
   chrome.storage.local.remove([STORAGE_KEYS.holdings, STORAGE_KEYS.positionsState, STORAGE_KEYS.priceHistory], () => {
     csvStatusEl.textContent = "";
+    updatePortfolioSummary([]);
     showToast("All holdings cleared", "success");
     handleRefreshPreview();
   });
@@ -1271,6 +1310,7 @@ function handleRefreshPreview() {
       const holdings = localData[STORAGE_KEYS.holdings] || [];
       const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
       const cryptoConfig = settings.cryptoConfig || DEFAULT_SETTINGS.cryptoConfig;
+      updatePortfolioSummary(holdings);
 
       if (!holdings.length && !cryptoConfig.includeCrypto) {
         holdingsPreviewEl.replaceChildren();

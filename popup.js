@@ -630,7 +630,7 @@ export function renderWatchlistPanel(container, watchlistItems, watchlistPrices)
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "Nothing on your watchlist yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
+      "Nothing on your watchlist yet. Add symbols in MyTicker settings → Watchlist. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {

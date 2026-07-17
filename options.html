@@ -1195,8 +1195,10 @@
         border: 1px solid var(--border);
         border-radius: 4px;
         color: var(--text-tertiary);
-        font-size: 10px;
-        padding: 2px 8px;
+        font-size: var(--text-meta, 11px);
+        font-weight: 500;
+        padding: 4px 8px;
+        min-height: 28px;
         cursor: pointer;
         flex-shrink: 0;
         font-family: inherit;
@@ -1278,7 +1280,7 @@
         text-align: center;
       }
       .settings-tab[aria-selected="true"] {
-        color: var(--brand-gold);
+        color: var(--text-primary);
       }
       .settings-tab[aria-selected="true"]::after {
         left: 16px;
@@ -1293,7 +1295,7 @@
         margin: 0 0 12px;
         color: var(--text-primary);
         font-size: 1.125rem;
-        font-weight: 650;
+        font-weight: 600;
         letter-spacing: -0.015em;
       }
       .section-title::after { display: none; }
@@ -1311,7 +1313,7 @@
         place-items: center;
         border: 1px solid var(--border);
         border-radius: 10px;
-        color: var(--brand-gold);
+        color: var(--text-secondary);
         background: var(--bg-inset);
         font-size: 18px;
       }
@@ -1324,7 +1326,7 @@
         margin: 0;
         color: var(--text-primary);
         font-size: 1.125rem;
-        font-weight: 650;
+        font-weight: 600;
         letter-spacing: -0.015em;
       }
       .section-intro p {
@@ -2212,8 +2214,8 @@
       <div class="tab-panel is-active" id="tab-portfolio" role="tabpanel" aria-labelledby="nav-portfolio">
       <div class="portfolio-surface-summary" aria-label="Portfolio status">
         <div><span>Holdings imported</span><strong id="portfolioSummaryCount">—</strong></div>
-        <div><span>Broker</span><strong>Zerodha</strong></div>
-        <div><span>Exchange</span><strong>NSE / BSE</strong></div>
+        <div><span>Broker</span><strong id="portfolioSummaryBroker">—</strong></div>
+        <div><span>Exchange</span><strong id="portfolioSummaryExchange">—</strong></div>
         <div><span>Storage</span><strong>Local only</strong></div>
       </div>
       <div class="section" id="section-import">
@@ -2580,7 +2582,7 @@
         <div class="card">
           <ul class="tips-list">
             <li><strong>India-first:</strong> Import a Zerodha / Groww / Upstox holdings CSV on the <strong>Portfolio</strong> tab. NSE/BSE symbols get <code style="color: var(--text-secondary);">.NS</code> / <code style="color: var(--text-secondary);">.BO</code> and price automatically via Yahoo — no API key.</li>
-            <li><strong>Toggle the strip:</strong> Use the popup or <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>.</li>
+            <li><strong>Toggle the tape:</strong> Press <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>. Open the popup for your day P&amp;L summary.</li>
             <li><strong>Pause scroll:</strong> Hover the ticker strip to freeze it while you read a symbol.</li>
             <li><strong>Re-import</strong> whenever your broker holdings change — import merges/replaces the stored portfolio on this device.</li>
           </ul>
@@ -2592,7 +2594,7 @@
           <ul class="tips-list">
             <li>A <strong>Finnhub</strong> key is still required for US equities under <strong>Market data</strong> (optional for pure India portfolios).</li>
             <li>Crypto uses <strong>CoinGecko</strong> first for supported canonical assets and <strong>Binance</strong> only as a fallback for mapped liquid assets; no Finnhub key is required for those quotes.</li>
-            <li>Your manually added watchlist uses the symbol and exchange you select in the popup. It appears as the second strip group, after holdings; crypto follows as the third group when enabled.</li>
+            <li>Your watchlist uses the symbol and exchange you select on the <strong>Watchlist</strong> tab. It appears as the second strip group, after holdings; crypto follows as the third group when enabled. The popup is for reviewing quotes, not adding symbols.</li>
             <li>Free Finnhub tiers are rate-limited (~60 calls/min). Prefer a 2+ minute refresh for large US books.</li>
           </ul>
         </div>
