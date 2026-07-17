@@ -44,7 +44,17 @@ Nothing about your portfolio is sent to MyTicker servers — **there are no MyTi
 
 ### Install and first use (about 2 minutes)
 
-1. Clone or download this repo:
+**Easiest — from the latest release**
+
+1. Open [Releases](https://github.com/harshabala/MyTicker/releases/latest) and download **`MyTicker-v0.5.0-extension.zip`**
+2. Unzip → you get a `MyTicker` folder
+3. Chrome → `chrome://extensions` → enable **Developer mode**
+4. **Load unpacked** → select that `MyTicker` folder
+5. Settings opens → import holdings and go live
+
+**Or from source**
+
+1. Clone the repo:
    ```bash
    git clone https://github.com/harshabala/MyTicker.git
    ```
