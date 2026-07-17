@@ -60,13 +60,14 @@ const statusLiveEl = document.getElementById("statusLive");
 const rateLimitWarnEl = document.getElementById("rateLimitWarn");
 const wizardHintEl = document.getElementById("wizardHint");
 const sectionMarket = document.getElementById("section-market");
+const sectionFinnhubKey = document.getElementById("section-finnhub-key");
 const sectionImport = document.getElementById("section-import");
 const diagnosticsOutputEl = document.getElementById("diagnosticsOutput");
 const copyDiagnosticsButton = document.getElementById("copyDiagnosticsButton");
 const refreshDiagnosticsButton = document.getElementById("refreshDiagnosticsButton");
 
-const EYE_OPEN_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>`;
-const EYE_CLOSED_SVG = `<svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17.94 17.94A10.07 10.07 0 0 1 12 20c-7 0-11-8-11-8a18.45 18.45 0 0 1 5.06-5.94M9.9 4.24A9.12 9.12 0 0 1 12 4c7 0 11 8 11 8a18.5 18.5 0 0 1-2.16 3.19m-6.72-1.07a3 3 0 1 1-4.24-4.24"/><line x1="1" y1="1" x2="23" y2="23"/></svg>`;
+const EYE_OPEN_SVG = `<svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye"></use></svg>`;
+const EYE_CLOSED_SVG = `<svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye-slash"></use></svg>`;
 
 const WIZARD_HINTS = {
   1: "Optional: add a Finnhub key if you hold US equities. Crypto quotes do not need it.",
@@ -151,8 +152,19 @@ function init() {
   testConnectionButton.addEventListener("click", handleTestConnection);
   copyDiagnosticsButton?.addEventListener("click", copyDiagnostics);
   refreshDiagnosticsButton?.addEventListener("click", renderDiagnostics);
+  document.getElementById("quickDiagnosticsButton")?.addEventListener("click", () => {
+    switchSettingsTab("data");
+    const diagnostics = document.getElementById("section-diagnostics");
+    if (diagnostics) {
+      diagnostics.open = true;
+      requestAnimationFrame(() => {
+        diagnostics.scrollIntoView({ behavior: prefersReducedMotion() ? "auto" : "smooth", block: "start" });
+      });
+    }
+    renderDiagnostics();
+  });
 
-  // Eye-toggle for API key visibility
+  // Eye-toggle for API key visibility (Phosphor)
   document.getElementById("toggleApiKeyVisibility").addEventListener("click", () => {
     const isPassword = finnhubApiKeyEl.type === "password";
     finnhubApiKeyEl.type = isPassword ? "text" : "password";
@@ -507,6 +519,11 @@ function wireWizardSteps() {
   });
 }
 
+function openFinnhubKeyDisclosure() {
+  if (sectionMarket) sectionMarket.open = true;
+  if (sectionFinnhubKey) sectionFinnhubKey.open = true;
+}
+
 function goToWizardStep(step) {
   markWizardStep(step);
   document.querySelectorAll(".wizard-step").forEach((btn) => {
@@ -522,7 +539,10 @@ function goToWizardStep(step) {
   if (tabId) {
     switchSettingsTab(tabId);
   }
-  const target = step === 1 ? sectionMarket : step === 2 ? sectionImport : null;
+  if (step === 1) {
+    openFinnhubKeyDisclosure();
+  }
+  const target = step === 1 ? (sectionFinnhubKey || sectionMarket) : step === 2 ? sectionImport : null;
   if (target) {
     // Wait a frame so the target tab is visible before highlighting.
     requestAnimationFrame(() => {
@@ -538,9 +558,13 @@ async function refreshSetupUI() {
   const status = await getSetupStatus();
   const dataPageHealth = document.getElementById("dataPageHealth");
   if (dataPageHealth) {
-    const healthy = status.hasLiveData || status.hasHoldings;
+    const healthy = status.hasLiveData && status.hasHoldings;
     dataPageHealth.classList.toggle("is-healthy", healthy);
-    dataPageHealth.lastChild.textContent = healthy ? "System status available" : "Finish setup to go live";
+    dataPageHealth.lastChild.textContent = healthy
+      ? "All systems operational"
+      : status.hasHoldings
+        ? "Finish setup to go live"
+        : "Import holdings to begin";
   }
 
   if (setupWelcomeEl) {
@@ -549,17 +573,32 @@ async function refreshSetupUI() {
     setupWelcomeEl.classList.toggle("is-visible", showWelcome);
   }
 
-  setPill(statusHoldingsEl, status.hasHoldings, `Holdings (${status.holdingsCount})`);
-  setPill(statusLiveEl, status.hasLiveData, "Live prices");
-  setPill(statusSyncEl, status.lastFetch > 0, `Sync ${formatLastSync(status.lastFetch)}`);
-  // API key is optional — only highlight when US symbols need it
+  setStatusCard(
+    statusHoldingsEl,
+    status.hasHoldings,
+    status.hasHoldings ? String(status.holdingsCount || 0) : "—",
+    status.hasHoldings ? "Imported" : "Not imported"
+  );
+  setStatusCard(
+    statusLiveEl,
+    status.hasLiveData,
+    status.hasLiveData ? "On" : "Off",
+    status.hasLiveData ? "Streaming" : "Waiting"
+  );
+  setStatusCard(
+    statusSyncEl,
+    status.lastFetch > 0,
+    status.lastFetch > 0 ? formatLastSync(status.lastFetch) : "—",
+    status.lastFetch > 0 ? "Updated" : "No sync yet"
+  );
+  // India prices are automatic; flag only when a US key is required and missing.
   if (statusApiEl) {
     if (status.needsUsKey && !status.hasApiKey) {
-      setPill(statusApiEl, false, "US key (optional)");
+      setStatusCard(statusApiEl, false, "Needed", "US key optional");
     } else if (status.hasApiKey) {
-      setPill(statusApiEl, true, "US key");
+      setStatusCard(statusApiEl, true, "Ready", "US + India");
     } else {
-      setPill(statusApiEl, true, "India prices (auto)");
+      setStatusCard(statusApiEl, true, "Auto", "Yahoo Finance");
     }
   }
 
@@ -657,8 +696,13 @@ async function renderImportStats() {
 }
 
 function setPill(el, ok, label) {
+  // Back-compat wrapper for any remaining callers.
+  setStatusCard(el, ok, label, el?.dataset?.label || "");
+}
+
+function setStatusCard(el, ok, value, meta) {
   if (!el) return;
-  el.className = `status-pill ${ok ? "ok" : "pending"}`;
+  el.className = `status-card ${ok ? "ok" : "pending"}`;
   const icon = el.dataset.icon || "ph-chart-line-up";
   el.replaceChildren();
   const iconEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
@@ -668,7 +712,14 @@ function setPill(el, ok, label) {
   use.setAttribute("href", `icons/phosphor-symbols.svg#${icon}`);
   iconEl.append(use);
   const copy = document.createElement("span");
-  copy.textContent = label;
+  copy.className = "status-copy";
+  const valueEl = document.createElement("span");
+  valueEl.className = "status-value";
+  valueEl.textContent = value;
+  const metaEl = document.createElement("span");
+  metaEl.className = "status-meta";
+  metaEl.textContent = meta || el.dataset.label || "";
+  copy.append(valueEl, metaEl);
   el.append(iconEl, copy);
 }
 

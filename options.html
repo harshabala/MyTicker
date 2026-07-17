@@ -1415,14 +1415,15 @@
       }
       .data-summary-status {
         margin-left: auto;
-        margin-right: 22px;
+        margin-right: 12px;
         color: var(--text-secondary);
         font-size: .75rem;
         font-weight: 500;
+        white-space: nowrap;
       }
       .settings-disclosure[open] > summary {
         border-bottom: 1px solid var(--border);
-        color: var(--brand-gold);
+        color: var(--text-primary);
       }
       .settings-disclosure[open] > summary::after { transform: rotate(180deg); }
       .settings-disclosure-body { padding: 0; }
@@ -1446,13 +1447,16 @@
         border-color: var(--brand-gold);
         color: var(--brand-gold);
       }
-      .data-section-panel > .section {
-        padding: 18px 20px;
-        border: 1px solid var(--border);
-        border-radius: var(--radius);
-        background: var(--bg-surface);
+      .data-section-panel {
+        margin: 0;
+        min-width: 0;
       }
-      .data-section-panel > .section + .section { margin-top: 14px; }
+      .data-section-panel > .section {
+        padding: 0;
+        border: 0;
+        background: transparent;
+      }
+      .data-section-panel > .section + .section { margin-top: 12px; }
       .data-section-panel > .section .section-title { margin-bottom: 8px; }
       .data-section-panel > .section .card { border-color: var(--border); }
       #tab-data.is-active { display: block; }
@@ -1473,36 +1477,37 @@
         align-items: flex-end;
         justify-content: space-between;
         gap: 20px;
-        margin: 0 0 20px;
+        margin: 0 0 16px;
         padding: 0 2px;
       }
       .data-page-heading .eyebrow {
         margin: 0 0 4px;
-        color: var(--brand-gold);
+        color: var(--text-secondary);
         font-size: .75rem;
-        font-weight: 700;
-        letter-spacing: .08em;
-        text-transform: uppercase;
+        font-weight: 600;
+        letter-spacing: .02em;
       }
       .data-page-heading h2 {
         margin: 0;
         color: var(--text-primary);
-        font-size: clamp(1.45rem, 2vw, 1.8rem);
+        font-size: clamp(1.35rem, 2vw, 1.65rem);
         font-weight: 700;
-        letter-spacing: -.025em;
+        letter-spacing: -.02em;
+        line-height: 1.2;
       }
       .data-page-heading p:not(.eyebrow) {
-        max-width: 62ch;
+        max-width: 58ch;
         margin: 6px 0 0;
         color: var(--text-secondary);
         font-size: .875rem;
+        line-height: 1.45;
       }
       .data-page-health {
         display: inline-flex;
         align-items: center;
         gap: 8px;
         min-height: 34px;
-        padding: 0 11px;
+        padding: 0 12px;
         border: 1px solid var(--border);
         border-radius: 999px;
         color: var(--text-secondary);
@@ -1517,103 +1522,427 @@
         border-radius: 50%;
         background: var(--text-secondary);
       }
-      .data-page-health.is-healthy { color: var(--green); }
+      .data-page-health.is-healthy {
+        color: var(--green);
+        border-color: color-mix(in srgb, var(--green) 40%, var(--border));
+        background: color-mix(in srgb, var(--green) 10%, transparent);
+      }
       .data-page-health.is-healthy > span { background: var(--green); }
-      .data-workspace { display: grid; gap: 14px; }
+      .data-workspace {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
       .data-workspace > * { min-width: 0; }
       #tab-data > #tab-setup,
       #tab-data > #tab-market,
       #tab-data > #tab-diagnostics,
       #tab-data > #tab-tips,
-      #tab-data > #section-error-log { grid-column: 1 / -1; }
+      #tab-data > #section-error-log { width: 100%; }
       #tab-data > #tab-setup,
       #tab-data > #tab-market,
       #tab-data > #tab-diagnostics,
       #tab-data > #tab-tips { margin: 0; }
       #tab-data .data-disclosure { margin: 0; }
-      #section-setup .card { border: 0; border-radius: 0; }
+      #tab-data .data-disclosure + .data-disclosure { margin-top: 12px; }
+
+      .data-surface {
+        border: 1px solid var(--border);
+        border-radius: var(--radius);
+        background: var(--bg-surface);
+        overflow: hidden;
+      }
+      .data-surface-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 20px;
+        border-bottom: 1px solid var(--border);
+      }
+      .data-surface-head h3 {
+        margin: 0;
+        font-size: .9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -.01em;
+      }
+      #section-setup .setup-welcome {
+        margin: 0;
+        padding: 12px 20px;
+        border-bottom: 1px solid var(--border);
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        line-height: 1.45;
+        background: var(--bg-inset);
+      }
       #section-setup .setup-status {
         display: grid;
         grid-template-columns: repeat(4, minmax(0, 1fr));
-        gap: 10px;
+        gap: 12px;
         padding: 16px 20px;
       }
-      #section-setup .status-pill {
-        min-height: 64px;
+      #section-setup .status-pill,
+      #section-setup .status-card {
+        min-height: 76px;
         display: flex;
         align-items: center;
-        justify-content: flex-start;
-        gap: 9px;
-        padding: 12px;
+        gap: 10px;
+        padding: 12px 14px;
         text-align: left;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
         background: var(--bg-inset);
         color: var(--text-secondary);
+      }
+      #section-setup .status-card .ui-icon {
+        align-self: center;
+        color: var(--brand-gold);
+      }
+      #section-setup .status-card .status-copy {
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+        min-width: 0;
+      }
+      #section-setup .status-card .status-value {
+        color: var(--text-primary);
+        font-size: 1rem;
+        font-weight: 700;
+        letter-spacing: -.02em;
+        font-variant-numeric: tabular-nums;
+        line-height: 1.2;
+      }
+      #section-setup .status-card .status-meta {
+        color: var(--text-secondary);
+        font-size: .75rem;
+        font-weight: 500;
+        line-height: 1.3;
+      }
+      #section-setup .status-card.ok {
+        border-color: color-mix(in srgb, var(--green) 42%, var(--border));
+      }
+      #section-setup .status-card.ok .ui-icon { color: var(--green); }
+
+      .data-actions {
+        padding: 0 20px 16px;
+        border-top: 1px solid var(--border);
+      }
+      .data-actions .data-subhead {
+        margin: 14px 0 10px;
         font-size: .8125rem;
         font-weight: 600;
+        color: var(--text-primary);
       }
-      #section-setup .status-pill .ui-icon { color: var(--brand-gold); }
-      #section-setup .status-pill.ok { border-color: color-mix(in srgb, var(--green) 48%, var(--border)); color: var(--text-primary); }
-      #section-setup .status-pill.ok .ui-icon { color: var(--green); }
-      #section-setup .setup-wizard {
-        padding: 0 20px 16px;
-      }
-      #section-setup .wizard-steps {
-        display: grid;
-        grid-template-columns: 1.7fr repeat(2, 1fr);
+      .data-action-row {
+        display: flex;
+        flex-wrap: wrap;
         gap: 10px;
+        align-items: center;
       }
+      .data-action-row .btn {
+        min-height: 40px;
+        border-radius: var(--radius-sm);
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .data-action-row .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .data-action-row .btn-secondary { background: transparent; }
+      #section-setup .wizard-hint {
+        display: block;
+        margin: 10px 0 0;
+        color: var(--text-secondary);
+        font-size: .75rem;
+        line-height: 1.4;
+      }
+      #section-setup .wizard-steps { display: contents; }
       #section-setup .wizard-step {
         min-height: 40px;
         border: 1px solid var(--border);
         border-radius: var(--radius-sm);
-        background: var(--bg-inset);
+        background: transparent;
         color: var(--text-secondary);
         font-size: .8125rem;
+        font-weight: 600;
+        padding: 0 14px;
+        cursor: pointer;
       }
-      #section-setup .wizard-step.active {
+      #section-setup .wizard-step.active,
+      #section-setup .wizard-step.is-next {
         border-color: var(--brand-gold);
         background: var(--brand-gold);
         color: var(--brand-gold-ink);
       }
-      #section-setup .wizard-hint { display: none; }
-      #section-market {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 0 16px;
+      #section-setup .wizard-step.done {
+        border-color: color-mix(in srgb, var(--green) 40%, var(--border));
+        color: var(--green);
+        background: transparent;
       }
-      #section-market > summary,
-      #section-market > .section-title:first-of-type,
-      #section-market > .field-hint:last-child { grid-column: 1 / -1; }
-      #section-market > summary { margin: 0 -0px; }
-      #section-market > .section-title {
-        margin: 18px 0 8px !important;
+      #section-setup .wizard-step:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+
+      .provider-list {
+        display: flex;
+        flex-direction: column;
+      }
+      .provider-row {
+        padding: 16px 20px;
+        border-top: 1px solid var(--border);
+        background: var(--bg-surface);
+      }
+      .provider-row:first-child { border-top: 0; }
+      .provider-row-main {
+        display: flex;
+        align-items: flex-start;
+        justify-content: space-between;
+        gap: 16px;
+      }
+      .provider-row-copy { min-width: 0; flex: 1; }
+      .provider-name {
+        font-size: .9375rem;
+        font-weight: 600;
+        color: var(--text-primary);
+        letter-spacing: -.01em;
+      }
+      .provider-sub {
+        margin-top: 4px;
+        font-size: .75rem;
+        color: var(--text-secondary);
+        line-height: 1.4;
+      }
+      .provider-chip-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+      }
+      .provider-chip {
+        display: inline-flex;
+        align-items: center;
+        min-height: 24px;
+        padding: 0 8px;
+        border: 1px solid var(--border);
+        border-radius: 6px;
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        font-size: .6875rem;
+        font-weight: 600;
+      }
+      .provider-badge {
+        font-size: .6875rem;
+        font-weight: 600;
+        letter-spacing: 0;
+        text-transform: none;
+        padding: 4px 8px;
+        border-radius: 999px;
+        flex-shrink: 0;
+        border: 1px solid transparent;
+      }
+      .provider-badge.auto {
+        background: color-mix(in srgb, var(--green) 12%, transparent);
+        color: var(--green);
+        border-color: color-mix(in srgb, var(--green) 28%, transparent);
+      }
+      .provider-badge.optional {
+        background: var(--bg-inset);
+        color: var(--text-secondary);
+        border-color: var(--border);
+      }
+      .provider-row-actions {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 8px;
+        margin-top: 14px;
+      }
+      .provider-row-actions .btn {
+        min-height: 40px;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .provider-row-actions .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .provider-detail {
+        margin-top: 12px;
+        padding-top: 12px;
+        border-top: 1px solid var(--border);
+      }
+      .provider-detail .field {
+        padding: 12px 0;
+        border-bottom: 0;
+      }
+      .provider-detail .field + .field { border-top: 1px solid var(--border); }
+      .provider-detail .btn-row {
+        padding: 12px 0 0;
+        border-top: 1px solid var(--border);
+        margin-top: 4px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        align-items: center;
+      }
+      .provider-detail .btn-row .btn {
+        min-height: 40px;
+      }
+      /* US Finnhub key: compact by default, expand on demand */
+      .provider-key-disclosure {
+        margin-top: 14px;
+      }
+      .provider-key-disclosure > summary {
+        list-style: none;
+        cursor: pointer;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        min-height: 40px;
+        padding: 0 14px;
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        background: transparent;
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        font-weight: 600;
+        width: fit-content;
+        user-select: none;
+      }
+      .provider-key-disclosure > summary::-webkit-details-marker,
+      .provider-key-disclosure > summary::marker {
+        display: none;
+        content: "";
+      }
+      .provider-key-disclosure > summary .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+      }
+      .provider-key-disclosure > summary:hover {
+        color: var(--text-primary);
+        border-color: color-mix(in srgb, var(--text-secondary) 40%, var(--border));
+      }
+      .provider-key-disclosure > summary:focus-visible {
+        outline: 2px solid var(--brand-gold);
+        outline-offset: 2px;
+      }
+      .provider-key-disclosure[open] > summary {
+        color: var(--text-primary);
+        border-color: var(--border);
+        background: var(--bg-inset);
+      }
+      .provider-key-disclosure .provider-detail {
+        margin-top: 12px;
+        padding: 12px 0 0;
+      }
+      .card.card-provider-india,
+      .card.card-provider-us {
+        border: 0;
+        border-radius: 0;
+        background: transparent;
+        box-shadow: none;
+        margin: 0;
+      }
+
+      .data-inline-note {
+        padding: 14px 20px;
+        color: var(--text-secondary);
+        font-size: .8125rem;
+        line-height: 1.45;
+      }
+      .data-settings-row {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 14px 20px;
+        border-top: 1px solid var(--border);
+      }
+      .data-settings-row:first-child { border-top: 0; }
+      .data-settings-row .item-label {
         font-size: .875rem;
+        font-weight: 600;
+        color: var(--text-primary);
       }
-      #section-market > .section-title:nth-of-type(2),
-      #section-market .card-provider-us { grid-column: 2; }
-      #section-market .card-provider-india,
-      #section-market .card-provider-us { margin: 0; min-height: 100%; }
-      #section-market .card { box-shadow: none; }
-      #section-market .provider-name { font-size: 1rem; }
-      #section-market .provider-sub { margin-top: 4px; }
-      #section-market .field { padding: 16px 20px; }
-      #section-market .btn-row { border-top: 1px solid var(--border); }
+      .data-settings-row .item-desc {
+        margin-top: 2px;
+        font-size: .75rem;
+        color: var(--text-secondary);
+      }
+      .data-settings-row select,
+      .data-settings-row input[type="number"] {
+        width: auto;
+        min-width: 120px;
+        min-height: 40px;
+      }
+      .data-privacy-foot {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 12px 20px 16px;
+        color: var(--text-tertiary);
+        font-size: .75rem;
+      }
+      .data-privacy-foot .ui-icon { width: 14px; height: 14px; flex: 0 0 14px; }
+
+      #diagnosticsOutput {
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+        max-height: 250px;
+        overflow: auto;
+        margin: 0;
+        padding: 14px 16px;
+        background: var(--bg-inset);
+        border: 1px solid var(--border);
+        border-radius: var(--radius-sm);
+        color: var(--text-secondary);
+        font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+      }
+      .diagnostics-body {
+        padding: 16px 20px 18px;
+      }
+      .diagnostics-body .field-hint { margin: 0 0 12px; }
+      .diagnostics-body .btn-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        padding: 12px 0 0;
+        margin: 0;
+        border: 0;
+      }
       #tab-diagnostics { display: block; }
-      #tab-diagnostics .section { margin: 0 0 14px; }
-      #tab-diagnostics #diagnosticsOutput { max-height: 250px !important; }
+      #tab-diagnostics .section { margin: 0 0 12px; }
       #tab-tips { display: block; }
-      #tab-tips .section { margin: 0 0 14px; }
+      #tab-tips .section { margin: 0 0 12px; }
       #tab-tips .tips-list { columns: 1; }
+      #tab-tips .settings-disclosure .card,
+      #tab-tips .help-disclosure .card {
+        padding: 16px 20px;
+        border: 0;
+        border-radius: 0;
+        box-shadow: none;
+      }
       @media (max-width: 760px) {
         .data-page-heading { align-items: flex-start; flex-direction: column; }
-        #section-market { display: block; }
-        #tab-data > * + *,
-        #tab-diagnostics .section + .section,
-        #tab-tips .section + .section { margin-top: 14px; }
         #section-setup .setup-status { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+        .data-settings-row { flex-direction: column; align-items: stretch; }
+        .provider-row-main { flex-direction: column; }
       }
+      @media (max-width: 480px) {
+        #section-setup .setup-status { grid-template-columns: 1fr; }
+        .data-action-row .btn,
+        #section-setup .wizard-step { width: 100%; justify-content: center; }
+      }
+
       #tab-portfolio .section-title { margin-bottom: 12px; }
       .portfolio-surface-summary {
         display: grid;
@@ -1684,40 +2013,54 @@
           <div>
             <p class="eyebrow">MyTicker</p>
             <h2>Data &amp; diagnostics</h2>
-            <p>Connection health, market providers, and private operational details.</p>
+            <p>Everything in one place. Easy to scan. Expand only what you need.</p>
           </div>
           <div class="data-page-health" id="dataPageHealth"><span aria-hidden="true"></span>Checking status</div>
         </header>
         <div class="data-workspace" id="dataWorkspace"></div>
       </div>
       <div class="data-section-panel" id="tab-setup" hidden>
-      <details class="settings-disclosure data-disclosure" id="section-setup" open>
-        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Setup status</span><span class="data-summary-status">At a glance</span></summary>
-        <div class="card">
+        <section class="data-surface" id="section-setup" aria-labelledby="setupStatusTitle">
+          <div class="data-surface-head">
+            <h3 id="setupStatusTitle">Setup status</h3>
+          </div>
           <div class="setup-welcome" id="setupWelcome" hidden>
             Import your broker holdings to go live. Indian stocks price automatically — no API key.
           </div>
           <div class="setup-status" id="setupStatus">
-            <div class="status-pill pending" id="statusHoldings" data-icon="ph-folder">Holdings</div>
-            <div class="status-pill pending" id="statusLive" data-icon="ph-chart-line-up">Live prices</div>
-            <div class="status-pill pending" id="statusSync" data-icon="ph-arrows-clockwise">Last sync</div>
-            <div class="status-pill pending" id="statusApi" data-icon="ph-globe">India prices</div>
+            <div class="status-card pending" id="statusHoldings" data-icon="ph-folder" data-label="Holdings">Holdings</div>
+            <div class="status-card pending" id="statusLive" data-icon="ph-chart-line-up" data-label="Live prices">Live prices</div>
+            <div class="status-card pending" id="statusSync" data-icon="ph-arrows-clockwise" data-label="Sync">Last sync</div>
+            <div class="status-card pending" id="statusApi" data-icon="ph-globe" data-label="India prices">India prices</div>
           </div>
           <div class="warn-banner" id="rateLimitWarn" hidden>
             Large portfolio with a Finnhub key: free tier is ~60 calls/min. Prefer a 2+ minute refresh.
           </div>
-          <div class="setup-wizard" id="setupWizard">
-            <div class="wizard-steps">
-              <button type="button" class="wizard-step active" data-step="2" id="wizStep2" aria-current="step">1. Import holdings</button>
-              <button type="button" class="wizard-step" data-step="3" id="wizStep3">2. Go live</button>
-              <button type="button" class="wizard-step" data-step="1" id="wizStep1">US key (optional)</button>
+          <div class="data-actions" id="setupWizard">
+            <h3 class="data-subhead">Quick actions</h3>
+            <div class="data-action-row wizard-steps">
+              <button type="button" class="btn btn-primary btn-pressable wizard-step active" data-step="2" id="wizStep2" aria-current="step">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-download-simple"></use></svg>
+                Import / Re-import holdings
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable wizard-step" data-step="3" id="wizStep3">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-lightning"></use></svg>
+                Go live
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable wizard-step" data-step="1" id="wizStep1">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-key"></use></svg>
+                Manage keys
+              </button>
+              <button type="button" class="btn btn-secondary btn-pressable" id="quickDiagnosticsButton">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>
+                Run diagnostics
+              </button>
             </div>
             <p class="wizard-hint" id="wizardHint">
               Start by importing a Zerodha / Groww / Upstox holdings CSV. NSE/BSE prices load without Finnhub.
             </p>
           </div>
-        </div>
-      </details>
+        </section>
       </div>
 
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
@@ -1832,78 +2175,129 @@
       <!-- Data sources -->
       <div class="data-section-panel" id="tab-market" hidden>
       <details class="settings-disclosure data-disclosure" id="section-market" open>
-        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Market data providers</span><span class="data-summary-status">India · US</span></summary>
-        <div class="section-title">India (automatic)</div>
-        <div class="card card-provider-india">
-          <div style="padding: 16px 20px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">NSE &amp; BSE</div>
-                <div class="provider-sub">Yahoo Finance · no API key</div>
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-globe"></use></svg>Market data providers</span>
+          <span class="data-summary-status">India · US</span>
+        </summary>
+        <div class="provider-list">
+          <div class="provider-row card card-provider-india">
+            <div class="provider-row-main">
+              <div class="provider-row-copy">
+                <div class="provider-card-header" style="margin:0;">
+                  <div>
+                    <div class="provider-name">India (Automatic)</div>
+                    <div class="provider-sub">Powered by Yahoo Finance · No API key required</div>
+                  </div>
+                </div>
+                <div class="provider-chip-row" aria-label="Exchanges">
+                  <span class="provider-chip">NSE</span>
+                  <span class="provider-chip">BSE</span>
+                </div>
               </div>
-              <span class="provider-badge auto">Auto</span>
+              <span class="provider-badge auto">Active</span>
             </div>
-            <div class="field-hint" style="margin-bottom: 14px;">All .NS and .BO symbols from your broker CSV are fetched automatically after import.</div>
+            <div class="provider-row-actions">
+              <button class="btn btn-secondary btn-pressable" id="testIndiaButton">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-wifi-high"></use></svg>
+                Test connection
+              </button>
+              <span class="status-badge" id="indiaStatus"></span>
+            </div>
+            <div class="provider-detail">
+              <div class="field-hint" style="margin:0;">All .NS and .BO symbols from your broker CSV are fetched automatically after import.</div>
+            </div>
           </div>
-          <div class="btn-row" style="padding: 0 20px 16px;">
-            <button class="btn btn-secondary btn-pressable" id="testIndiaButton">Test connection</button>
-            <span class="status-badge" id="indiaStatus"></span>
-          </div>
-        </div>
 
-        <div class="section-title" style="margin-top: 20px;">United States (optional)</div>
-        <div class="card card-provider-us">
-          <div style="padding: 16px 20px 0;">
-            <div class="provider-card-header">
-              <div>
-                <div class="provider-name">NYSE &amp; NASDAQ</div>
-                <div class="provider-sub">Finnhub · free key for US equities</div>
+          <div class="provider-row card card-provider-us">
+            <div class="provider-row-main">
+              <div class="provider-row-copy">
+                <div class="provider-card-header" style="margin:0;">
+                  <div>
+                    <div class="provider-name">United States (Optional)</div>
+                    <div class="provider-sub">Powered by Finnhub · Free key required. Live US prices require Finnhub.</div>
+                  </div>
+                </div>
+                <div class="provider-chip-row" aria-label="Exchanges">
+                  <span class="provider-chip">NYSE</span>
+                  <span class="provider-chip">NASDAQ</span>
+                </div>
               </div>
               <span class="provider-badge optional">Optional</span>
             </div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="finnhubApiKey">Finnhub API key</label>
-            <div class="input-with-icon">
-              <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" autocomplete="off" />
-              <button type="button" id="toggleApiKeyVisibility" class="input-eye-btn" aria-label="Show API key" title="Show / hide key">
-                <svg id="eyeIcon" xmlns="http://www.w3.org/2000/svg" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-                  <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
-                  <circle cx="12" cy="12" r="3"/>
-                </svg>
-              </button>
-            </div>
-            <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · kept encrypted on this device · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
-          </div>
-          <div class="field" aria-labelledby="vaultProtectionTitle">
-            <div class="field-label" id="vaultProtectionTitle">Protect your Finnhub key</div>
-            <label class="sr-only" for="vaultUnlockCode">Create unlock code</label>
-            <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
-            <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
-            <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
-          </div>
-          <div class="field">
-            <label class="field-label" for="refreshMinutes">Refresh interval (minutes)</label>
-            <input type="number" id="refreshMinutes" placeholder="5" min="1" max="60" />
-            <div class="field-hint">How often the background worker refreshes quotes (via chrome.alarms).</div>
-          </div>
-          <div class="btn-row" style="padding: 0 20px 16px;">
-            <button class="btn btn-primary btn-pressable" id="saveProviderButton">Create unlock code</button>
-            <button class="btn btn-secondary btn-pressable" id="unlockVaultButton">Unlock key</button>
-            <button class="btn btn-secondary btn-pressable" id="lockVaultButton">Lock key</button>
-            <button class="btn btn-secondary btn-pressable" id="replaceVaultButton">Replace key</button>
-            <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
-            <span class="status-badge" id="providerStatus"></span>
+            <details class="provider-key-disclosure" id="section-finnhub-key">
+              <summary class="provider-key-summary">
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-key"></use></svg>
+                Manage Finnhub key
+              </summary>
+              <div class="provider-detail">
+                <div class="field">
+                  <label class="field-label" for="finnhubApiKey">Finnhub API key</label>
+                  <div class="input-with-icon">
+                    <input type="password" id="finnhubApiKey" placeholder="Enter your Finnhub API token" autocomplete="off" />
+                    <button type="button" id="toggleApiKeyVisibility" class="input-eye-btn" aria-label="Show API key" title="Show / hide key">
+                      <svg class="ui-icon" width="15" height="15" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-eye"></use></svg>
+                    </button>
+                  </div>
+                  <div class="field-hint">Get a free key at <a href="https://finnhub.io/register" target="_blank" rel="noopener" style="color: var(--brand-gold); text-decoration: none;">finnhub.io</a> · kept encrypted on this device · <span id="apiKeyLenHint" style="font-variant-numeric: tabular-nums;"></span></div>
+                </div>
+                <div class="field" aria-labelledby="vaultProtectionTitle">
+                  <div class="field-label" id="vaultProtectionTitle">Protect your Finnhub key</div>
+                  <label class="sr-only" for="vaultUnlockCode">Create unlock code</label>
+                  <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
+                  <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
+                  <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
+                </div>
+                <div class="btn-row">
+                  <button class="btn btn-primary btn-pressable" id="saveProviderButton">Create unlock code</button>
+                  <button class="btn btn-secondary btn-pressable" id="unlockVaultButton">Unlock key</button>
+                  <button class="btn btn-secondary btn-pressable" id="lockVaultButton">Lock key</button>
+                  <button class="btn btn-secondary btn-pressable" id="replaceVaultButton">Replace key</button>
+                  <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
+                  <span class="status-badge" id="providerStatus"></span>
+                </div>
+              </div>
+            </details>
           </div>
         </div>
       </details>
       <details class="settings-disclosure data-disclosure">
-        <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg>Crypto prices</span><span class="data-summary-status">CoinGecko · Binance fallback</span></summary>
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg>Crypto prices</span>
+          <span class="data-summary-status">CoinGecko · Binance fallback</span>
+        </summary>
         <div class="settings-disclosure-body">
-          <div class="field-hint" style="padding: 16px 20px;">Crypto quotes use CoinGecko first and Binance only for mapped liquid pairs. No Finnhub key is required.</div>
+          <div class="data-inline-note">Crypto quotes use CoinGecko first and Binance only for mapped liquid pairs. No Finnhub key is required. Configure symbols on the Crypto tab.</div>
+        </div>
+      </details>
+      <details class="settings-disclosure data-disclosure" id="section-data-settings" open>
+        <summary>
+          <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-gear-six"></use></svg>Settings</span>
+          <span class="data-summary-status">Refresh · Storage</span>
+        </summary>
+        <div class="settings-disclosure-body">
+          <div class="data-settings-row">
+            <div>
+              <div class="item-label"><label for="refreshMinutes">Refresh interval</label></div>
+              <div class="item-desc">How often quotes refresh in the background</div>
+            </div>
+            <input type="number" id="refreshMinutes" placeholder="5" min="1" max="60" aria-describedby="refreshMinutesHelp" />
+          </div>
+          <div class="data-settings-row">
+            <div>
+              <div class="item-label">Storage</div>
+              <div class="item-desc">All data stays on this browser</div>
+            </div>
+            <span class="provider-badge auto">Local (chrome.storage.local)</span>
+          </div>
+          <p class="field-hint" id="refreshMinutesHelp" style="padding: 0 20px 4px;">Background worker refreshes via chrome.alarms. Prefer 2+ minutes for large US books.</p>
+          <div class="data-privacy-foot">
+            <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-lock-simple"></use></svg>
+            Private by design. Nothing leaves your browser.
+          </div>
         </div>
       </details>
       </div>
+
       <!-- Tab: Crypto -->
       <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
       <div class="section" id="section-crypto">
@@ -2019,20 +2413,25 @@
 
       <!-- Diagnostics -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
-        <details class="settings-disclosure data-disclosure" open>
-          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Diagnostics</span><span class="data-summary-status">Private operational snapshot</span></summary>
-          <div class="card" style="padding: 20px;">
-            <p class="field-hint" style="margin: 0 0 14px;">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
-            <pre id="diagnosticsOutput" aria-live="polite" style="white-space: pre-wrap; overflow-wrap: anywhere; max-height: 420px; overflow: auto; margin: 0; padding: 14px; background: var(--bg-hover); border: 1px solid var(--border); color: var(--text-secondary); font: 12px/1.55 var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);"></pre>
-            <div class="btn-row" style="padding: 14px 0 0;">
+        <details class="settings-disclosure data-disclosure" id="section-diagnostics">
+          <summary>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Diagnostics</span>
+            <span class="data-summary-status" id="diagnosticsSummaryStatus">Private operational snapshot</span>
+          </summary>
+          <div class="diagnostics-body">
+            <p class="field-hint">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
+            <pre id="diagnosticsOutput" aria-live="polite"></pre>
+            <div class="btn-row">
               <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy diagnostics</button>
               <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
             </div>
           </div>
         </details>
         <details class="settings-disclosure data-disclosure">
-          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-question"></use></svg>Quick help · What changed</span></summary>
-          <div class="card" style="padding: 20px 24px;">
+          <summary>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-question"></use></svg>Quick help · What changed</span>
+          </summary>
+          <div class="diagnostics-body">
             <ul class="tips-list">
               <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
               <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
@@ -2045,7 +2444,7 @@
       <div class="data-section-panel" id="tab-tips" hidden>
       <div class="section">
         <div class="section-title">Getting started</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>India-first:</strong> Import a Zerodha / Groww / Upstox holdings CSV on the <strong>Portfolio</strong> tab. NSE/BSE symbols get <code style="color: var(--text-secondary);">.NS</code> / <code style="color: var(--text-secondary);">.BO</code> and price automatically via Yahoo — no API key.</li>
             <li><strong>Toggle the strip:</strong> Use the popup or <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: 11px; border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>.</li>
@@ -2056,7 +2455,7 @@
       </div>
       <div class="section">
         <div class="section-title">US stocks, watchlist &amp; crypto</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li>A <strong>Finnhub</strong> key is still required for US equities under <strong>Market data</strong> (optional for pure India portfolios).</li>
             <li>Crypto uses <strong>CoinGecko</strong> first for supported canonical assets and <strong>Binance</strong> only as a fallback for mapped liquid assets; no Finnhub key is required for those quotes.</li>
@@ -2067,7 +2466,7 @@
       </div>
       <div class="section">
         <div class="section-title">How MyTicker works</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>Service worker</strong> fetches quotes on a <code style="color: var(--text-secondary);">chrome.alarms</code> schedule (not <code style="color: var(--text-secondary);">setInterval</code>), so fetches continue when the worker sleeps.</li>
             <li><strong>Content script</strong> injects a closed <strong>Shadow DOM</strong> ticker at the top of pages so host CSS cannot break the strip (and vice versa).</li>
@@ -2078,7 +2477,7 @@
       </div>
       <div class="section">
         <div class="section-title">Troubleshooting</div>
-        <div class="card" style="padding: 20px 24px;">
+        <div class="card">
           <ul class="tips-list">
             <li><strong>File permission / Error reading file:</strong> use <em>Import my holdings</em> or drop the CSV again; the import path uses the File API safely for extensions.</li>
             <li><strong>Missing Exchange/Currency columns:</strong> Zerodha-style exports are fine — we default NSE + INR when those columns are absent.</li>
