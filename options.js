@@ -1,4 +1,15 @@
-import { STORAGE_KEYS, DEFAULT_SETTINGS, CRYPTO_CATALOG, migrateSettings, normalizeCryptoConfig, normalizeManualCryptoHoldings, normalizeWatchlistSymbol, resolveCryptoCatalogEntry } from "./shared.js";
+import {
+  STORAGE_KEYS,
+  DEFAULT_SETTINGS,
+  CRYPTO_CATALOG,
+  migrateSettings,
+  normalizeCryptoConfig,
+  normalizeManualCryptoHoldings,
+  normalizeWatchlistSymbol,
+  resolveCryptoCatalogEntry,
+  normalizeExcludedSiteEntry,
+  normalizeExcludedSites
+} from "./shared.js";
 import {
   BROKER_PRESETS,
   parseCsv,
@@ -62,7 +73,12 @@ const watchlistConfiguredEl = document.getElementById("watchlistConfigured");
 const showStocksEl = document.getElementById("showStocks");
 const showCryptoEl = document.getElementById("showCrypto");
 const tickerTapeEnabledEl = document.getElementById("tickerTapeEnabled");
+const excludedSiteInputEl = document.getElementById("excludedSiteInput");
+const addExcludedSiteButton = document.getElementById("addExcludedSiteButton");
+const excludedSitesListEl = document.getElementById("excludedSitesList");
+const excludedSitesEmptyEl = document.getElementById("excludedSitesEmpty");
 const FINDER_BUTTON_LABEL = "Add via Finder / File Explorer";
+let excludedSites = [];
 const refreshPreviewButton = document.getElementById("refreshPreviewButton");
 const holdingsPreviewEl = document.getElementById("holdingsPreview");
 
@@ -181,6 +197,8 @@ function init() {
     if (tickerTapeEnabledEl) {
       tickerTapeEnabledEl.checked = settings.enabled !== false;
     }
+    excludedSites = normalizeExcludedSites(settings.excludedSites);
+    renderExcludedSitesList();
     showCryptoEl.checked = filters.showCrypto !== false;
 
     updateCryptoManualVisibility();
@@ -262,6 +280,13 @@ function init() {
   [showStocksEl, showCryptoEl, tickerTapeEnabledEl].forEach((input) =>
     input?.addEventListener("change", () => markSettingsSaveDirty("appearance"))
   );
+  addExcludedSiteButton?.addEventListener("click", () => addExcludedSiteFromInput());
+  excludedSiteInputEl?.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      addExcludedSiteFromInput();
+    }
+  });
   themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tickerSpeedEl?.addEventListener("input", () => {
@@ -1266,6 +1291,7 @@ function handleSaveAppearance() {
       showCrypto: showCryptoEl.checked
     };
     settings.enabled = tickerTapeEnabledEl ? !!tickerTapeEnabledEl.checked : settings.enabled !== false;
+    settings.excludedSites = normalizeExcludedSites(excludedSites);
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
@@ -1279,6 +1305,49 @@ function handleSaveAppearance() {
       requestImmediatePoll();
     });
   });
+}
+
+function renderExcludedSitesList() {
+  if (!excludedSitesListEl) return;
+  excludedSitesListEl.replaceChildren();
+  const list = normalizeExcludedSites(excludedSites);
+  if (excludedSitesEmptyEl) excludedSitesEmptyEl.hidden = list.length > 0;
+  for (const host of list) {
+    const li = document.createElement("li");
+    li.className = "excluded-site-chip";
+    const code = document.createElement("code");
+    code.textContent = host;
+    const remove = document.createElement("button");
+    remove.type = "button";
+    remove.className = "excluded-site-remove";
+    remove.setAttribute("aria-label", `Remove ${host}`);
+    remove.textContent = "Remove";
+    remove.addEventListener("click", () => {
+      excludedSites = list.filter((entry) => entry !== host);
+      renderExcludedSitesList();
+      markSettingsSaveDirty("appearance");
+    });
+    li.append(code, remove);
+    excludedSitesListEl.append(li);
+  }
+}
+
+function addExcludedSiteFromInput() {
+  const host = normalizeExcludedSiteEntry(excludedSiteInputEl?.value || "");
+  if (!host) {
+    showToast("Enter a valid domain, for example youtube.com", "error");
+    return;
+  }
+  const next = normalizeExcludedSites([...excludedSites, host]);
+  if (next.length === excludedSites.length) {
+    showToast(`${host} is already excluded`, "error");
+    return;
+  }
+  excludedSites = next;
+  if (excludedSiteInputEl) excludedSiteInputEl.value = "";
+  renderExcludedSitesList();
+  markSettingsSaveDirty("appearance");
+  showToast(`Will hide tape on ${host} after Save changes`, "success");
 }
 
 function handleSaveCrypto() {

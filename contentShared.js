@@ -53,10 +53,63 @@
     }).format(value);
   }
 
+  function normalizeExcludedSiteEntry(input) {
+    let raw = String(input || "").trim().toLowerCase();
+    if (!raw) return "";
+    raw = raw.replace(/^\*+\.?/, "");
+    try {
+      if (raw.includes("://") || raw.startsWith("//")) {
+        const url = new URL(raw.startsWith("//") ? `https:${raw}` : raw);
+        raw = url.hostname;
+      } else {
+        raw = raw.split("/")[0].split("?")[0].split("#")[0];
+      }
+    } catch {
+      return "";
+    }
+    raw = raw.replace(/\.$/, "").replace(/^www\./, "");
+    if (!raw || raw.length > 253) return "";
+    if (
+      !/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(raw) &&
+      raw !== "localhost"
+    ) {
+      return "";
+    }
+    return raw;
+  }
+
+  function normalizeExcludedSites(list) {
+    const out = [];
+    const seen = new Set();
+    for (const entry of Array.isArray(list) ? list : []) {
+      const host = normalizeExcludedSiteEntry(entry);
+      if (!host || seen.has(host)) continue;
+      seen.add(host);
+      out.push(host);
+    }
+    return out;
+  }
+
+  function isHostTapeExcluded(hostname, excludedSites) {
+    const host = String(hostname || "")
+      .trim()
+      .toLowerCase()
+      .replace(/\.$/, "")
+      .replace(/^www\./, "");
+    if (!host) return false;
+    const list = normalizeExcludedSites(excludedSites);
+    for (const rule of list) {
+      if (host === rule || host.endsWith(`.${rule}`)) return true;
+    }
+    return false;
+  }
+
   global.__MYTICKER_CONTENT_SHARED__ = Object.freeze({
     STORAGE_KEYS: Object.freeze(STORAGE_KEYS),
     formatSigned,
     formatSignedCurrency,
-    formatQuotePrice
+    formatQuotePrice,
+    normalizeExcludedSites,
+    isHostTapeExcluded
   });
 })(globalThis);

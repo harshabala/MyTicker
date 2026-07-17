@@ -127,7 +127,10 @@ const DEFAULT_SETTINGS = {
   portfolioFilters: {
     showStocks: true,
     showCrypto: true
-  }
+  },
+  // Hostnames (and optional full origins) where the Ticker Tape must not mount.
+  // Example: ["youtube.com", "chatgpt.com"] — subdomains match via suffix.
+  excludedSites: []
 };
 
 const SETTINGS_SCHEMA_VERSION = 1;
@@ -156,7 +159,8 @@ function migrateSettings(value = {}) {
     priceProviderConfig: { ...DEFAULT_SETTINGS.priceProviderConfig, ...cleanProviderConfig },
     tickerStyleConfig: { ...DEFAULT_SETTINGS.tickerStyleConfig, ...tickerStyleConfig },
     cryptoConfig: normalizeCryptoConfig({ ...DEFAULT_SETTINGS.cryptoConfig, ...cryptoConfig }),
-    portfolioFilters: { ...DEFAULT_SETTINGS.portfolioFilters, ...portfolioFilters }
+    portfolioFilters: { ...DEFAULT_SETTINGS.portfolioFilters, ...portfolioFilters },
+    excludedSites: normalizeExcludedSites(source.excludedSites)
   };
   delete next.priceProviderConfig.apiKey;
   return next;
@@ -235,6 +239,66 @@ function normalizeWatchlistSymbol(input, assetType, exchange = "NSE") {
 /** Return a supported named tape density, safely defaulting legacy settings. */
 function normalizeTapeScale(value) {
   return TAPE_SCALES.has(value) ? value : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
+}
+
+/**
+ * Normalize a user-entered site exclusion to a bare lowercase hostname.
+ * Accepts "youtube.com", "https://www.youtube.com/watch?v=…", "*.youtube.com".
+ * Returns "" if invalid.
+ */
+function normalizeExcludedSiteEntry(input) {
+  let raw = String(input || "").trim().toLowerCase();
+  if (!raw) return "";
+  raw = raw.replace(/^\*+\.?/, "");
+  try {
+    if (raw.includes("://") || raw.startsWith("//")) {
+      const url = new URL(raw.startsWith("//") ? `https:${raw}` : raw);
+      raw = url.hostname;
+    } else {
+      // Strip path/query if pasted without scheme
+      raw = raw.split("/")[0].split("?")[0].split("#")[0];
+    }
+  } catch {
+    return "";
+  }
+  raw = raw.replace(/\.$/, "").replace(/^www\./, "");
+  if (!raw || raw.length > 253) return "";
+  // Hostnames: labels of alnum/hyphen, dots; allow localhost / ipv4 lightly
+  if (!/^(?:[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?\.)*[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?$/.test(raw) && raw !== "localhost") {
+    return "";
+  }
+  return raw;
+}
+
+/** Dedupe and normalize an exclusion list. */
+function normalizeExcludedSites(list) {
+  const out = [];
+  const seen = new Set();
+  for (const entry of Array.isArray(list) ? list : []) {
+    const host = normalizeExcludedSiteEntry(entry);
+    if (!host || seen.has(host)) continue;
+    seen.add(host);
+    out.push(host);
+  }
+  return out;
+}
+
+/**
+ * True when hostname should hide the Ticker Tape.
+ * Matches exact host or subdomain of an excluded root (youtube.com → m.youtube.com).
+ */
+function isHostTapeExcluded(hostname, excludedSites) {
+  const host = String(hostname || "")
+    .trim()
+    .toLowerCase()
+    .replace(/\.$/, "")
+    .replace(/^www\./, "");
+  if (!host) return false;
+  const list = normalizeExcludedSites(excludedSites);
+  for (const rule of list) {
+    if (host === rule || host.endsWith(`.${rule}`)) return true;
+  }
+  return false;
 }
 
 /**
@@ -549,6 +613,9 @@ export {
   normalizeManualCryptoHoldings,
   normalizeWatchlistSymbol,
   normalizeTapeScale,
+  normalizeExcludedSiteEntry,
+  normalizeExcludedSites,
+  isHostTapeExcluded,
   ACTIVATION_EVENT,
   isActivated,
   needsFinnhubKey,

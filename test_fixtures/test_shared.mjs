@@ -17,6 +17,10 @@ import {
   formatSignedCurrency,
   inferDisplayCurrency,
   normalizeTapeScale,
+  normalizeExcludedSiteEntry,
+  normalizeExcludedSites,
+  isHostTapeExcluded,
+  migrateSettings,
   CRYPTO_CATALOG,
   normalizeWatchlistSymbol,
   resolveCryptoCatalogEntry,
@@ -354,6 +358,15 @@ const capped = recordActiveDay(many, fixedNow);
 assert(capped.length === 400, "cap stays at 400");
 assert(capped[capped.length - 1] === "2026-07-10", "newest day is last after cap");
 assert(!capped.includes(many[0]), "oldest day dropped when over cap");
+
+// ── Tape site exclusions ──
+console.log("\n🚫 tape site exclusions");
+assert(normalizeExcludedSiteEntry("https://www.youtube.com/watch?v=1") === "youtube.com", "strips scheme, www, and path from exclusion entry");
+assert(normalizeExcludedSiteEntry("*.ChatGPT.com") === "chatgpt.com", "normalizes wildcard and casing");
+assert(normalizeExcludedSites(["youtube.com", "https://youtube.com/foo", "YOUTUBE.COM"]).length === 1, "dedupes exclusion hosts");
+assert(isHostTapeExcluded("m.youtube.com", ["youtube.com"]) === true, "matches subdomains of excluded roots");
+assert(isHostTapeExcluded("github.com", ["youtube.com"]) === false, "does not exclude unrelated hosts");
+assert(migrateSettings({ excludedSites: ["https://www.reddit.com/r/x"] }).excludedSites[0] === "reddit.com", "migrateSettings normalizes excludedSites");
 
 // ── Summary ──
 console.log(`\n${"═".repeat(40)}`);

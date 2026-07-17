@@ -4,10 +4,12 @@ let STORAGE_KEYS;
 let formatQuotePrice;
 let formatSigned;
 let formatSignedCurrency;
+let isHostTapeExcluded;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
 const TAPE_RESERVATION_PROPERTY = "--myticker-tape-reservation";
+// Keep primary selector simple so hosts and tests can resolve it reliably.
 const CHATGPT_DIALOG_SELECTOR = "dialog[open]";
 
 /** Closed shadow root kept in-module so host pages cannot scrape holdings DOM. */
@@ -89,6 +91,20 @@ function prefersReducedMotion() {
   return reducedMotionMq.matches;
 }
 
+/** Global off or this host is on the Appearance exclusion list. */
+function shouldShowTape(settings = tickerSettings) {
+  if (!settings || settings.enabled === false) return false;
+  try {
+    const host = globalThis.location?.hostname || "";
+    if (typeof isHostTapeExcluded === "function" && isHostTapeExcluded(host, settings.excludedSites)) {
+      return false;
+    }
+  } catch {
+    // location can throw in edge contexts; fail open only when globally enabled
+  }
+  return true;
+}
+
 function onReducedMotionChange() {
   runSafely(() => {
     if (tickerBar) {
@@ -109,7 +125,10 @@ function bootstrap() {
   try {
     const bridge = globalThis.__MYTICKER_CONTENT_SHARED__;
     if (!bridge) throw new Error("Content shared bridge was not loaded");
-    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency } = bridge);
+    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency, isHostTapeExcluded } = bridge);
+    if (typeof isHostTapeExcluded !== "function") {
+      isHostTapeExcluded = () => false;
+    }
     reportLifecycle("loaded");
     if (!extensionContextAlive) return;
     reducedMotionMq = window.matchMedia("(prefers-reduced-motion: reduce)");
@@ -130,7 +149,7 @@ function init() {
       const settings = data[STORAGE_KEYS.settings];
       tickerSettings = settings;
       reportLifecycle("storage-settings-read");
-      if (settings?.enabled) {
+      if (shouldShowTape(settings)) {
         ensureTickerContainer(false);
         applyTickerSpeed(settings);
         applyTapeSize(settings);
@@ -146,7 +165,7 @@ function init() {
       if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
         const newSettings = changes[STORAGE_KEYS.settings].newValue;
         tickerSettings = newSettings;
-        if (newSettings && newSettings.enabled) {
+        if (shouldShowTape(newSettings)) {
           ensureTickerContainer(true);
           applyTickerSpeed(newSettings);
           applyTapeSize(newSettings);
