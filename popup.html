@@ -11,7 +11,7 @@
         min-width: 340px;
         max-width: 340px;
         padding: 14px 16px 16px;
-        font: 100%/1.4 var(--font-sans);
+        font: var(--weight-body) var(--text-body)/1.4 var(--font-sans);
         font-variant-numeric: tabular-nums;
         background: var(--bg);
         color: var(--text-primary);
@@ -36,8 +36,8 @@
         border-radius: 5px;
       }
       .header-left h1 {
-        font-size: 15px;
-        font-weight: 600;
+        font-size: var(--text-title-sm);
+        font-weight: var(--weight-section);
         letter-spacing: -0.02em;
       }
       .header-actions {
@@ -97,8 +97,8 @@
         border: none;
         background: transparent;
         color: var(--text-tertiary);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--text-body);
+        font-weight: var(--weight-section);
         font-family: inherit;
         cursor: pointer;
         position: relative;
@@ -139,16 +139,16 @@
         margin-bottom: 6px;
       }
       .hero-label {
-        font-size: 12px;
-        font-weight: 500;
+        font-size: var(--text-label);
+        font-weight: var(--weight-label);
         color: var(--text-tertiary);
       }
       .live-pill {
         display: inline-flex;
         align-items: center;
         gap: 5px;
-        font-size: 11px;
-        font-weight: 500;
+        font-size: var(--text-meta);
+        font-weight: var(--weight-label);
         color: var(--text-tertiary);
       }
       .live-pill .dot {
@@ -167,15 +167,15 @@
         margin-bottom: 14px;
       }
       .pnl-value {
-        font-size: 28px;
-        font-weight: 700;
+        font-size: 1.75rem;
+        font-weight: var(--weight-display);
         letter-spacing: -0.03em;
         line-height: 1.1;
         font-variant-numeric: tabular-nums;
       }
       .pnl-pct {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 0.875rem;
+        font-weight: var(--weight-section);
         font-variant-numeric: tabular-nums;
       }
       .pnl-positive { color: var(--green); }
@@ -194,21 +194,21 @@
         padding: 10px 12px;
       }
       .stat-cell-label {
-        font-size: 11px;
+        font-size: var(--text-meta);
         color: var(--text-tertiary);
         margin-bottom: 4px;
-        font-weight: 500;
+        font-weight: var(--weight-label);
       }
       .stat-cell-value {
-        font-size: 14px;
-        font-weight: 600;
+        font-size: 0.875rem;
+        font-weight: var(--weight-section);
         font-variant-numeric: tabular-nums;
         color: var(--text-primary);
         letter-spacing: -0.01em;
       }
       .stat-cell-value .sub {
-        font-size: 12px;
-        font-weight: 500;
+        font-size: var(--text-label);
+        font-weight: var(--weight-label);
         margin-left: 4px;
         color: var(--text-secondary);
       }
@@ -244,13 +244,13 @@
         margin-bottom: 8px;
       }
       .section-head .label {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--text-label);
+        font-weight: var(--weight-section);
         color: var(--text-secondary);
       }
       .section-head .link-quiet {
-        font-size: 12px;
-        font-weight: 500;
+        font-size: var(--text-label);
+        font-weight: var(--weight-label);
         color: var(--brand-gold);
         background: none;
         border: none;
@@ -286,8 +286,8 @@
       }
       .mover-item:last-child { border-bottom: none; }
       .mover-name {
-        font-size: 13px;
-        font-weight: 500;
+        font-size: var(--text-body);
+        font-weight: var(--weight-label);
         letter-spacing: -0.01em;
       }
       .mover-right {
@@ -296,13 +296,13 @@
         gap: 10px;
       }
       .mover-money {
-        font-size: 12px;
-        font-weight: 500;
+        font-size: var(--text-label);
+        font-weight: var(--weight-label);
         font-variant-numeric: tabular-nums;
       }
       .mover-change {
-        font-size: 12px;
-        font-weight: 600;
+        font-size: var(--text-label);
+        font-weight: var(--weight-section);
         font-variant-numeric: tabular-nums;
         min-width: 3.6rem;
         text-align: right;
@@ -318,14 +318,29 @@
         padding: 10px 0;
         border-bottom: 1px solid var(--border);
       }
-      .watch-symbol { font-size: 13px; font-weight: 500; }
+      .watch-symbol {
+        font-size: var(--text-body);
+        font-weight: var(--weight-label);
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+      }
+      .watch-asset {
+        font-size: var(--text-meta);
+        font-weight: var(--weight-body);
+        color: var(--text-tertiary);
+        white-space: nowrap;
+      }
       .watch-price {
-        font-size: 12px;
+        font-size: var(--text-label);
+        font-weight: var(--weight-label);
         color: var(--text-secondary);
         font-variant-numeric: tabular-nums;
       }
       .watch-change {
-        font-size: 12px;
+        font-size: var(--text-label);
+        font-weight: var(--weight-section);
         font-variant-numeric: tabular-nums;
         min-width: 48px;
         text-align: right;
@@ -350,15 +365,16 @@
       .watchlist-empty {
         padding: 28px 12px;
         text-align: center;
-        font-size: 13px;
+        font-size: var(--text-body);
+        font-weight: var(--weight-body);
         color: var(--text-tertiary);
         line-height: 1.45;
       }
       /* ── Checklist / empty ── */
       .setup-checklist .label,
       .empty-state .title {
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--text-body);
+        font-weight: var(--weight-section);
         margin-bottom: 10px;
       }
       .checklist-item {
@@ -406,9 +422,13 @@
         border: 1px solid color-mix(in srgb, var(--green) 45%, transparent);
         color: var(--green);
       }
-      .check-label { font-size: 13px; font-weight: 600; }
+      .check-label {
+        font-size: var(--text-body);
+        font-weight: var(--weight-section);
+      }
       .check-hint {
-        font-size: 11px;
+        font-size: var(--text-meta);
+        font-weight: var(--weight-body);
         color: var(--text-tertiary);
         margin-top: 2px;
         line-height: 1.4;
@@ -422,8 +442,8 @@
         border-radius: var(--radius-sm);
         background: var(--brand-gold);
         color: var(--brand-gold-ink);
-        font-size: 13px;
-        font-weight: 600;
+        font-size: var(--text-body);
+        font-weight: var(--weight-section);
         cursor: pointer;
         font-family: inherit;
       }
@@ -434,7 +454,8 @@
       }
       .empty-state { padding: 8px 0; }
       .empty-state .subtitle {
-        font-size: 12px;
+        font-size: var(--text-label);
+        font-weight: var(--weight-body);
         color: var(--text-secondary);
         line-height: 1.45;
       }
@@ -443,7 +464,8 @@
         text-align: center;
         padding: 32px;
         color: var(--text-tertiary);
-        font-size: 13px;
+        font-size: var(--text-body);
+        font-weight: var(--weight-body);
       }
       .sr-only {
         position: absolute;

@@ -257,7 +257,7 @@ function getSetupSteps(status) {
     {
       done: status.hasLiveData,
       wizardStep: 2,
-      label: "Prices loading",
+      label: status.hasLiveData ? "Live prices ready" : "Prices loading",
       hint: status.hasHoldings
         ? "Fetching live prices… open any tab in a moment"
         : "Import holdings first"
@@ -409,7 +409,8 @@ function renderSetupChecklist(container, status) {
   btn.type = "button";
   btn.className = "btn-setup";
   if (!next) {
-    btn.textContent = "Open any tab to see your strip →";
+    // Checklist complete: prices/hint already say open any tab; gear CTA is Settings.
+    btn.textContent = "Open Settings →";
     btn.addEventListener("click", () => openSettings());
   } else if (next.label.startsWith("Optional")) {
     btn.textContent = "Optional: add US key →";
@@ -446,8 +447,13 @@ function renderEmptyState(container, status) {
   const btn = document.createElement("button");
   btn.type = "button";
   btn.className = "btn-setup";
-  btn.textContent = isHoldingsEmpty ? "Import holdings →" : "Open Settings →";
-  btn.addEventListener("click", () => openOptionsAtWizardStep(isHoldingsEmpty ? 2 : 2));
+  if (isHoldingsEmpty) {
+    btn.textContent = "Import holdings →";
+    btn.addEventListener("click", () => openOptionsAtWizardStep(2));
+  } else {
+    btn.textContent = "Open Settings →";
+    btn.addEventListener("click", () => openSettings());
+  }
   empty.appendChild(btn);
   container.appendChild(empty);
 }
@@ -511,7 +517,7 @@ export function renderHoldingsPanel(container, state, status) {
   const heroLabel = document.createElement("div");
   heroLabel.className = "hero-label";
   heroLabel.id = "pnl-heading";
-  heroLabel.textContent = firstValue ? "Your day so far" : "Your day so far";
+  heroLabel.textContent = "Your day so far";
   const livePill = document.createElement("span");
   livePill.className = `live-pill${state.staleWarning ? " is-stale" : ""}`;
   const liveDot = document.createElement("span");
@@ -624,7 +630,7 @@ export function renderWatchlistPanel(container, watchlistItems, watchlistPrices)
     const empty = document.createElement("div");
     empty.className = "watchlist-empty";
     empty.textContent =
-      "No symbols yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
+      "Nothing on your watchlist yet. Add symbols in Settings. Watchlist is the second strip group, after holdings.";
     panel.appendChild(empty);
   } else {
     for (const item of watchlistItems) {
@@ -656,7 +662,7 @@ export function renderWatchlistPanel(container, watchlistItems, watchlistPrices)
           changeEl.className = "watch-change pnl-flat";
         }
       } else {
-        priceEl.textContent = "Unavailable";
+        priceEl.textContent = "—";
         changeEl.textContent = "Unavailable";
         changeEl.className = "watch-change pnl-flat";
       }
