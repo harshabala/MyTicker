@@ -537,8 +537,8 @@ function updateAggregate(parts, state) {
   aggregate.dataset.ptsSign = newSign;
 
   aggregate.textContent = currency
-    ? `MyTicker · today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
-    : "MyTicker · today mixed currencies";
+    ? `MyTicker · Today ${formatSignedCurrency(aggPnl, currency)} (${formatSigned(aggPct)}%)`
+    : "MyTicker · Today mixed currencies";
 }
 
 function buildItemElement(pos) {

@@ -262,9 +262,12 @@ assert(optionsJs.includes('return requested ? (["setup", "market", "diagnostics"
 assert(optionsHtml.includes('id="nav-data" data-tab="data" aria-selected="false" aria-controls="tab-data"'), "Data tab controls its single composite panel");
 assert((optionsHtml.match(/role="tabpanel" aria-labelledby="nav-data"/g) || []).length === 1, "Data tab is the label for exactly one tabpanel");
 assert(optionsHtml.includes('id="tab-data" role="tabpanel" aria-labelledby="nav-data" hidden'), "Data sections are wrapped by the composite Data tabpanel");
-assert(optionsJs.includes('["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"]') && optionsJs.includes('dataPanel.append(section)'), "moves all Data sections into the composite panel before tab activation");
+assert(optionsJs.includes('["tab-setup", "tab-market", "tab-diagnostics", "tab-tips"]') && optionsJs.includes('dataPanel.append(section)') && optionsJs.includes('logsErrorsHost') && optionsJs.includes('section-error-log'), "moves Data sections into the composite panel and nests setup errors under Logs");
 assert(/\.toggle-switch\s*\{[\s\S]*?height: 32px;/.test(optionsHtml), "toggle controls provide a 32px minimum hit area");
-assert(optionsHtml.includes('<legend class="field-label">Tape size</legend>'), "uses the concise Tape size label");
+assert(optionsHtml.includes('<legend class="field-label">Ticker Tape size</legend>'), "uses the Ticker Tape size label");
+assert(optionsHtml.includes('id="tickerTapeEnabled"') && optionsHtml.includes("Show Ticker Tape"), "offers a Ticker Tape on/off control in Appearance");
+assert(optionsHtml.includes("Add via Finder / File Explorer"), "uses a single Finder/File Explorer import path under the drop zone");
+assert(optionsHtml.includes(">Logs</span>") || optionsHtml.includes(">Logs</"), "unifies diagnostics under Logs");
 assert(popupHtml.includes("font-variant-numeric: tabular-nums") && optionsHtml.includes("font-variant-numeric: tabular-nums"), "uses tabular numerals across market UI");
 assert(optionsHtml.includes('name="theme"') && optionsHtml.includes('value="system"') && optionsHtml.includes('value="light"') && optionsHtml.includes('value="dark"'), "offers system, light, and dark theme controls");
 assert(optionsJs.includes("applyDocumentTheme") && popupJs.includes("applyPopupTheme") && optionsJs.includes("DATA_PANEL_IDS"), "applies the selected theme and preserves consolidated data panels");
@@ -277,8 +280,8 @@ assert(/\.form-action-row\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Setti
 assert(/\.configured-list\s*\{[^}]*padding:\s*12px\s+14px/.test(optionsHtml), "Configured watchlist state has a padded list container");
 assert(/\.configured-list\.field-hint\s*\{[^}]*margin-top:\s*16px/.test(optionsHtml), "Configured watchlist spacing overrides the later helper-text margin");
 assert(/\.btn-row\.form-action-row\s*\{[^}]*padding:\s*0/.test(optionsHtml), "Watchlist action-row padding explicitly overrides the base button row");
-const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || "";
-assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, symbol/hint, error, action, then configured-list order");
+const watchlistCard = optionsHtml.match(/<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>\s*<div class="section" id="section-error-log"/)?.[1] || optionsHtml.match(/id="tab-watchlist"[\s\S]*?<div class="card settings-card">([\s\S]*?)<\/div>\s*<\/div>\s*<\/div>/)?.[1] || "";
+assert(/class="form-stack"[\s\S]*?id="watchlistType"[\s\S]*?id="watchlistExchange"[\s\S]*?id="watchlistInput"[\s\S]*?id="watchlistHint"[\s\S]*?id="watchlistError"[\s\S]*?id="addWatchlistButton"[\s\S]*?id="watchlistConfigured"/.test(watchlistCard), "Watchlist follows market, exchange, ticker/hint, error, action, then configured-list order");
 assert(optionsJs.includes('function setSettingsSaveFeedback(scope, saved, message = "")') && optionsJs.includes('"Saved ✓"') && optionsJs.includes('scope === "appearance" ? "Save changes" : "Save"'), "Crypto and Appearance Save controls provide persistent saved feedback");
 assert(optionsHtml.includes('id="saveAppearanceButton">Save changes</button>') && optionsHtml.includes('id="saveCryptoButton">Save</button>'), "Appearance uses Save changes; Crypto keeps Save");
 assert(optionsHtml.includes('id="tickerSpeedRange"') && optionsHtml.includes('id="tickerSpeed"') && /id="tickerSpeedRange"[^>]*min="5"[^>]*max="300"/.test(optionsHtml) && /id="tickerSpeed"[^>]*min="5"[^>]*max="300"/.test(optionsHtml), "ticker speed exposes linked range and number controls from 5 to 300");

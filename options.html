@@ -266,7 +266,9 @@
       }
 
       /* Inputs */
+      input:not([type]),
       input[type="text"],
+      input[type="search"],
       input[type="number"],
       input[type="password"],
       select,
@@ -283,7 +285,9 @@
         transition: border-color var(--motion-fast) var(--ease-out), box-shadow var(--motion-fast) var(--ease-out);
       }
 
+      input:not([type]):focus,
       input[type="text"]:focus,
+      input[type="search"]:focus,
       input[type="number"]:focus,
       input[type="password"]:focus,
       select:focus,
@@ -1217,6 +1221,64 @@
         transition: color var(--motion-fast) var(--ease-out), border-color var(--motion-fast) var(--ease-out);
       }
       .btn-copy-entry:hover { color: var(--text-primary); border-color: var(--text-tertiary); }
+      .btn .ui-icon {
+        width: 16px;
+        height: 16px;
+        flex: 0 0 16px;
+        margin-right: 2px;
+        vertical-align: -3px;
+      }
+      .btn-primary {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+      }
+      .drop-zone-icon {
+        width: 28px;
+        height: 28px;
+        color: var(--brand-gold);
+      }
+      .drop-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 8px;
+      }
+      .logs-errors-host:empty { display: none; }
+      .logs-errors-host {
+        margin-top: 16px;
+        padding-top: 14px;
+        border-top: 1px solid var(--border);
+      }
+      .logs-errors-head {
+        display: flex;
+        flex-wrap: wrap;
+        align-items: center;
+        justify-content: space-between;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .logs-errors-title {
+        margin: 0;
+        color: var(--red);
+        font-size: var(--text-body);
+        font-weight: 600;
+      }
+      .logs-errors-card {
+        padding: 0;
+        overflow: hidden;
+      }
+      #section-error-log[hidden] { display: none !important; }
+      #section-error-log .error-log-bar {
+        border-bottom: 0;
+        padding: 0;
+        gap: 8px;
+      }
+      #section-error-log .error-log-bar .btn {
+        min-height: 32px;
+        font-size: var(--text-meta);
+        padding: 6px 10px;
+      }
 
       /* Tips section (expanded tab) */
       .tips-list {
@@ -2123,7 +2185,7 @@
         <img src="icons/icon48.png" alt="MyTicker" />
         <div class="page-header-text">
           <h1>MyTicker settings</h1>
-          <p>Set up your portfolio, follow markets, and tune the live tape.</p>
+          <p>Set up your portfolio, follow markets, and view the Ticker Tape.</p>
         </div>
       </div>
 
@@ -2168,8 +2230,8 @@
             <h3 class="data-subhead">Quick actions</h3>
             <div class="data-action-row wizard-steps">
               <button type="button" class="btn btn-primary btn-pressable wizard-step active" data-step="2" id="wizStep2" aria-current="step">
-                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-download-simple"></use></svg>
-                Import / Re-import holdings
+                <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+                Import holdings
               </button>
               <button type="button" class="btn btn-secondary btn-pressable wizard-step" data-step="3" id="wizStep3">
                 <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-lightning"></use></svg>
@@ -2181,7 +2243,7 @@
               </button>
               <button type="button" class="btn btn-secondary btn-pressable" id="quickDiagnosticsButton">
                 <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>
-                Run diagnostics
+                Open logs
               </button>
             </div>
             <p class="wizard-hint" id="wizardHint">
@@ -2195,14 +2257,14 @@
         <div class="section">
           <div class="section-intro">
             <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-plus"></use></svg></div>
-            <div><h2>Add to watchlist</h2><p>Choose a market and exchange, then add symbols to track.</p></div>
+            <div><h2>Add a ticker</h2><p>Choose a market and exchange, then add a ticker to track.</p></div>
           </div>
           <div class="card settings-card">
-            <div class="panel-heading">Add a symbol <span>Market data stays local</span></div>
+            <div class="panel-heading">Add a ticker <span>Market data stays local</span></div>
             <div class="form-stack">
               <div class="field"><label class="field-label" for="watchlistType">Market</label><select id="watchlistType"><option value="india">India</option><option value="us">US</option><option value="index">Index</option><option value="etf">ETF</option><option value="crypto">Crypto</option></select></div>
               <div class="field" id="watchlistExchangeField"><label class="field-label" for="watchlistExchange">Indian exchange</label><select id="watchlistExchange"><option value="NSE">NSE</option><option value="BSE">BSE</option></select></div>
-              <div class="field"><label class="field-label" for="watchlistInput">Symbol or crypto</label><input id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
+              <div class="field"><label class="field-label" for="watchlistInput">Ticker or crypto</label><input type="text" id="watchlistInput" autocomplete="off" placeholder="RELIANCE" /><div class="field-hint" id="watchlistHint">India symbols are normalized to the selected NSE/BSE suffix.</div></div>
               <div class="field-hint" id="watchlistError" role="alert" aria-live="polite"></div>
             </div>
             <div class="btn-row form-action-row"><button class="btn btn-primary btn-pressable watchlist-action" id="addWatchlistButton">Add to watchlist</button><span class="status-badge" id="watchlistStatus"></span></div>
@@ -2210,14 +2272,17 @@
           </div>
         </div>
       </div>
-      <div class="section" id="section-error-log" style="display:none">
-        <div class="section-title" style="color: var(--red)">Setup errors</div>
-        <div class="card" style="padding: 0; overflow: hidden;">
+      <!-- Setup errors surface inside Data → Logs (kept as stable id for consolidateDataPanels). -->
+      <div class="section" id="section-error-log" hidden>
+        <div class="logs-errors-head">
+          <div class="section-title logs-errors-title">Setup errors</div>
           <div class="error-log-bar">
             <span class="error-log-count" id="errorLogCount"></span>
-            <button class="btn btn-secondary" id="copyAllErrorsButton" style="font-size: var(--text-meta); padding:5px 10px;">Copy all</button>
-            <button class="btn btn-secondary" id="clearErrorLogButton" style="font-size: var(--text-meta); padding:5px 10px;">Clear</button>
+            <button type="button" class="btn btn-secondary" id="copyAllErrorsButton">Copy errors</button>
+            <button type="button" class="btn btn-secondary" id="clearErrorLogButton">Clear</button>
           </div>
+        </div>
+        <div class="card logs-errors-card">
           <div id="errorLogList" class="error-log-list"></div>
         </div>
       </div>
@@ -2231,25 +2296,26 @@
       </div>
       <div class="section" id="section-import">
         <div class="section-intro">
-          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-upload-simple"></use></svg></div>
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg></div>
           <div><h2>Import holdings</h2><p>Zerodha holdings export is recommended.</p></div>
         </div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code class="code-gold">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below to import automatically. NSE symbols get <code class="code-gold">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
-              <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
-                Import my holdings
-              </button>
               <button type="button" class="btn btn-secondary btn-pressable" id="importSampleButton">
                 Import demo sample
               </button>
+              <!-- Kept for one-click packaged user CSV; not shown as a second Import CTA. -->
+              <button type="button" class="btn btn-secondary btn-pressable" id="importUserHoldingsButton" hidden>
+                Import packaged holdings
+              </button>
             </div>
             <p class="golden-path-note">
-              One-click import avoids browser file-permission issues. Or drop a local broker CSV below.
+              Drop a broker CSV on the zone below, or choose a file with Finder / File Explorer.
             </p>
           </div>
 
@@ -2269,16 +2335,21 @@
             </div>
           </details>
 
-          <div class="drop-zone" id="dropZone" role="button" tabindex="0" aria-label="Drop CSV file here or press Enter to browse">
-            <div class="drop-icon" aria-hidden="true">CSV</div>
-            <div class="drop-text">Drop holdings CSV here, or click to browse</div>
+          <div class="drop-zone" id="dropZone" role="region" aria-label="Drop holdings CSV here to import automatically">
+            <div class="drop-icon" aria-hidden="true">
+              <svg class="ui-icon drop-zone-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+            </div>
+            <div class="drop-text">Drop holdings CSV here to import</div>
             <div class="drop-hint">Recommended: Zerodha holdings export · also Groww, Upstox, generic</div>
             <input type="file" id="csvFile" accept=".csv,text/csv" />
           </div>
 
           <div class="btn-row">
-            <button class="btn btn-primary btn-pressable" id="importCsvButton">Import holdings</button>
-            <button class="btn btn-secondary btn-pressable" id="clearHoldingsButton">Clear all</button>
+            <button type="button" class="btn btn-primary btn-pressable" id="importCsvButton">
+              <svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-tray-arrow-down"></use></svg>
+              Add via Finder / File Explorer
+            </button>
+            <button type="button" class="btn btn-secondary btn-pressable" id="clearHoldingsButton">Clear all</button>
             <span class="status-badge" id="csvStatus"></span>
           </div>
 
@@ -2486,10 +2557,20 @@
       <!-- Tab: Appearance -->
       <div class="tab-panel" id="tab-appearance" role="tabpanel" aria-labelledby="nav-appearance" hidden>
       <div class="section">
-        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg></div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the live tape behaves.</p></div></div>
+        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg></div><div><h2>Appearance</h2><p>Customize how MyTicker looks and how the Ticker Tape behaves.</p></div></div>
         <details class="settings-disclosure" open>
-          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Display</span></summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker Tape</span></summary>
           <div class="settings-disclosure-body">
+          <div class="card-item">
+            <div class="item-left">
+              <div class="item-label" id="labelTickerTapeEnabled">Show Ticker Tape</div>
+              <div class="item-desc">Ambient strip on web pages. Turn off to use only the popup.</div>
+            </div>
+            <label class="toggle-switch">
+              <input type="checkbox" id="tickerTapeEnabled" checked aria-labelledby="labelTickerTapeEnabled" />
+              <span class="toggle-slider"></span>
+            </label>
+          </div>
           <div class="card-item">
             <div class="item-left">
               <div class="item-label" id="labelShowStocks">Show stocks</div>
@@ -2520,17 +2601,17 @@
               <label><input type="radio" name="theme" value="light" /> Light</label>
               <label><input type="radio" name="theme" value="dark" /> Dark</label>
             </fieldset>
-            <div class="field-hint" id="themeHelp">System follows your browser. The live tape uses the same choice.</div>
+            <div class="field-hint" id="themeHelp">System follows your browser. The Ticker Tape uses the same choice.</div>
           </div>
           </div>
         </details>
         <details class="settings-disclosure">
-          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker speed</span></summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-chart-line-up"></use></svg>Ticker Tape speed</span></summary>
           <div class="settings-disclosure-body">
           <div class="field">
-            <label class="field-label" for="tickerSpeed">Ticker speed (seconds per loop)</label>
+            <label class="field-label" for="tickerSpeed">Seconds per loop</label>
             <div class="speed-control">
-              <input type="range" id="tickerSpeedRange" min="5" max="300" step="1" value="40" aria-label="Ticker speed" aria-valuemin="5" aria-valuemax="300" aria-controls="tickerSpeed" />
+              <input type="range" id="tickerSpeedRange" min="5" max="300" step="1" value="40" aria-label="Ticker Tape speed" aria-valuemin="5" aria-valuemax="300" aria-controls="tickerSpeed" />
               <div class="speed-value-wrap">
                 <input type="number" id="tickerSpeed" min="5" max="300" step="1" value="40" inputmode="numeric" />
                 <span class="speed-unit" aria-hidden="true">s</span>
@@ -2541,16 +2622,16 @@
           </div>
         </details>
         <details class="settings-disclosure">
-          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Tape size</span></summary>
+          <summary><span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-sliders"></use></svg>Ticker Tape size</span></summary>
           <div class="settings-disclosure-body">
           <div class="field">
             <fieldset class="tape-size-options" aria-describedby="tapeSizeHelp">
-              <legend class="field-label">Tape size</legend>
+              <legend class="field-label">Ticker Tape size</legend>
               <label><input type="radio" name="tapeScale" value="compact" /> Compact (0.92×)</label>
               <label><input type="radio" name="tapeScale" value="comfortable" checked /> Comfortable (1.08×)</label>
               <label><input type="radio" name="tapeScale" value="large" /> Large (1.20×)</label>
             </fieldset>
-            <div class="field-hint" id="tapeSizeHelp">Changes the tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
+            <div class="field-hint" id="tapeSizeHelp">Changes the Ticker Tape height, type, spacing, and status markers. Reduced-motion mode stays static and scrollable.</div>
           </div>
           </div>
         </details>
@@ -2563,20 +2644,21 @@
       </div>
       </div>
 
-      <!-- Diagnostics -->
+      <!-- Logs (diagnostics + setup errors) -->
       <div class="data-section-panel" id="tab-diagnostics" hidden>
-        <details class="settings-disclosure data-disclosure" id="section-diagnostics">
+        <details class="settings-disclosure data-disclosure" id="section-diagnostics" open>
           <summary>
-            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Diagnostics</span>
-            <span class="data-summary-status" id="diagnosticsSummaryStatus">Private operational snapshot</span>
+            <span class="summary-label"><svg class="ui-icon" aria-hidden="true"><use href="icons/phosphor-symbols.svg#ph-pulse"></use></svg>Logs</span>
+            <span class="data-summary-status" id="diagnosticsSummaryStatus">Copy-safe operational log</span>
           </summary>
           <div class="diagnostics-body">
-            <p class="field-hint">Safe to copy: build, operational counts, provider availability, poll health, and the recent refresh lifecycle. It never includes keys, quantities, prices, or portfolio values.</p>
+            <p class="field-hint">One place for operational logs. Safe to copy: build, counts, provider availability, poll health, and refresh lifecycle. Never includes keys, quantities, prices, or portfolio values. Setup errors appear below when something fails.</p>
             <pre id="diagnosticsOutput" aria-live="polite"></pre>
             <div class="btn-row">
-              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy diagnostics</button>
+              <button type="button" class="btn btn-primary btn-pressable" id="copyDiagnosticsButton">Copy log</button>
               <button type="button" class="btn btn-secondary btn-pressable" id="refreshDiagnosticsButton">Refresh</button>
             </div>
+            <div id="logsErrorsHost" class="logs-errors-host"></div>
           </div>
         </details>
         <details class="settings-disclosure data-disclosure">
@@ -2585,7 +2667,7 @@
           </summary>
           <div class="diagnostics-body">
             <ul class="tips-list">
-              <li><strong>Live tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
+              <li><strong>Ticker Tape architecture:</strong> the service worker refreshes state on <code>chrome.alarms</code>; the content script renders that state in a closed Shadow DOM strip.</li>
               <li><strong>Provider behavior:</strong> Yahoo serves NSE/BSE, Finnhub serves configured US equities, and crypto uses CoinGecko as primary with Binance as fallback for mapped liquid assets.</li>
               <li><strong>Current release:</strong> v0.5.0 adds copyable diagnostics and a bounded, privacy-safe refresh log. Crypto providers are CoinGecko and Binance only; Coinbase and DeFiLlama are not implemented.</li>
             </ul>
@@ -2599,7 +2681,7 @@
         <div class="card">
           <ul class="tips-list">
             <li><strong>India-first:</strong> Import a Zerodha / Groww / Upstox holdings CSV on the <strong>Portfolio</strong> tab. NSE/BSE symbols get <code style="color: var(--text-secondary);">.NS</code> / <code style="color: var(--text-secondary);">.BO</code> and price automatically via Yahoo — no API key.</li>
-            <li><strong>Toggle the tape:</strong> Press <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: var(--text-meta); border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>. Open the popup for your day P&amp;L summary.</li>
+            <li><strong>Toggle the Ticker Tape:</strong> Press <kbd id="tipsShortcut" style="background: var(--bg-hover); padding: 2px 6px; border-radius: 3px; font-family: inherit; font-size: var(--text-meta); border: 1px solid var(--border);">Ctrl+Shift+Y</kbd>, or use Appearance → Show Ticker Tape. Open the popup for your day P&amp;L summary.</li>
             <li><strong>Pause scroll:</strong> Hover the ticker strip to freeze it while you read a symbol.</li>
             <li><strong>Re-import</strong> whenever your broker holdings change — import merges/replaces the stored portfolio on this device.</li>
           </ul>

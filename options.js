@@ -46,6 +46,8 @@ const watchlistConfiguredEl = document.getElementById("watchlistConfigured");
 
 const showStocksEl = document.getElementById("showStocks");
 const showCryptoEl = document.getElementById("showCrypto");
+const tickerTapeEnabledEl = document.getElementById("tickerTapeEnabled");
+const FINDER_BUTTON_LABEL = "Add via Finder / File Explorer";
 const refreshPreviewButton = document.getElementById("refreshPreviewButton");
 const holdingsPreviewEl = document.getElementById("holdingsPreview");
 
@@ -161,6 +163,9 @@ function init() {
 
     const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
     showStocksEl.checked = filters.showStocks !== false;
+    if (tickerTapeEnabledEl) {
+      tickerTapeEnabledEl.checked = settings.enabled !== false;
+    }
     showCryptoEl.checked = filters.showCrypto !== false;
 
     updateCryptoManualVisibility();
@@ -176,7 +181,10 @@ function init() {
   });
 
   // Event listeners
-  importCsvButton.addEventListener("click", () => handleImportCsv());
+  importCsvButton.addEventListener("click", () => {
+    // Finder / File Explorer path — drop zone auto-imports without this button.
+    csvFileEl?.click();
+  });
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("unlockVaultButton").addEventListener("click", handleUnlockVault);
@@ -236,7 +244,9 @@ function init() {
     markSettingsSaveDirty("crypto");
   });
   cryptoSearchEl?.addEventListener("input", renderCryptoSelector);
-  [showStocksEl, showCryptoEl].forEach((input) => input?.addEventListener("change", () => markSettingsSaveDirty("appearance")));
+  [showStocksEl, showCryptoEl, tickerTapeEnabledEl].forEach((input) =>
+    input?.addEventListener("change", () => markSettingsSaveDirty("appearance"))
+  );
   themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tickerSpeedEl?.addEventListener("input", () => {
@@ -254,27 +264,16 @@ function init() {
   watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
-  // Drag-and-drop / file pick — pass File objects directly (avoid double-read races)
-  dropZone.addEventListener("click", (e) => {
-    // Don't steal clicks from nested controls
-    if (e.target === csvFileEl) return;
-    csvFileEl.click();
-  });
-  dropZone.addEventListener("keydown", (e) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      csvFileEl.click();
-    }
-  });
-  dropZone.addEventListener("dragover", (e) => {
+  // Drop zone auto-imports. Finder button opens the file picker separately.
+  dropZone?.addEventListener("dragover", (e) => {
     e.preventDefault();
     e.stopPropagation();
     dropZone.classList.add("dragover");
   });
-  dropZone.addEventListener("dragleave", () => {
+  dropZone?.addEventListener("dragleave", () => {
     dropZone.classList.remove("dragover");
   });
-  dropZone.addEventListener("drop", (e) => {
+  dropZone?.addEventListener("drop", (e) => {
     e.preventDefault();
     e.stopPropagation();
     dropZone.classList.remove("dragover");
@@ -282,12 +281,14 @@ function init() {
     if (file) {
       handleImportCsv(file);
     } else {
-      showToast("No file found in that drop. Try Browse or Import sample.", "error");
+      showToast("No file found in that drop. Use Add via Finder / File Explorer.", "error");
     }
   });
-  csvFileEl.addEventListener("change", () => {
+  csvFileEl?.addEventListener("change", () => {
     const file = csvFileEl.files?.[0];
     if (file) handleImportCsv(file);
+    // Allow re-selecting the same file later
+    csvFileEl.value = "";
   });
 
   const importSampleBtn = document.getElementById("importSampleButton");
@@ -377,13 +378,22 @@ function consolidateDataPanels() {
   const dataPanel = document.getElementById("tab-data");
   const workspace = document.getElementById("dataWorkspace");
   if (!dataPanel || !workspace) return;
-  ["tab-setup", "section-error-log", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
+  ["tab-setup", "tab-market", "tab-diagnostics", "tab-tips"].forEach((id) => {
     const section = document.getElementById(id);
     if (!section) return;
     section.removeAttribute("hidden");
     dataPanel.append(section);
     workspace.append(section);
   });
+  // Nest setup errors inside Logs so diagnostics + errors share one surface.
+  const errorLog = document.getElementById("section-error-log");
+  const logsHost = document.getElementById("logsErrorsHost");
+  if (errorLog && logsHost) {
+    logsHost.append(errorLog);
+  } else if (errorLog && workspace) {
+    errorLog.removeAttribute("hidden");
+    workspace.append(errorLog);
+  }
   document.querySelectorAll("#tab-tips .section").forEach((section) => {
     if (section.dataset.disclosureReady === "true") return;
     const heading = section.querySelector(".section-title");
@@ -553,9 +563,9 @@ async function copyDiagnostics() {
   if (!text) return;
   try {
     await navigator.clipboard.writeText(text);
-    showToast("Diagnostics copied", "success");
+    showToast("Log copied", "success");
   } catch {
-    showToast("Could not copy diagnostics. Select the text and copy it manually.", "error");
+    showToast("Could not copy log. Select the text and copy it manually.", "error");
   }
 }
 
@@ -869,7 +879,7 @@ async function handleImportCsv(fileOverride = null) {
       : csvFileEl.files?.[0];
 
   if (!file) {
-    showToast("Please choose a CSV file, or click Import sample CSV.", "error");
+    showToast("Please choose a CSV file, or import the demo sample.", "error");
     return;
   }
   if (file.size > 500_000) {
@@ -882,8 +892,7 @@ async function handleImportCsv(fileOverride = null) {
   }
 
   importInFlight = true;
-  importCsvButton.disabled = true;
-  importCsvButton.textContent = "Importing…";
+  setFinderButtonBusy(true);
 
   let presetKey = brokerPresetEl.value || "zerodha";
   try {
@@ -892,14 +901,30 @@ async function handleImportCsv(fileOverride = null) {
   } catch (err) {
     console.error("Failed to read/import CSV", err);
     const detail = err?.message || String(err);
-    showToast(`Could not read file (${detail}). Try Import sample CSV instead.`, "error");
+    showToast(`Could not read file (${detail}). Try the demo sample instead.`, "error");
     await recordImportResult(presetKey, false);
     await renderImportStats();
   } finally {
     importInFlight = false;
-    importCsvButton.disabled = false;
-    importCsvButton.textContent = "Import holdings";
+    setFinderButtonBusy(false);
   }
+}
+
+function setFinderButtonBusy(busy) {
+  if (!importCsvButton) return;
+  importCsvButton.disabled = !!busy;
+  if (busy) {
+    importCsvButton.textContent = "Importing…";
+    return;
+  }
+  importCsvButton.replaceChildren();
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("ui-icon");
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
+  icon.append(use);
+  importCsvButton.append(icon, document.createTextNode(FINDER_BUTTON_LABEL));
 }
 
 /**
@@ -910,8 +935,7 @@ async function handleImportCsv(fileOverride = null) {
 async function handleImportPackagedCsv(relativePath, presetHint = "zerodha") {
   if (importInFlight) return;
   importInFlight = true;
-  importCsvButton.disabled = true;
-  importCsvButton.textContent = "Importing…";
+  setFinderButtonBusy(true);
   try {
     const url = chrome.runtime.getURL(relativePath);
     const resp = await fetch(url);
@@ -928,8 +952,7 @@ async function handleImportPackagedCsv(relativePath, presetHint = "zerodha") {
     await renderImportStats();
   } finally {
     importInFlight = false;
-    importCsvButton.disabled = false;
-    importCsvButton.textContent = "Import holdings";
+    setFinderButtonBusy(false);
   }
 }
 
@@ -1206,6 +1229,7 @@ function handleSaveAppearance() {
       showStocks: showStocksEl.checked,
       showCrypto: showCryptoEl.checked
     };
+    settings.enabled = tickerTapeEnabledEl ? !!tickerTapeEnabledEl.checked : settings.enabled !== false;
 
     chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
       if (!storageSaveSucceeded()) {
@@ -1216,6 +1240,7 @@ function handleSaveAppearance() {
       applyDocumentTheme(theme);
       setSettingsSaveFeedback("appearance", true);
       showToast("Appearance saved", "success");
+      requestImmediatePoll();
     });
   });
 }
@@ -1411,7 +1436,12 @@ function addToErrorLog(message) {
   const timeStr = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
   errorLogEntries.push({ time: timeStr, message });
 
-  if (errorLogSection) errorLogSection.style.display = "";
+  if (errorLogSection) {
+    errorLogSection.hidden = false;
+    errorLogSection.style.display = "";
+  }
+  const diagnostics = document.getElementById("section-diagnostics");
+  if (diagnostics) diagnostics.open = true;
   if (errorLogCountEl) {
     errorLogCountEl.textContent = `${errorLogEntries.length} error${errorLogEntries.length !== 1 ? "s" : ""}`;
   }
@@ -1452,7 +1482,10 @@ document.getElementById("copyAllErrorsButton")?.addEventListener("click", () => 
 document.getElementById("clearErrorLogButton")?.addEventListener("click", () => {
   errorLogEntries.length = 0;
   if (errorLogList) errorLogList.replaceChildren();
-  if (errorLogSection) errorLogSection.style.display = "none";
+  if (errorLogSection) {
+    errorLogSection.hidden = true;
+    errorLogSection.style.display = "none";
+  }
 });
 
 // Toast notification system
