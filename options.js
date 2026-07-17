@@ -23,6 +23,7 @@ const providerStatusEl = document.getElementById("providerStatus");
 const testConnectionButton = document.getElementById("testConnectionButton");
 
 const tickerSpeedEl = document.getElementById("tickerSpeed");
+const tickerSpeedRangeEl = document.getElementById("tickerSpeedRange");
 const tapeScaleEls = document.querySelectorAll('input[name="tapeScale"]');
 const themeEls = document.querySelectorAll('input[name="theme"]');
 const appearanceStatusEl = document.getElementById("appearanceStatus");
@@ -103,7 +104,7 @@ function init() {
     refreshMinutesEl.value = String(
       settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes
     );
-    tickerSpeedEl.value = String(
+    setTickerSpeedControls(
       settings.tickerStyleConfig?.tickerSpeed ||
         DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
     );
@@ -201,7 +202,18 @@ function init() {
   [showStocksEl, showCryptoEl].forEach((input) => input?.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   themeEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
   tapeScaleEls.forEach((input) => input.addEventListener("change", () => markSettingsSaveDirty("appearance")));
-  tickerSpeedEl?.addEventListener("input", () => markSettingsSaveDirty("appearance"));
+  tickerSpeedEl?.addEventListener("input", () => {
+    syncTickerSpeedFromNumber();
+    markSettingsSaveDirty("appearance");
+  });
+  tickerSpeedEl?.addEventListener("change", () => {
+    setTickerSpeedControls(tickerSpeedEl.value);
+    markSettingsSaveDirty("appearance");
+  });
+  tickerSpeedRangeEl?.addEventListener("input", () => {
+    setTickerSpeedControls(tickerSpeedRangeEl.value);
+    markSettingsSaveDirty("appearance");
+  });
   watchlistTypeEl?.addEventListener("change", updateWatchlistHint);
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
@@ -1091,14 +1103,39 @@ function saveFeedbackElements(scope) {
 function setSettingsSaveFeedback(scope, saved, message = "") {
   const { button, status, label } = saveFeedbackElements(scope);
   if (button) {
-    button.textContent = saved ? "Saved ✓" : "Save";
+    const idleLabel = scope === "appearance" ? "Save changes" : "Save";
+    button.textContent = saved ? "Saved ✓" : idleLabel;
     button.classList.toggle("is-saved", saved);
-    button.setAttribute("aria-label", saved ? `${label} saved` : `Save ${label}`);
+    button.setAttribute("aria-label", saved ? `${label} saved` : (scope === "appearance" ? "Save appearance changes" : `Save ${label}`));
   }
   if (status) {
     status.textContent = message;
     status.className = `status-badge${message ? (saved ? " success" : " error") : ""}`;
   }
+}
+
+function clampTickerSpeed(value) {
+  const n = Number(value);
+  if (!Number.isFinite(n)) return DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed;
+  return Math.min(300, Math.max(5, Math.round(n)));
+}
+
+function setTickerSpeedControls(value) {
+  const speed = clampTickerSpeed(value);
+  if (tickerSpeedEl) tickerSpeedEl.value = String(speed);
+  if (tickerSpeedRangeEl) {
+    tickerSpeedRangeEl.value = String(speed);
+    tickerSpeedRangeEl.setAttribute("aria-valuenow", String(speed));
+  }
+}
+
+function syncTickerSpeedFromNumber() {
+  if (!tickerSpeedEl || tickerSpeedEl.value === "") return;
+  const n = Number(tickerSpeedEl.value);
+  if (!Number.isFinite(n) || !tickerSpeedRangeEl) return;
+  const clamped = Math.min(300, Math.max(5, n));
+  tickerSpeedRangeEl.value = String(clamped);
+  tickerSpeedRangeEl.setAttribute("aria-valuenow", String(clamped));
 }
 
 function markSettingsSaveDirty(scope) {
@@ -1110,10 +1147,8 @@ function storageSaveSucceeded() {
 }
 
 function handleSaveAppearance() {
-  const tickerSpeed = Math.min(300, Math.max(
-    5,
-    Number(tickerSpeedEl.value) || DEFAULT_SETTINGS.tickerStyleConfig.tickerSpeed
-  ));
+  const tickerSpeed = clampTickerSpeed(tickerSpeedEl?.value);
+  setTickerSpeedControls(tickerSpeed);
   const selectedTapeScale = document.querySelector('input[name="tapeScale"]:checked')?.value;
   const tapeScale = normalizeTapeScale(selectedTapeScale);
   const theme = normalizeTheme(document.querySelector('input[name="theme"]:checked')?.value);
