@@ -247,7 +247,8 @@ export const CRYPTO_EXPORT_PRESETS = {
     name: "WazirX (export)",
     columns: {
       symbol: ["asset", "Asset", "symbol", "coin", "Currency"],
-      quantity: ["free", "total", "balance", "available", "quantity"]
+      // Prefer total balance when both free and total exist (locked funds included).
+      quantity: ["total", "Total", "balance", "available", "free", "quantity"]
     }
   }
 };

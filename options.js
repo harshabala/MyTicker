@@ -1335,6 +1335,10 @@ function setCryptoImportButtonBusy(busy) {
  */
 async function handleCryptoCsvImport(file) {
   if (cryptoImportInFlight || !(file instanceof File || file instanceof Blob)) return;
+  if (file.size === 0) {
+    showToast("That file is empty (0 bytes). Re-export holdings from your exchange.", "error");
+    return;
+  }
   if (file.size > 500_000) {
     showToast("CSV is too large (max 500 KB).", "error");
     return;
