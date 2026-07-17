@@ -484,7 +484,7 @@
       }
 
       .golden-path-lead {
-        padding: 28px 28px 24px;
+        padding: 20px;
         margin: 0;
         border-bottom: 1px solid var(--border);
       }
@@ -533,7 +533,7 @@
 
       .import-formats {
         margin: 0;
-        padding: 16px 28px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--border);
         background: transparent;
       }
@@ -833,10 +833,10 @@
       .drop-zone {
         border: 1px dashed var(--border);
         border-radius: var(--radius-sm);
-        padding: 40px 28px;
+        padding: 32px 20px;
         text-align: center;
         cursor: pointer;
-        margin: 20px 28px 12px;
+        margin: 16px 20px 12px;
         background: var(--bg-inset);
         transition:
           border-color var(--motion-fast, 150ms) var(--ease-out, ease),
@@ -883,7 +883,7 @@
       }
 
       #section-import .btn-row {
-        padding: 12px 28px 28px;
+        padding: 12px 20px 20px;
         gap: 10px;
         flex-wrap: wrap;
       }
@@ -892,14 +892,28 @@
         padding: 10px 16px;
       }
       #section-import .import-stats {
-        margin: 0 28px 24px;
+        margin: 0 20px 16px;
         padding: 12px 0 0;
       }
       #section-import > .section-title {
         margin-bottom: 14px;
       }
       .preview-section-pad {
-        padding-top: 8px;
+        padding-top: 12px;
+      }
+      .select-inline {
+        width: auto;
+        min-width: 140px;
+      }
+      .select-inline-wide {
+        width: auto;
+        min-width: 160px;
+      }
+      .preview-card-head {
+        padding: 16px 20px;
+      }
+      .code-gold {
+        color: var(--brand-gold);
       }
 
       .drop-zone input[type="file"] {
@@ -1288,7 +1302,7 @@
         grid-template-columns: 36px 1fr;
         gap: 12px;
         align-items: start;
-        margin: 0 0 18px;
+        margin: 0 0 16px;
       }
       .section-intro-mark {
         width: 36px;
@@ -1298,7 +1312,13 @@
         border: 1px solid var(--border);
         border-radius: 10px;
         color: var(--brand-gold);
+        background: var(--bg-inset);
         font-size: 18px;
+      }
+      .section-intro-mark .ui-icon {
+        width: 18px;
+        height: 18px;
+        flex: 0 0 18px;
       }
       .section-intro h2 {
         margin: 0;
@@ -1316,8 +1336,9 @@
         display: flex;
         align-items: center;
         justify-content: space-between;
-        min-height: 56px;
-        padding: 0 24px;
+        gap: 12px;
+        min-height: 52px;
+        padding: 0 20px;
         border-bottom: 1px solid var(--border);
         font-size: .9375rem;
         font-weight: 600;
@@ -1333,26 +1354,26 @@
       .form-stack .field,
       .settings-card > .field,
       .settings-card > .card-item {
-        padding: 18px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--border);
       }
       .form-stack .field {
         display: grid;
-        grid-template-columns: minmax(180px, .85fr) minmax(260px, 1.15fr);
-        column-gap: 24px;
+        grid-template-columns: minmax(160px, .85fr) minmax(220px, 1.15fr);
+        column-gap: 16px;
         align-items: start;
       }
       .form-stack .field-label { padding-top: 9px; }
       .form-stack .field-hint { grid-column: 2; margin-top: 7px; }
       .form-action-row {
-        padding: 18px 24px !important;
+        padding: 16px 20px !important;
         background: var(--bg-inset);
       }
       .form-action-row .btn-primary { min-width: 190px; justify-content: center; }
       .watchlist-action { width: 100%; min-width: 0 !important; }
       .configured-list {
         margin: 0;
-        padding: 18px 24px;
+        padding: 12px 20px;
         background: var(--bg-inset);
         border-top: 1px solid var(--border);
       }
@@ -1360,8 +1381,8 @@
         content: "Your saved symbols will appear here.";
         color: var(--text-secondary);
       }
-      .card-item { padding: 18px 24px; }
-      .field { padding: 18px 24px; }
+      .card-item { padding: 16px 20px; }
+      .field { padding: 16px 20px; }
       .field-label { font-size: .875rem; color: var(--text-primary); }
       .field-hint { color: var(--text-secondary); }
       input, select {
@@ -1384,10 +1405,26 @@
       }
       #tab-appearance .card-item,
       #tab-appearance .field {
-        padding: 20px 24px;
+        padding: 16px 20px;
         border-bottom: 1px solid var(--border);
       }
-      #tab-appearance .btn-row { padding: 18px 24px; }
+      #tab-appearance .btn-row { padding: 16px 20px; }
+      #tab-crypto .card-item,
+      #tab-crypto .field,
+      #tab-crypto .btn-row {
+        padding: 16px 20px;
+      }
+      #tab-crypto .card-item {
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-crypto #cryptoManualField {
+        padding: 0 20px 16px;
+        border-bottom: 1px solid var(--border);
+      }
+      #tab-crypto .crypto-selector {
+        gap: 12px;
+        padding: 16px;
+      }
       .settings-disclosure {
         overflow: hidden;
         border: 1px solid var(--border);
@@ -1944,10 +1981,22 @@
       }
 
       #tab-portfolio .section-title { margin-bottom: 12px; }
+      #tab-portfolio,
+      #tab-watchlist,
+      #tab-crypto {
+        display: none;
+      }
+      #tab-portfolio.is-active,
+      #tab-watchlist.is-active,
+      #tab-crypto.is-active {
+        display: flex;
+        flex-direction: column;
+        gap: 16px;
+      }
       .portfolio-surface-summary {
         display: grid;
         grid-template-columns: repeat(4, 1fr);
-        margin-bottom: 22px;
+        margin: 0;
         border: 1px solid var(--border);
         border-radius: var(--radius);
         background: var(--bg-surface);
@@ -2066,7 +2115,7 @@
       <div class="tab-panel" id="tab-watchlist" role="tabpanel" aria-labelledby="nav-watchlist" hidden>
         <div class="section">
           <div class="section-intro">
-            <div class="section-intro-mark" aria-hidden="true">+</div>
+            <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-plus"></use></svg></div>
             <div><h2>Add to watchlist</h2><p>Choose a market and exchange, then add symbols to track.</p></div>
           </div>
           <div class="card settings-card">
@@ -2102,12 +2151,15 @@
         <div><span>Storage</span><strong>Local only</strong></div>
       </div>
       <div class="section" id="section-import">
-        <div class="section-intro"><div class="section-intro-mark" aria-hidden="true">↑</div><div><h2>Import holdings</h2><p>Zerodha holdings export is recommended.</p></div></div>
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-upload-simple"></use></svg></div>
+          <div><h2>Import holdings</h2><p>Zerodha holdings export is recommended.</p></div>
+        </div>
         <div class="card">
           <div class="golden-path-lead">
             <div class="golden-path-title">Zerodha holdings export (recommended)</div>
             <div class="golden-path-hint">
-              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code style="color: var(--brand-gold);">.NS</code> automatically.
+              Kite Console → Portfolio → Holdings → Download CSV. Drop it below. NSE symbols get <code class="code-gold">.NS</code> automatically.
             </div>
             <div class="golden-path-actions">
               <button type="button" class="btn btn-primary btn-pressable" id="importUserHoldingsButton">
@@ -2129,7 +2181,7 @@
                 <div class="item-label">Broker preset</div>
                 <div class="item-desc">Match your CSV format if auto-detect misses</div>
               </div>
-              <select id="brokerPreset" style="width: auto; min-width: 140px;">
+              <select id="brokerPreset" class="select-inline">
                 <option value="zerodha" selected>Zerodha</option>
                 <option value="groww">Groww</option>
                 <option value="upstox">Upstox</option>
@@ -2156,9 +2208,12 @@
       </div>
 
       <div class="section preview-section-pad">
-        <div class="section-title">Holdings preview</div>
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-folder"></use></svg></div>
+          <div><h2>Holdings preview</h2><p>Header stays fixed while rows scroll.</p></div>
+        </div>
         <div class="card">
-          <div class="card-item" style="padding: 16px 20px;">
+          <div class="card-item preview-card-head">
             <div class="item-left">
               <div class="item-label">Current portfolio</div>
               <div class="item-desc">Header stays fixed while rows scroll</div>
@@ -2301,14 +2356,21 @@
       <!-- Tab: Crypto -->
       <div class="tab-panel" id="tab-crypto" role="tabpanel" aria-labelledby="nav-crypto" hidden>
       <div class="section" id="section-crypto">
-        <div class="section-title">Crypto (advanced)</div>
-        <div class="card crypto-details" id="cryptoDetails">
+        <div class="section-intro">
+          <div class="section-intro-mark" aria-hidden="true"><svg class="ui-icon"><use href="icons/phosphor-symbols.svg#ph-coin"></use></svg></div>
           <div>
+            <h2>Crypto (advanced)</h2>
+            <p>Optional third strip group after holdings and watchlist.</p>
+          </div>
+        </div>
+        <div class="card crypto-details settings-card" id="cryptoDetails">
+          <div class="panel-heading">Crypto list <span>CoinGecko primary · Binance fallback</span></div>
           <div class="card-item">
             <div class="item-left">
-              <div class="item-label">Crypto list</div>
+              <div class="item-label" id="labelCryptoMode">Mode</div>
+              <div class="item-desc">Off, Top 5, or a manual selection</div>
             </div>
-            <select id="cryptoMode" style="width: auto; min-width: 160px;">
+            <select id="cryptoMode" class="select-inline-wide" aria-labelledby="labelCryptoMode">
               <option value="off">Off</option>
               <option value="top5">Top 5</option>
               <option value="manual">Manual</option>
@@ -2328,10 +2390,9 @@
               <div class="field-hint crypto-selector-guidance">Top 5: BTC, ETH, BNB, XRP, SOL. BTC / Bitcoin, ETH / Ethereum, BNB / BNB, XRP / XRP, SOL / Solana. CoinGecko first for supported canonical crypto; Binance for mapped liquid assets. CoinGecko is primary; Binance is a fallback for mapped liquid pairs. No Finnhub key is required for crypto quotes. Crypto becomes the third strip group, after holdings and watchlist.</div>
             </section>
           </div>
-          <div class="btn-row">
+          <div class="btn-row form-action-row">
             <button class="btn btn-primary btn-pressable" id="saveCryptoButton">Save</button>
             <span class="status-badge" id="cryptoStatus"></span>
-          </div>
           </div>
         </div>
       </div>
