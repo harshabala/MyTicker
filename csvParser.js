@@ -47,79 +47,153 @@ export const BROKER_PRESETS = {
   }
 };
 
+// Hard limits for hostile or accidental inputs. A real holdings export is a
+// few KB; the Options page also rejects files over 500 KB before reading.
+export const CSV_LIMITS = Object.freeze({
+  maxChars: 1_000_000,
+  maxRows: 5_000,
+  maxColumns: 64,
+  maxCellChars: 256,
+  maxHoldings: 1_000
+});
+
+// Header names that must never become object keys.
+const FORBIDDEN_HEADERS = new Set(["__proto__", "constructor", "prototype"]);
+
+export class CsvLimitError extends Error {
+  constructor(message) {
+    super(message);
+    this.name = "CsvLimitError";
+  }
+}
+
+/**
+ * Split CSV text into records of trimmed fields (RFC 4180: quoted fields may
+ * contain commas, doubled quotes and newlines). Blank records are dropped.
+ */
+function splitCsvRecords(text) {
+  const records = [];
+  let record = [];
+  let field = "";
+  let inQuotes = false;
+  const pushField = () => {
+    if (record.length >= CSV_LIMITS.maxColumns) throw new CsvLimitError(`CSV has too many columns (max ${CSV_LIMITS.maxColumns}).`);
+    record.push(field.trim().slice(0, CSV_LIMITS.maxCellChars));
+    field = "";
+  };
+  const pushRecord = () => {
+    pushField();
+    if (record.some((value) => value !== "")) {
+      if (records.length > CSV_LIMITS.maxRows) throw new CsvLimitError(`CSV has too many rows (max ${CSV_LIMITS.maxRows.toLocaleString("en-US")}). Export holdings only.`);
+      records.push(record);
+    }
+    record = [];
+  };
+
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (inQuotes) {
+      if (ch === '"') {
+        if (text[i + 1] === '"') {
+          field += '"';
+          i++;
+        } else {
+          inQuotes = false;
+        }
+      } else {
+        field += ch;
+      }
+    } else if (ch === '"') {
+      inQuotes = true;
+    } else if (ch === ",") {
+      pushField();
+    } else if (ch === "\n" || ch === "\r") {
+      if (ch === "\r" && text[i + 1] === "\n") i++;
+      pushRecord();
+    } else {
+      field += ch;
+    }
+  }
+  pushRecord();
+  return records;
+}
+
 /**
  * Parse CSV text into an array of objects, using the first line as header.
+ * Rows are null-prototype objects and prototype-sensitive header names are
+ * dropped, so a hostile header can never reach Object.prototype.
+ * Throws CsvLimitError when the input exceeds CSV_LIMITS.
  */
 export function parseCsv(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter((l) => l.length > 0);
-  if (!lines.length) return [];
-
-  // Strip BOM if present
-  let headerLine = lines[0];
-  if (headerLine.charCodeAt(0) === 0xfeff) {
-    headerLine = headerLine.slice(1);
+  let raw = String(text ?? "");
+  if (raw.length > CSV_LIMITS.maxChars) {
+    throw new CsvLimitError("CSV is too large (max 1 MB). Export holdings only, not full transaction history.");
   }
+  if (raw.charCodeAt(0) === 0xfeff) raw = raw.slice(1);
 
-  const headers = splitCsvLine(headerLine);
+  const records = splitCsvRecords(raw);
+  if (!records.length) return [];
+
+  const headers = records[0].map((h) => (FORBIDDEN_HEADERS.has(h.toLowerCase()) ? "" : h));
   const rows = [];
-
-  for (let i = 1; i < lines.length; i++) {
-    const values = splitCsvLine(lines[i]);
-    const row = {};
+  for (let i = 1; i < records.length; i++) {
+    const values = records[i];
+    const row = Object.create(null);
     for (let j = 0; j < headers.length; j++) {
+      if (!headers[j] || Object.hasOwn(row, headers[j])) continue;
       row[headers[j]] = values[j] ?? "";
     }
     rows.push(row);
   }
-
   return rows;
 }
 
 /**
- * Split a single CSV line, handling simple quoted fields.
+ * Parse a broker number: "1,23,456.78" (Indian grouping), "1,234.5",
+ * "₹ 2,650.75", "$10", "(12.5)" (accounting negative). Returns NaN for
+ * anything else, including "", "-", "Infinity" and "1e400".
  */
-function splitCsvLine(line) {
-  const result = [];
-  let current = "";
-  let inQuotes = false;
-
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i];
-    if (ch === '"') {
-      if (inQuotes && line[i + 1] === '"') {
-        // Escaped quote
-        current += '"';
-        i++;
-      } else {
-        inQuotes = !inQuotes;
-      }
-    } else if (ch === "," && !inQuotes) {
-      result.push(current);
-      current = "";
-    } else {
-      current += ch;
-    }
+export function parseBrokerNumber(value) {
+  if (typeof value === "number") return Number.isFinite(value) ? value : NaN;
+  let text = String(value ?? "").trim();
+  if (!text) return NaN;
+  let negative = false;
+  if (/^\(.*\)$/.test(text)) {
+    negative = true;
+    text = text.slice(1, -1).trim();
   }
-  result.push(current);
-  return result.map((s) => s.trim());
+  text = text.replace(/^(?:₹|rs\.?|inr|\$|usd)\s*/i, "").replace(/[\s,\u00a0]/g, "");
+  if (!/^[+-]?(?:\d+\.?\d*|\.\d+)$/.test(text)) return NaN;
+  const num = Number(text);
+  if (!Number.isFinite(num)) return NaN;
+  return negative ? -num : num;
+}
+
+// Tickers across NSE/BSE/US: letters, digits, & (M&M), - (BAJAJ-AUTO), . (BRK.B), ^ (indices).
+const SYMBOL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9&._^-]{0,39}$/;
+
+function inferCurrencyFromSymbol(symbol) {
+  return /\.(NS|BO)$/i.test(symbol) ? "INR" : "USD";
 }
 
 /**
  * Map parsed CSV rows to normalized Holding objects using a preset or custom mapping.
  * mapping: { symbol, exchange, quantity, avgPrice, currency }
+ *
+ * Rows are skipped when the symbol is not a plausible ticker or the quantity
+ * is not a finite number > 0 (negative, NaN, Infinity). Repeated symbols are
+ * merged (quantities summed, average cost weighted). Currency is taken from
+ * the CSV only when it is INR or USD; otherwise it follows the price source
+ * (.NS/.BO → INR via Yahoo, everything else → USD via Finnhub).
  */
 export function mapRowsToHoldings(rows, mapping, brokerId, defaults = {}) {
-  const holdings = [];
+  const bySymbol = new Map();
 
-  // Build a flexible lookup: for each mapping key find the best matching
-  // header in the row by checking exact match first, then case-insensitive.
+  // Exact header match first, then case-insensitive. Own properties only.
   function flexGet(row, key) {
-    if (key in row) return row[key];
-    // Try case-insensitive match
-    const lowerKey = key.toLowerCase();
+    if (!key) return undefined;
+    if (Object.hasOwn(row, key)) return row[key];
+    const lowerKey = String(key).toLowerCase();
     for (const k of Object.keys(row)) {
       if (k.toLowerCase() === lowerKey) return row[k];
     }
@@ -127,45 +201,53 @@ export function mapRowsToHoldings(rows, mapping, brokerId, defaults = {}) {
   }
 
   for (const row of rows) {
-    const symbol = flexGet(row, mapping.symbol) || "";
-    if (!symbol) continue;
+    const symbolRaw = String(flexGet(row, mapping.symbol) ?? "").trim();
+    if (!symbolRaw || !SYMBOL_PATTERN.test(symbolRaw)) continue;
 
-    const quantityRaw = flexGet(row, mapping.quantity) ?? "0";
-    const avgPriceRaw = flexGet(row, mapping.avgPrice) ?? "0";
+    const quantity = parseBrokerNumber(flexGet(row, mapping.quantity));
+    if (!Number.isFinite(quantity) || quantity <= 0) continue;
+    const avgPriceParsed = parseBrokerNumber(flexGet(row, mapping.avgPrice));
+    const avgPrice = Number.isFinite(avgPriceParsed) && avgPriceParsed > 0 ? avgPriceParsed : 0;
 
-    const quantity = Number(String(quantityRaw).replace(/,/g, "")) || 0;
-    const avgPrice = Number(String(avgPriceRaw).replace(/,/g, "")) || 0;
-
-    if (!quantity) continue;
-
-    // Determine exchange: from CSV column, from defaults, or auto-detect
-    let exchange = (flexGet(row, mapping.exchange) || "").trim();
-    if (!exchange && defaults.exchange) {
-      exchange = defaults.exchange;
-    }
+    // Determine exchange: from CSV column, then preset default.
+    let exchange = String(flexGet(row, mapping.exchange) ?? "").trim().toUpperCase();
+    if (!exchange && defaults.exchange) exchange = String(defaults.exchange).toUpperCase();
 
     // Append exchange suffix to symbol if missing (e.g. IRFC -> IRFC.NS)
-    let fullSymbol = String(symbol).trim();
+    let fullSymbol = symbolRaw.toUpperCase();
     if (exchange === "NSE" && !fullSymbol.includes(".")) {
-      fullSymbol = fullSymbol + ".NS";
+      fullSymbol += ".NS";
     } else if (exchange === "BSE" && !fullSymbol.includes(".")) {
-      fullSymbol = fullSymbol + ".BO";
+      fullSymbol += ".BO";
     }
 
-    const currency = (flexGet(row, mapping.currency) || defaults.currency || "INR").trim();
+    const currencyRaw = String(flexGet(row, mapping.currency) ?? defaults.currency ?? "").trim().toUpperCase();
+    const inferred = inferCurrencyFromSymbol(fullSymbol);
+    // A CSV currency that contradicts the quote source would mislabel prices.
+    const currency = currencyRaw === inferred ? currencyRaw : inferred;
 
-    holdings.push({
+    const existing = bySymbol.get(fullSymbol);
+    if (existing) {
+      const totalQty = existing.quantity + quantity;
+      existing.avgPrice = totalQty > 0 ? (existing.avgPrice * existing.quantity + avgPrice * quantity) / totalQty : 0;
+      existing.quantity = totalQty;
+      continue;
+    }
+    if (bySymbol.size >= CSV_LIMITS.maxHoldings) {
+      throw new CsvLimitError(`CSV has more than ${CSV_LIMITS.maxHoldings.toLocaleString("en-US")} holdings.`);
+    }
+    bySymbol.set(fullSymbol, {
       brokerId,
       symbol: fullSymbol,
       exchange,
       quantity,
       avgPrice,
       currency,
-      displayName: String(symbol).trim()
+      displayName: symbolRaw.toUpperCase()
     });
   }
 
-  return holdings;
+  return [...bySymbol.values()];
 }
 
 /**
@@ -256,7 +338,7 @@ export const CRYPTO_EXPORT_PRESETS = {
 function flexGetRow(row, candidates) {
   const keys = Array.isArray(candidates) ? candidates : [candidates];
   for (const key of keys) {
-    if (key in row) return row[key];
+    if (Object.hasOwn(row, key)) return row[key];
     const lower = String(key).toLowerCase();
     for (const k of Object.keys(row)) {
       if (k.toLowerCase() === lower) return row[k];
@@ -308,7 +390,7 @@ export function mapRowsToCryptoHoldings(rows, presetId = "generic_crypto") {
     const symbolRaw = flexGetRow(row, preset.columns.symbol);
     const qtyRaw = flexGetRow(row, preset.columns.quantity);
     if (symbolRaw == null || String(symbolRaw).trim() === "") continue;
-    const quantity = Number(String(qtyRaw ?? "0").replace(/,/g, ""));
+    const quantity = parseBrokerNumber(qtyRaw);
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
     // Skip pure fiat rows when obvious
     const sym = String(symbolRaw).trim();
