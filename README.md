@@ -119,7 +119,7 @@ graph TB
 ### How it works
 
 1. **Holdings** land in `chrome.storage.local` (`pts_holdings`) via `csvParser.js` presets (Zerodha golden path + Groww/Upstox/generic).
-2. **background.js** polls Yahoo Finance (`query1.finance.yahoo.com` / `query2.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for unlocked US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and Binance (`data-api.binance.vision`) only as the mapped crypto fallback. It merges snapshots in `shared.js` and writes `pts_positions_state`.
+2. **background.js** polls Yahoo Finance (`query1.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for unlocked US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and Binance (`data-api.binance.vision`) only as the mapped crypto fallback. It merges snapshots in `shared.js` and writes `pts_positions_state`.
 3. **contentScript.js** runs on all pages at document start to render the strip and reserve space before page content; it does not read page content. Its closed Shadow DOM loads only the `ticker.css` web-accessible stylesheet.
 4. **popup.js** is a small view machine: checklist → P&amp;L scoreboard (or empty). First success shows **Your day so far**, then normal **Today’s P&amp;L**.
 
@@ -178,7 +178,7 @@ Task checklist: [docs/TASKS.md](docs/TASKS.md) · Privacy: [PRIVACY.md](PRIVACY.
 
 - Canonical API-key vault: `pts_finnhub_vault` in **local** storage, encrypted with your unlock code (not sync). Only derived unlock material is held in **session** storage and it is cleared on browser restart.
 - Metrics are counts and dates only — no symbols, quantities, prices, or portfolio telemetry.
-- Network: Yahoo Finance (`query1.finance.yahoo.com`, `query2.finance.yahoo.com`), Finnhub (`finnhub.io`), CoinGecko (`api.coingecko.com`), and mapped Binance fallback (`data-api.binance.vision`). No product telemetry.
+- Network: Yahoo Finance (`query1.finance.yahoo.com`), Finnhub (`finnhub.io`), CoinGecko (`api.coingecko.com`), and mapped Binance fallback (`data-api.binance.vision`). No product telemetry.
 
 ### Project structure
 

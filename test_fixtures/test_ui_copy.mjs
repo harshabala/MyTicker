@@ -102,7 +102,6 @@ console.log("\n🔒 Release-gate privacy and extension-boundary audit");
 const expectedProviderHosts = [
   "https://finnhub.io/*",
   "https://query1.finance.yahoo.com/*",
-  "https://query2.finance.yahoo.com/*",
   "https://api.coingecko.com/*",
   "https://data-api.binance.vision/*"
 ];
@@ -111,7 +110,7 @@ assert(manifest.content_security_policy?.extension_pages === "script-src 'self';
 assert(manifest.permissions?.length === 2 && manifest.permissions.includes("storage") && manifest.permissions.includes("alarms"), "requests only storage and alarms extension permissions");
 assert(manifest.web_accessible_resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.length === 1 && manifest.web_accessible_resources[0]?.resources?.[0] === "ticker.css" && manifest.web_accessible_resources[0]?.matches?.join() === "<all_urls>", "exposes only the tape stylesheet to pages where the closed shadow-root tape needs it");
 const releaseCopy = `${readmeSource}\n${privacySource}\n${storeListingSource}`;
-for (const host of ["finnhub.io", "query1.finance.yahoo.com", "query2.finance.yahoo.com", "api.coingecko.com", "data-api.binance.vision"]) {
+for (const host of ["finnhub.io", "query1.finance.yahoo.com", "api.coingecko.com", "data-api.binance.vision"]) {
   assert(releaseCopy.includes(host), `discloses the ${host} remote host`);
 }
 assert(/all pages[\s\S]{0,160}(?:reserve space|before page content)/i.test(releaseCopy), "explains all-page tape access as early layout reservation before page content");
