@@ -6,13 +6,13 @@ import {
   DEFAULT_SETTINGS,
   computePositionsState,
   mergePriceSnapshots,
-  inferDisplayCurrency,
   isActivated,
   withTickerItems,
   hydrateTickerQuoteItems,
-  appendDiagnosticLogEntry
-  , normalizeCryptoConfig,
-  migrateSettings
+  appendDiagnosticLogEntry,
+  normalizeCryptoConfig,
+  migrateSettings,
+  summarizeMarketState
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
@@ -44,6 +44,9 @@ const CRYPTO_ID_BY_SYMBOL = {
 
 // Issue #8: In-flight lock to prevent concurrent poll execution.
 let pollInFlight = false;
+// A poll requested while one is running (e.g. right after a CSV import) runs
+// once more afterwards instead of being dropped.
+let pollQueued = false;
 
 // Issue #10: Track consecutive API failures for stale-data warning (persisted).
 let consecutiveFailures = 0;
@@ -351,7 +354,10 @@ chrome.commands.onCommand.addListener((command) => {
 
 async function handlePricePoll() {
   // Issue #8: Prevent concurrent polls.
-  if (pollInFlight) return;
+  if (pollInFlight) {
+    pollQueued = true;
+    return;
+  }
   pollInFlight = true;
 
   try {
@@ -368,7 +374,7 @@ async function handlePricePoll() {
     // Persisted so a restarted worker keeps honouring 429/5xx cooldowns.
     const backoff = new ProviderBackoff(localData[STORAGE_KEYS.providerBackoff]);
 
-    const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+    const settings = migrateSettings(syncData[STORAGE_KEYS.settings]);
     if (!settings.enabled) return;
 
     const baseHoldings = localData[STORAGE_KEYS.holdings] || [];
@@ -386,7 +392,7 @@ async function handlePricePoll() {
     const holdings = buildCombinedHoldings(baseHoldings, settings);
     if (!holdings.length && !watchlist.length && !crypto.length) {
       // No market items to track; clear state so UI doesn't show stale data.
-      chrome.storage.local.set({
+      await chrome.storage.local.set({
         [STORAGE_KEYS.positionsState]: null
       });
       await recordDiagnostic({ ...diagnosticCounts, event: "state-write" });
@@ -461,14 +467,28 @@ async function handlePricePoll() {
     });
 
     positionsState.updatedAt = now;
-    positionsState.displayCurrency = inferDisplayCurrency(baseHoldings);
+    positionsState.refreshMinutes = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+    // From priced positions, so a CSV currency column can never mislabel the total.
+    positionsState.displayCurrency = holdingsState.aggregate.currency ?? null;
+    positionsState.marketState = summarizeMarketState(holdingsState.positions);
 
-    // Issue #10: Stale if no successful fetch in 5+ minutes or repeated empty polls.
+    // Stale if no successful fetch in 5+ minutes, repeated empty polls, or any
+    // holding missed this poll (partial provider outage, locked Finnhub key):
+    // old prices must never be presented as live.
     const timeStale =
       lastSuccessfulFetch > 0 && now - lastSuccessfulFetch > STALE_TIME_THRESHOLD_MS;
     const failureStale = consecutiveFailures >= STALE_FAILURE_THRESHOLD;
-    if (timeStale || failureStale) {
+    const holdingStale = holdingsState.positions.some((position) => position.stale);
+    if (timeStale || failureStale || holdingStale) {
       positionsState.staleWarning = true;
+    }
+
+    // Holdings may have been re-imported or cleared while quotes were in
+    // flight; writing now would resurrect deleted positions. Skip this write;
+    // the poll requested by the import will rebuild state.
+    const latestHoldings = (await chrome.storage.local.get([STORAGE_KEYS.holdings]))[STORAGE_KEYS.holdings] || [];
+    if (JSON.stringify(latestHoldings) !== JSON.stringify(baseHoldings)) {
+      return;
     }
 
     // Issue #9: Wrap storage.set in try/catch to handle quota errors.
@@ -503,6 +523,10 @@ async function handlePricePoll() {
     await recordDiagnostic({ timestamp: Date.now(), event: "refresh-failed", error: true });
   } finally {
     pollInFlight = false;
+    if (pollQueued) {
+      pollQueued = false;
+      handlePricePoll();
+    }
   }
 }
 

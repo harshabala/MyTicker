@@ -71,8 +71,10 @@ export class ProviderBackoff {
     this.changed = true;
   }
 
+  // A success resets the failure count once the cooldown has passed. A success
+  // racing a 429 in the same parallel batch must not cancel the pause.
   reportSuccess(provider) {
-    if (this.state[provider]) {
+    if (this.state[provider] && !this.isBlocked(provider)) {
       delete this.state[provider];
       this.changed = true;
     }
