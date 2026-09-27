@@ -29,3 +29,12 @@ test("no http:// fetches, no externally_connectable, no broad permissions", asyn
     assert.doesNotMatch(await read(file), /fetch\(\s*["'`]http:/, file);
   }
 });
+
+test("console output never interpolates symbols, keys, or URLs", async () => {
+  for (const file of ["background.js", "priceProviders.js"]) {
+    const source = await read(file);
+    for (const line of source.split("\n").filter((l) => /console\.(log|warn|error|info)/.test(l))) {
+      assert.doesNotMatch(line, /\$\{(symbol|url|apiKey|pair|s)\}|, url\b|apiKey/, `${file}: ${line.trim()}`);
+    }
+  }
+});

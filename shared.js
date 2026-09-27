@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
   pollHealth: "pts_poll_health",
+  providerBackoff: "pts_provider_backoff",
   onboarding: "pts_onboarding",
   watchlist: "pts_watchlist",
   metrics: "pts_metrics",

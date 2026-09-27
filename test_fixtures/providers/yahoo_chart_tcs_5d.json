@@ -1,0 +1,98 @@
+{
+ "chart": {
+  "result": [
+   {
+    "meta": {
+     "currency": "INR",
+     "symbol": "TCS.NS",
+     "exchangeName": "NSI",
+     "regularMarketPrice": 3556.8,
+     "regularMarketTime": 1790664300,
+     "gmtoffset": 19800,
+     "timezone": "IST",
+     "chartPreviousClose": 3400.0,
+     "priceHint": 2,
+     "currentTradingPeriod": {
+      "pre": {
+       "start": 1790652600,
+       "end": 1790653500,
+       "gmtoffset": 19800
+      },
+      "regular": {
+       "start": 1790653500,
+       "end": 1790676000,
+       "gmtoffset": 19800
+      },
+      "post": {
+       "start": 1790676000,
+       "end": 1790676000,
+       "gmtoffset": 19800
+      }
+     },
+     "dataGranularity": "1d",
+     "range": "5d"
+    },
+    "timestamp": [
+     1790307900,
+     1790394300,
+     1790480700,
+     1790567100,
+     1790653500
+    ],
+    "indicators": {
+     "quote": [
+      {
+       "close": [
+        3500.0,
+        3510.0,
+        3490.0,
+        3520.0,
+        null
+       ],
+       "open": [
+        3490,
+        3500,
+        3510,
+        3490,
+        3521
+       ],
+       "high": [
+        0,
+        0,
+        0,
+        0,
+        0
+       ],
+       "low": [
+        0,
+        0,
+        0,
+        0,
+        0
+       ],
+       "volume": [
+        1,
+        1,
+        1,
+        1,
+        1
+       ]
+      }
+     ],
+     "adjclose": [
+      {
+       "adjclose": [
+        3500.0,
+        3510.0,
+        3490.0,
+        3520.0,
+        null
+       ]
+      }
+     ]
+    }
+   }
+  ],
+  "error": null
+ }
+}

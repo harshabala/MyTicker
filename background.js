@@ -15,7 +15,7 @@ import {
   migrateSettings
 } from "./shared.js";
 
-import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
+import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
 import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial, vaultNeedsUpgrade } from "./vault.js";
 
@@ -361,9 +361,12 @@ async function handlePricePoll() {
       chrome.storage.local.get([
         STORAGE_KEYS.holdings,
         STORAGE_KEYS.watchlist,
-        STORAGE_KEYS.priceHistory
+        STORAGE_KEYS.priceHistory,
+        STORAGE_KEYS.providerBackoff
       ])
     ]);
+    // Persisted so a restarted worker keeps honouring 429/5xx cooldowns.
+    const backoff = new ProviderBackoff(localData[STORAGE_KEYS.providerBackoff]);
 
     const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
     if (!settings.enabled) return;
@@ -396,7 +399,8 @@ async function handlePricePoll() {
     const apiKeyOverride = await getUnlockedFinnhubKey();
     const apiConfig = {
       apiKey: apiKeyOverride,
-      baseUrl: "https://finnhub.io/api/v1"
+      baseUrl: "https://finnhub.io/api/v1",
+      backoff
     };
 
     const equityWatchlist = watchlist.filter((item) => item.assetClass !== "crypto");
@@ -413,8 +417,11 @@ async function handlePricePoll() {
 
     const [equityQuotes, cryptoQuotes] = await Promise.all([
       getAllQuotes(equitySymbols, apiConfig),
-      getCryptoQuotes(cryptoSymbols)
+      getCryptoQuotes(cryptoSymbols, {}, { backoff })
     ]);
+    if (backoff.changed) {
+      await chrome.storage.local.set({ [STORAGE_KEYS.providerBackoff]: backoff.toJSON() });
+    }
     const quotes = [...equityQuotes, ...cryptoQuotes];
     const now = Date.now();
     await recordDiagnostic({
@@ -490,7 +497,7 @@ async function handlePricePoll() {
       await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     }
   } catch (err) {
-    console.error("Error in handlePricePoll", err);
+    console.error("[MyTicker] price refresh failed", err?.name || "Error");
     consecutiveFailures++;
     await savePollHealth();
     await recordDiagnostic({ timestamp: Date.now(), event: "refresh-failed", error: true });
