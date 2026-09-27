@@ -1087,7 +1087,12 @@ function sendVaultMessage(type, payload = {}) {
 async function refreshVaultStatus() {
   const response = await sendVaultMessage("vault-status");
   const status = response?.status || { configured: false, unlocked: false };
-  if (vaultStatusEl) vaultStatusEl.textContent = !status.configured ? "No encrypted Finnhub key configured." : status.unlocked ? "Finnhub key unlocked for this browser session." : "Finnhub key locked. Unlock after browser restart.";
+  if (vaultStatusEl) {
+    vaultStatusEl.textContent = !status.configured ? "No encrypted Finnhub key configured."
+      : status.legacy ? "Your saved Finnhub key is not encrypted yet. Enter a new 6+ character unlock code and press Unlock to encrypt it, or save the key again."
+      : status.unlocked ? "Finnhub key unlocked for this browser session."
+      : "Finnhub key locked. Enter your unlock code to resume US prices. If you forgot it, save your Finnhub key again with a new code.";
+  }
   testConnectionButton.disabled = !status.unlocked;
   testConnectionButton.title = status.unlocked ? "" : "Unlock your key first";
   return status;

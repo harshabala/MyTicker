@@ -77,15 +77,14 @@ messageListener(
   (value) => { vaultResponse = value; }
 );
 await new Promise((resolve) => setTimeout(resolve, 0));
-assert.deepEqual(vaultResponse, { ok: true, status: { configured: false, unlocked: false } }, "vault status exposes no secret");
+assert.deepEqual(vaultResponse, { ok: true, status: { configured: false, unlocked: false, legacy: false } }, "vault status exposes no secret");
 
 local.set("pts_price_api_key", "legacy-finnhub-secret");
-messageListener(
+await new Promise((resolve) => messageListener(
   { type: "vault-unlock", payload: { unlockCode: "123456" } },
   { id: "test-extension-id", url: "chrome-extension://test-extension-id/options.html" },
-  (value) => { vaultResponse = value; }
-);
-await new Promise((resolve) => setTimeout(resolve, 1000));
+  (value) => { vaultResponse = value; resolve(); }
+));
 assert(vaultResponse?.ok && local.has("pts_finnhub_vault") && !local.has("pts_price_api_key"), "legacy key migrates only after encrypted vault write");
 assert(typeof session.get("pts_finnhub_vault_aes_material") === "string" && ![...session.values()].includes("legacy-finnhub-secret"), "session stores only derived AES vault material, never the API key");
 

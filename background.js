@@ -17,7 +17,7 @@ import {
 
 import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
-import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial } from "./vault.js";
+import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial, vaultNeedsUpgrade } from "./vault.js";
 
 const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
 const FINNHUB_SESSION_KEY = "pts_finnhub_vault_aes_material";
@@ -127,7 +127,12 @@ async function getVaultStatus() {
     chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]),
     chrome.storage.session.get([FINNHUB_SESSION_KEY])
   ]);
-  return { configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]), unlocked: !!session[FINNHUB_SESSION_KEY] };
+  return {
+    configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]),
+    unlocked: !!session[FINNHUB_SESSION_KEY],
+    // A pre-vault plaintext key is waiting for the user to choose an unlock code.
+    legacy: !local[FINNHUB_VAULT_KEY] && !!local[LEGACY_FINNHUB_KEY]
+  };
 }
 
 async function createOrReplaceVault(payload) {
@@ -150,9 +155,14 @@ async function unlockVault(payload) {
   if (local[FINNHUB_VAULT_KEY]) {
     // Validate the code before storing derived material; plaintext stays local.
     const material = await deriveVaultKeyMaterial(record, code);
-    await decryptVaultRecordWithMaterial(record, material);
-    await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
-    return getVaultStatus();
+    const apiKey = await decryptVaultRecordWithMaterial(record, material);
+    if (!vaultNeedsUpgrade(record)) {
+      await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
+      return getVaultStatus();
+    }
+    // Re-wrap records from older releases with the current KDF cost.
+    record = await createVaultRecord(apiKey, code);
+    await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
   } else if (local[LEGACY_FINNHUB_KEY]) {
     const apiKey = String(local[LEGACY_FINNHUB_KEY]).trim();
     record = await createVaultRecord(apiKey, code);
@@ -170,19 +180,37 @@ async function lockVault() {
   return getVaultStatus();
 }
 
+/**
+ * Returns the decrypted Finnhub key, or "" when locked. Never throws: a
+ * session key that no longer matches the stored record (vault replaced
+ * mid-poll, corrupted storage, unsupported record) must not stop Yahoo and
+ * crypto prices. The stale material is dropped so the UI shows "locked" and
+ * the user is asked to unlock again.
+ */
 async function getUnlockedFinnhubKey() {
   const [local, session] = await Promise.all([
     chrome.storage.local.get([FINNHUB_VAULT_KEY]),
     chrome.storage.session.get([FINNHUB_SESSION_KEY])
   ]);
   if (!local[FINNHUB_VAULT_KEY] || !session[FINNHUB_SESSION_KEY]) return "";
-  return decryptVaultRecordWithMaterial(local[FINNHUB_VAULT_KEY], session[FINNHUB_SESSION_KEY]);
+  try {
+    return await decryptVaultRecordWithMaterial(local[FINNHUB_VAULT_KEY], session[FINNHUB_SESSION_KEY]);
+  } catch {
+    const latest = await chrome.storage.session.get([FINNHUB_SESSION_KEY]);
+    // Only drop the material we failed with; a concurrent unlock may have replaced it.
+    if (latest[FINNHUB_SESSION_KEY] === session[FINNHUB_SESSION_KEY]) {
+      await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
+    }
+    return "";
+  }
 }
 
 async function testVaultConnection() {
   const apiKey = await getUnlockedFinnhubKey();
   if (!apiKey) throw new Error("Vault locked");
-  const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`);
+  const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`, {
+    signal: AbortSignal.timeout(12_000)
+  });
   if (!response.ok) throw new Error("Finnhub request failed");
   const quote = await response.json();
   if (!Number.isFinite(quote?.c)) throw new Error("Finnhub quote unavailable");
@@ -231,6 +259,14 @@ async function ensurePollHealthLoaded() {
 
 ensurePollHealthLoaded();
 
+// Session storage holds vault key material. TRUSTED_CONTEXTS is Chrome's
+// default; set it explicitly so content scripts can never be granted access.
+try {
+  chrome.storage.session.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {});
+} catch {
+  // Older Chrome without setAccessLevel already defaults to trusted contexts.
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload || typeof message.payload !== "object") return;
   if (message.type === "content-script-lifecycle") {
@@ -248,7 +284,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (!isTrustedExtensionSender(sender)) return;
   if (message.type === "vault-status") {
-    getVaultStatus().then((status) => sendResponse({ ok: true, status }));
+    getVaultStatus().then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault status unavailable" }));
     return true;
   }
   if (["vault-create", "vault-replace", "vault-unlock", "vault-lock"].includes(message.type)) {
