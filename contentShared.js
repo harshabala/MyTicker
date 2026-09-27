@@ -13,8 +13,16 @@
     contentScriptStatus: "pts_content_script_status"
   };
 
+  function roundToCents(value) {
+    const raw = Number(value);
+    if (!Number.isFinite(raw)) return 0;
+    // Half away from zero; the tiny relative nudge absorbs binary error (x.xx5).
+    const cents = Math.round(Math.abs(raw) * 100 * (1 + 1e-12));
+    return cents === 0 ? 0 : Math.sign(raw) * cents / 100;
+  }
+
   function formatSigned(value) {
-    const num = Number(value) || 0;
+    const num = roundToCents(value);
     if (num > 0) return `+${num.toFixed(2)}`;
     return num.toFixed(2);
   }
@@ -34,7 +42,7 @@
   }
 
   function formatSignedCurrency(value, currency = "INR") {
-    const num = Number(value) || 0;
+    const num = roundToCents(value);
     const abs = formatCurrency(Math.abs(num), currency);
     if (num > 0) return `+${abs}`;
     if (num < 0) return `-${abs}`;
@@ -51,6 +59,15 @@
       minimumFractionDigits: fractionDigits,
       maximumFractionDigits: fractionDigits
     }).format(value);
+  }
+
+  // Mirror of shared.js describeFreshness (content scripts cannot import ESM).
+  function describeFreshness(state, now = Date.now(), refreshMinutes = 1) {
+    if (!state) return "stale";
+    const maxAge = Math.max(5 * 60 * 1000, 3 * Math.max(1, Number(refreshMinutes) || 1) * 60 * 1000);
+    const updatedAt = Number(state.updatedAt);
+    if (state.staleWarning || !Number.isFinite(updatedAt) || now - updatedAt > maxAge) return "stale";
+    return state.marketState === "closed" ? "closed" : "live";
   }
 
   function normalizeExcludedSiteEntry(input) {
@@ -109,6 +126,7 @@
     formatSigned,
     formatSignedCurrency,
     formatQuotePrice,
+    describeFreshness,
     normalizeExcludedSites,
     isHostTapeExcluded
   });
