@@ -1,6 +1,6 @@
 # Privacy Policy for MyTicker
 
-**Last updated:** July 10, 2026
+**Last updated:** September 27, 2026
 
 ## Overview
 
@@ -17,8 +17,9 @@ The following data is stored **exclusively in your browser** using Chrome's `chr
 | Data | Storage | Purpose |
 |------|---------|---------|
 | Portfolio holdings (from CSV) | `chrome.storage.local` | Display your stocks/crypto in the ticker |
-| Encrypted Finnhub API-key vault | `chrome.storage.local` | Store the optional US-equity provider key encrypted in this browser |
-| Finnhub vault unlock material | `chrome.storage.session` | Keep only the derived unlock material for the current browser session; it is cleared after restart |
+| Encrypted Finnhub API-key vault | `chrome.storage.local` | Store the optional US-equity provider key encrypted in this browser (AES-256-GCM; key derived from your unlock code with PBKDF2-SHA-256, 600,000 iterations) |
+| Finnhub vault unlock material | `chrome.storage.session` | Keep only the derived unlock material for the current browser session; it is cleared after restart and is readable only by the extension's own pages and service worker, never by content scripts on websites |
+| Provider pause state (`pts_provider_backoff`) | `chrome.storage.local` | Provider name and retry time after a rate limit, so MyTicker does not hammer a provider; contains no symbols or holdings |
 | Price history (last 15 min) | `chrome.storage.local` | Calculate 5-minute P&L changes |
 | User preferences | `chrome.storage.sync` | Sync settings across your Chrome instances |
 | Usage counters (`pts_metrics`) | `chrome.storage.local` | Setup progress, active-day dates, import success counts — never transmitted |
@@ -32,6 +33,9 @@ MyTicker network use:
 - **CoinGecko API** (`api.coingecko.com/api/v3`) — primary crypto price source for supported canonical assets; only the public crypto ID is requested.
 - **Binance public API** (`data-api.binance.vision/api/v3`) — fallback for mapped liquid crypto pairs when CoinGecko has no quote; no API key is sent.
 - Portfolio holdings, quantities, and keys are never uploaded to MyTicker servers (there are none).
+- No other hosts are contacted. The extension's `host_permissions` list exactly these four API hosts.
+- Only ticker symbols (and, for Finnhub, your key) leave the browser. The Finnhub key has to travel as the `token=` URL parameter because Finnhub's API requires it; it is sent only to `https://finnhub.io` and is never logged.
+- Console logs and the Diagnostics panel contain provider names, HTTP status codes, and counts only, never symbols, quantities, prices, or keys.
 
 The optional Finnhub key is encrypted locally before it is stored. You choose the unlock code; MyTicker keeps only derived unlock material for the active browser session, so you must unlock the vault again after a browser restart. The unlock code and decrypted API key are not stored.
 
@@ -50,7 +54,7 @@ The optional Finnhub key is encrypted locally before it is stored. You choose th
 |------------|----------------|
 | `storage` | Save your holdings, settings, and price cache locally |
 | `alarms` | Schedule periodic price polling in the background |
-| `host_permissions` (finnhub.io) | Fetch real-time price quotes |
+| `host_permissions` (`finnhub.io`, `query1.finance.yahoo.com`, `api.coingecko.com`, `data-api.binance.vision`) | Fetch price quotes from the four providers listed above, and nothing else |
 | `content_scripts` (all URLs) | Run the ticker tape on all pages at document start so it can reserve space before page content is displayed; the extension does not read page content |
 | `web_accessible_resources` (`ticker.css`, all URLs) | Let the tape's closed Shadow DOM load its own stylesheet on the pages where it appears |
 

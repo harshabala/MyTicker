@@ -30,8 +30,6 @@ Watchlist **prices** may stay empty because `background.js` does not poll watchl
 ## Verify
 
 ```bash
-node test_fixtures/test_shared.mjs
-for f in background.js contentScript.js shared.js popup.js options.js onboarding.js csvParser.js priceProviders.js metrics.js; do
-  node --input-type=module --check < "$f" && echo "OK $f"
-done
+npm run check
+npm test
 ```

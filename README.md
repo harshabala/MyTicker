@@ -119,7 +119,11 @@ graph TB
 ### How it works
 
 1. **Holdings** land in `chrome.storage.local` (`pts_holdings`) via `csvParser.js` presets (Zerodha golden path + Groww/Upstox/generic).
-2. **background.js** polls Yahoo Finance (`query1.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for unlocked US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and Binance (`data-api.binance.vision`) only as the mapped crypto fallback. It merges snapshots in `shared.js` and writes `pts_positions_state`.
+2. **background.js** polls Yahoo Finance (`query1.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for unlocked US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and Binance (`data-api.binance.vision`) only as the mapped crypto fallback. It merges snapshots in `shared.js` and writes `pts_positions_state`. Every request has a 12-second timeout; a provider that answers HTTP 429 or 5xx is paused (1 minute, doubling to 30 minutes, honouring `Retry-After`), and that pause is stored in `pts_provider_backoff` so a restarted service worker keeps it. Polling runs on `chrome.alarms`, never timers.
+   - **Day P&amp;L** = (last price − provider previous close) × quantity. For NSE/BSE this is the previous session's daily close from Yahoo's chart bars (split-adjusted). If a provider gives no previous close, day P&amp;L shows `—` rather than a guess.
+   - **Currencies are never mixed.** INR (`.NS`/`.BO`) and USD holdings each show P&amp;L in their own currency; with both, the total reads "mixed currencies" rather than adding rupees to dollars. There is no FX conversion.
+   - **Freshness.** A holding with no quote in the latest poll is marked stale, and so is the whole strip. The popup pill reads **Live**, **Closed** (every known market shut: pre-open, after hours, weekends, holidays; prices are the last close), or **Stale** (a provider failed, a key is locked, or state has not been refreshed for max(5 min, 3 refresh intervals)).
+   - **Quantities come from your CSV.** After a split or bonus issue, re-import holdings; the extension cannot see corporate actions.
 3. **contentScript.js** runs on all pages at document start to render the strip and reserve space before page content; it does not read page content. Its closed Shadow DOM loads only the `ticker.css` web-accessible stylesheet.
 4. **popup.js** is a small view machine: checklist → P&amp;L scoreboard (or empty). First success shows **Your day so far**, then normal **Today’s P&amp;L**.
 
@@ -157,18 +161,15 @@ Writer: **background.js** for refresh/activation; **options.js** for import outc
 
 ### Dev install and tests
 
-```bash
-# Unit tests (pure P&amp;L + activation helpers)
-node test_fixtures/test_shared.mjs
-node test_fixtures/test_content_telemetry_bridge.mjs
-node test_fixtures/test_ticker_render.mjs
-node test_fixtures/test_content_script_classic.mjs
+Requires Node 20+. There are no npm dependencies, so there is nothing to install.
 
-# Syntax check ES modules
-for f in background.js contentScript.js shared.js popup.js options.js onboarding.js csvParser.js priceProviders.js metrics.js; do
-  node --input-type=module --check < "$f" && echo "OK $f"
-done
+```bash
+npm run check   # syntax-check every shipped script; verify manifest file references
+npm test        # node --test: tests/*.test.mjs plus every test_fixtures/test_*.mjs script
 ```
+
+CI (`.github/workflows/test.yml`) runs both on every push and pull request. Tests never call the real
+Yahoo, Finnhub, CoinGecko, or Binance APIs; provider responses come from `test_fixtures/providers/`.
 
 Load unpacked from the repo root. Manual E2E: save key → import `test_fixtures/sample_holdings_zerodha.csv` → keep popup open until first poll.
 
@@ -176,7 +177,8 @@ Task checklist: [docs/TASKS.md](docs/TASKS.md) · Privacy: [PRIVACY.md](PRIVACY.
 
 ### Storage / privacy notes
 
-- Canonical API-key vault: `pts_finnhub_vault` in **local** storage, encrypted with your unlock code (not sync). Only derived unlock material is held in **session** storage and it is cleared on browser restart.
+- Canonical API-key vault: `pts_finnhub_vault` in **local** storage (not sync), AES-256-GCM with a random 96-bit IV per encryption, key derived from your unlock code with PBKDF2-SHA-256 (600,000 iterations, random 128-bit salt). Vaults from v0.5.0 (310,000 iterations) are re-encrypted automatically on the next unlock. Only derived unlock material is held in **session** storage (trusted extension pages only; content scripts cannot read it), and it is cleared on browser restart. If that material ever stops matching the vault, the key reads as locked and prices from other providers continue.
+- CSV import limits: 500 KB file, 5,000 rows, 64 columns, 1,000 holdings. Quantities must be positive numbers; Indian digit grouping (`1,23,456.78`) and `₹`/`$` prefixes are accepted. MyTicker never exports CSV.
 - Metrics are counts and dates only — no symbols, quantities, prices, or portfolio telemetry.
 - Network: Yahoo Finance (`query1.finance.yahoo.com`), Finnhub (`finnhub.io`), CoinGecko (`api.coingecko.com`), and mapped Binance fallback (`data-api.binance.vision`). No product telemetry.
 
@@ -190,9 +192,12 @@ MyTicker/
 ├── popup.html / popup.js
 ├── options.html / options.js
 ├── ticker.css / brand.css / motion.css
+├── vault.js / contentShared.js
 ├── docs/TASKS.md
-├── PRIVACY.md
-└── test_fixtures/
+├── PRIVACY.md / CHANGELOG.md
+├── scripts/check-syntax.mjs
+├── tests/            # node:test suites
+└── test_fixtures/    # legacy test scripts, sample CSVs, provider response fixtures
 ```
 
 ## License
