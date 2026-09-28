@@ -8,6 +8,51 @@ const SUPPORTED_ITERATIONS = new Set([VAULT_ITERATIONS, LEGACY_VAULT_ITERATIONS]
 const SALT_BYTES = 16;
 const IV_BYTES = 12;
 
+// Unlock-code policy. The 6-character floor is unchanged so every existing
+// vault keeps working; anything longer (spaces, any characters) is allowed up
+// to a sane cap. Strength is advice only and never blocks the user.
+export const UNLOCK_CODE_MIN_LENGTH = 6;
+export const UNLOCK_CODE_MAX_LENGTH = 128;
+export const UNLOCK_CODE_RECOMMENDED_LENGTH = 12;
+
+/** Length in characters (code points), so emoji and non-Latin text count once. */
+function codeLength(code) {
+  return [...String(code ?? "")].length;
+}
+
+/**
+ * True when a code may be used to create or re-encrypt a vault. Codes are
+ * used exactly as typed (no trimming): leading and trailing spaces count.
+ */
+export function isValidUnlockCode(code) {
+  if (typeof code !== "string") return false;
+  // The minimum is checked in UTF-16 units, as every release before this did.
+  return code.length >= UNLOCK_CODE_MIN_LENGTH && codeLength(code) <= UNLOCK_CODE_MAX_LENGTH;
+}
+
+/**
+ * Advisory strength for the Options hint: "invalid" | "weak" | "fair" | "strong".
+ * 12+ characters (or a multi-word passphrase of that length) is strong;
+ * short, all-digit, or single-character-repeated codes are weak.
+ */
+export function assessUnlockCodeStrength(code) {
+  const text = typeof code === "string" ? code : "";
+  const length = codeLength(text);
+  if (!length) return { level: "empty", message: "Use 12+ characters, or a few random words with spaces." };
+  if (!isValidUnlockCode(text)) {
+    return length > UNLOCK_CODE_MAX_LENGTH
+      ? { level: "invalid", message: `Too long: ${UNLOCK_CODE_MAX_LENGTH} characters maximum.` }
+      : { level: "invalid", message: `At least ${UNLOCK_CODE_MIN_LENGTH} characters.` };
+  }
+  if (length >= UNLOCK_CODE_RECOMMENDED_LENGTH && new Set(text).size > 3) {
+    return { level: "strong", message: "Strong. Nobody can use your key without this code." };
+  }
+  if (length < 8 || /^\d+$/.test(text) || new Set(text).size <= 2) {
+    return { level: "weak", message: "Works, but easy to guess. 12+ characters or a few random words is much safer." };
+  }
+  return { level: "fair", message: "OK. 12+ characters or a passphrase makes it much harder to guess." };
+}
+
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 

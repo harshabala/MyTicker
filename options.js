@@ -27,6 +27,7 @@ import {
   formatLastSync
 } from "./onboarding.js";
 import { getMetrics, recordImportResult } from "./metrics.js";
+import { assessUnlockCodeStrength, isValidUnlockCode, UNLOCK_CODE_MAX_LENGTH } from "./vault.js";
 
 const brokerPresetEl = document.getElementById("brokerPreset");
 const csvFileEl = document.getElementById("csvFile");
@@ -37,6 +38,7 @@ const dropZone = document.getElementById("dropZone");
 const finnhubApiKeyEl = document.getElementById("finnhubApiKey");
 const vaultUnlockCodeEl = document.getElementById("vaultUnlockCode");
 const vaultUnlockConfirmEl = document.getElementById("vaultUnlockConfirm");
+const vaultCodeStrengthEl = document.getElementById("vaultCodeStrength");
 const vaultStatusEl = document.getElementById("vaultStatus");
 const refreshMinutesEl = document.getElementById("refreshMinutes");
 const providerStatusEl = document.getElementById("providerStatus");
@@ -221,6 +223,7 @@ function init() {
   clearHoldingsButton.addEventListener("click", handleClearHoldings);
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("unlockVaultButton").addEventListener("click", handleUnlockVault);
+  vaultUnlockCodeEl?.addEventListener("input", () => renderCodeStrength(vaultCodeStrengthEl, vaultUnlockCodeEl.value));
   document.getElementById("lockVaultButton").addEventListener("click", handleLockVault);
   document.getElementById("replaceVaultButton").addEventListener("click", () => handleSaveProvider(true));
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
@@ -1102,8 +1105,8 @@ async function handleSaveProvider(replace = false) {
   const apiKey = finnhubApiKeyEl.value.trim();
   const unlockCode = vaultUnlockCodeEl.value;
   const confirmation = vaultUnlockConfirmEl.value;
-  if (unlockCode.length < 6 || unlockCode !== confirmation || !apiKey) {
-    showToast("Enter a key and matching 6+ character unlock code", "error");
+  if (!isValidUnlockCode(unlockCode) || unlockCode !== confirmation || !apiKey) {
+    showToast(`Enter a key and a matching unlock code (6 to ${UNLOCK_CODE_MAX_LENGTH} characters)`, "error");
     return;
   }
   const refreshMinutes = Math.min(60, Math.max(1, Number(refreshMinutesEl.value) || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes));
@@ -1125,6 +1128,7 @@ async function handleSaveProvider(replace = false) {
       finnhubApiKeyEl.value = "";
       vaultUnlockCodeEl.value = "";
       vaultUnlockConfirmEl.value = "";
+      renderCodeStrength(vaultCodeStrengthEl, "");
       await refreshVaultStatus();
         chrome.alarms.clear("price-poll", () => {
           chrome.alarms.create("price-poll", {
@@ -1142,10 +1146,19 @@ async function handleSaveProvider(replace = false) {
   });
 }
 
+/** Advisory strength hint for a new unlock code; never blocks saving. */
+function renderCodeStrength(el, code) {
+  if (!el) return;
+  const { level, message } = assessUnlockCodeStrength(code);
+  el.dataset.level = level;
+  el.textContent = message;
+}
+
 async function handleUnlockVault() {
   const response = await sendVaultMessage("vault-unlock", { unlockCode: vaultUnlockCodeEl.value });
   if (!response?.ok) { showToast("Unlock code was not accepted", "error"); return; }
   vaultUnlockCodeEl.value = "";
+  renderCodeStrength(vaultCodeStrengthEl, "");
   await refreshVaultStatus();
   showToast("Finnhub key unlocked", "success");
   requestImmediatePoll();

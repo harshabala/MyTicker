@@ -17,7 +17,7 @@ import {
 
 import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
-import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial, vaultNeedsUpgrade } from "./vault.js";
+import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial, vaultNeedsUpgrade, isValidUnlockCode } from "./vault.js";
 
 const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
 const FINNHUB_SESSION_KEY = "pts_finnhub_vault_aes_material";
@@ -139,9 +139,9 @@ async function getVaultStatus() {
 }
 
 async function createOrReplaceVault(payload) {
-  const code = String(payload?.unlockCode || "");
+  const code = payload?.unlockCode;
   const apiKey = String(payload?.apiKey || "").trim();
-  if (code.length < 6 || !apiKey) throw new Error("Invalid vault input");
+  if (!isValidUnlockCode(code) || !apiKey) throw new Error("Invalid vault input");
   const record = await createVaultRecord(apiKey, code);
   await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
   const material = await deriveVaultKeyMaterial(record, code);
@@ -151,8 +151,9 @@ async function createOrReplaceVault(payload) {
 }
 
 async function unlockVault(payload) {
-  const code = String(payload?.unlockCode || "");
-  if (code.length < 6) throw new Error("Invalid unlock code");
+  const code = payload?.unlockCode;
+  // Same bounds as creation (a legacy plaintext key is encrypted here too).
+  if (!isValidUnlockCode(code)) throw new Error("Invalid unlock code");
   const local = await chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]);
   let record = local[FINNHUB_VAULT_KEY];
   if (local[FINNHUB_VAULT_KEY]) {
