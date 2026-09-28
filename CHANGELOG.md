@@ -14,6 +14,10 @@ All notable changes to MyTicker. Versions follow `manifest.json`.
 - Clearing or re-importing holdings during a refresh no longer brings the old positions back.
 - `-₹0.00` / `-0.00%` rounding artefacts.
 
+### Added
+- Unlock codes may be long passphrases (up to 128 characters, spaces and any characters). A non-blocking strength hint recommends 12+ characters; the 6-character minimum is unchanged, so existing vaults keep working.
+- Change the unlock code from Settings. The key is re-encrypted atomically; a wrong current code or any failure leaves the old vault intact.
+
 ### Security
 - Finnhub vault: PBKDF2 raised from 310,000 to 600,000 iterations; stricter record validation; old vaults are re-encrypted on next unlock. A legacy plaintext key now prompts for an unlock code.
 - `chrome.storage.session` access pinned to trusted extension contexts.
@@ -28,3 +32,4 @@ All notable changes to MyTicker. Versions follow `manifest.json`.
 
 ### Developer
 - `npm test`, `npm run check`, and a GitHub Actions workflow. No npm dependencies (removed unused `@phosphor-icons/react`).
+- Removed the obsolete, unreferenced `myticker-v0.2.0-browser-test/` copy of the extension.

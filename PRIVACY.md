@@ -37,7 +37,7 @@ MyTicker network use:
 - Only ticker symbols (and, for Finnhub, your key) leave the browser. The Finnhub key has to travel as the `token=` URL parameter because Finnhub's API requires it; it is sent only to `https://finnhub.io` and is never logged.
 - Console logs and the Diagnostics panel contain provider names, HTTP status codes, and counts only, never symbols, quantities, prices, or keys.
 
-The optional Finnhub key is encrypted locally before it is stored. You choose the unlock code; MyTicker keeps only derived unlock material for the active browser session, so you must unlock the vault again after a browser restart. The unlock code and decrypted API key are not stored.
+The optional Finnhub key is encrypted locally before it is stored. You choose the unlock code (6 to 128 characters; a passphrase of 12+ characters is recommended) and can change it in Settings at any time; MyTicker keeps only derived unlock material for the active browser session, so you must unlock the vault again after a browser restart. The unlock code and decrypted API key are not stored.
 
 ### Data NOT collected
 
