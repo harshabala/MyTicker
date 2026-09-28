@@ -179,6 +179,34 @@ async function unlockVault(payload) {
   return getVaultStatus();
 }
 
+/**
+ * Re-encrypt the vault under a new unlock code. Atomic: the new record is
+ * built and verified in memory, then written with one storage.set of the
+ * single vault key, and only if the stored vault is still the one that was
+ * decrypted. A wrong current code, an invalid new code, a failed
+ * verification, or a concurrent change leaves the old vault untouched.
+ */
+async function changeUnlockCode(payload) {
+  const currentCode = payload?.currentCode;
+  const newCode = payload?.newCode;
+  if (typeof currentCode !== "string" || !currentCode || !isValidUnlockCode(newCode)) throw new Error("Invalid unlock code");
+  const record = (await chrome.storage.local.get([FINNHUB_VAULT_KEY]))[FINNHUB_VAULT_KEY];
+  if (!record) throw new Error("Vault not configured");
+
+  const apiKey = await decryptVaultRecordWithMaterial(record, await deriveVaultKeyMaterial(record, currentCode));
+  const nextRecord = await createVaultRecord(apiKey, newCode);
+  const nextMaterial = await deriveVaultKeyMaterial(nextRecord, newCode);
+  if (await decryptVaultRecordWithMaterial(nextRecord, nextMaterial) !== apiKey) throw new Error("Re-encryption check failed");
+
+  const latest = (await chrome.storage.local.get([FINNHUB_VAULT_KEY]))[FINNHUB_VAULT_KEY];
+  if (JSON.stringify(latest) !== JSON.stringify(record)) throw new Error("Vault changed during re-encryption");
+  await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: nextRecord });
+  // If this fails the vault is still valid; the stale material is dropped on
+  // next use and the user unlocks with the new code.
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: nextMaterial });
+  return getVaultStatus();
+}
+
 async function lockVault() {
   await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
   return getVaultStatus();
@@ -291,9 +319,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
     getVaultStatus().then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault status unavailable" }));
     return true;
   }
-  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock"].includes(message.type)) {
+  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock", "vault-change-code"].includes(message.type)) {
     const action = message.type === "vault-unlock" ? unlockVault
-      : message.type === "vault-lock" ? lockVault : createOrReplaceVault;
+      : message.type === "vault-lock" ? lockVault
+      : message.type === "vault-change-code" ? changeUnlockCode : createOrReplaceVault;
     action(message.payload).then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault operation failed" }));
     return true;
   }

@@ -39,6 +39,11 @@ const finnhubApiKeyEl = document.getElementById("finnhubApiKey");
 const vaultUnlockCodeEl = document.getElementById("vaultUnlockCode");
 const vaultUnlockConfirmEl = document.getElementById("vaultUnlockConfirm");
 const vaultCodeStrengthEl = document.getElementById("vaultCodeStrength");
+const changeCodeSectionEl = document.getElementById("section-change-unlock-code");
+const vaultCurrentCodeEl = document.getElementById("vaultCurrentCode");
+const vaultNewCodeEl = document.getElementById("vaultNewCode");
+const vaultNewCodeConfirmEl = document.getElementById("vaultNewCodeConfirm");
+const vaultNewCodeStrengthEl = document.getElementById("vaultNewCodeStrength");
 const vaultStatusEl = document.getElementById("vaultStatus");
 const refreshMinutesEl = document.getElementById("refreshMinutes");
 const providerStatusEl = document.getElementById("providerStatus");
@@ -224,6 +229,8 @@ function init() {
   document.getElementById("saveProviderButton").addEventListener("click", handleSaveProvider);
   document.getElementById("unlockVaultButton").addEventListener("click", handleUnlockVault);
   vaultUnlockCodeEl?.addEventListener("input", () => renderCodeStrength(vaultCodeStrengthEl, vaultUnlockCodeEl.value));
+  vaultNewCodeEl?.addEventListener("input", () => renderCodeStrength(vaultNewCodeStrengthEl, vaultNewCodeEl.value));
+  document.getElementById("changeUnlockCodeButton")?.addEventListener("click", handleChangeUnlockCode);
   document.getElementById("lockVaultButton").addEventListener("click", handleLockVault);
   document.getElementById("replaceVaultButton").addEventListener("click", () => handleSaveProvider(true));
   document.getElementById("testIndiaButton").addEventListener("click", handleTestIndia);
@@ -1098,6 +1105,8 @@ async function refreshVaultStatus() {
   }
   testConnectionButton.disabled = !status.unlocked;
   testConnectionButton.title = status.unlocked ? "" : "Unlock your key first";
+  // Changing the code needs an encrypted vault (a legacy plaintext key gets one on unlock).
+  if (changeCodeSectionEl) changeCodeSectionEl.hidden = !status.configured || !!status.legacy;
   return status;
 }
 
@@ -1162,6 +1171,42 @@ async function handleUnlockVault() {
   await refreshVaultStatus();
   showToast("Finnhub key unlocked", "success");
   requestImmediatePoll();
+}
+
+let changeCodeInFlight = false;
+
+async function handleChangeUnlockCode() {
+  if (changeCodeInFlight) return;
+  const currentCode = vaultCurrentCodeEl.value;
+  const newCode = vaultNewCodeEl.value;
+  if (!currentCode) {
+    showToast("Enter your current unlock code", "error");
+    return;
+  }
+  if (!isValidUnlockCode(newCode) || newCode !== vaultNewCodeConfirmEl.value) {
+    showToast(`Enter a matching new unlock code (6 to ${UNLOCK_CODE_MAX_LENGTH} characters)`, "error");
+    return;
+  }
+  const button = document.getElementById("changeUnlockCodeButton");
+  changeCodeInFlight = true;
+  if (button) button.disabled = true;
+  try {
+    const response = await sendVaultMessage("vault-change-code", { currentCode, newCode });
+    if (!response?.ok) {
+      showToast("Unlock code not changed. Check your current code; it still works.", "error");
+      return;
+    }
+    vaultCurrentCodeEl.value = "";
+    vaultNewCodeEl.value = "";
+    vaultNewCodeConfirmEl.value = "";
+    renderCodeStrength(vaultNewCodeStrengthEl, "");
+    if (changeCodeSectionEl) changeCodeSectionEl.open = false;
+    await refreshVaultStatus();
+    showToast("Unlock code changed", "success");
+  } finally {
+    changeCodeInFlight = false;
+    if (button) button.disabled = false;
+  }
 }
 
 async function handleLockVault() {
