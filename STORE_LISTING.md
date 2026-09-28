@@ -33,7 +33,7 @@ Your data NEVER leaves your browser:
 
 ### 🌐 Why MyTicker runs on all pages
 
-The ticker tape starts on all pages before page content so it can reserve its small strip of layout space consistently. It does not read page content. Prices are requested only from Yahoo Finance (`query1.finance.yahoo.com` and `query2.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for optional US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and mapped Binance fallback (`data-api.binance.vision`) when CoinGecko has no quote.
+The ticker tape starts on all pages before page content so it can reserve its small strip of layout space consistently. It does not read page content. Prices are requested only from Yahoo Finance (`query1.finance.yahoo.com`) for Indian equities, Finnhub (`finnhub.io`) for optional US-equity quotes, CoinGecko (`api.coingecko.com`) for crypto, and mapped Binance fallback (`data-api.binance.vision`) when CoinGecko has no quote.
 
 ### ⚡ Premium Design
 

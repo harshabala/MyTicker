@@ -1,10 +1,13 @@
 import {
   STORAGE_KEYS,
-  formatSignedCurrency
+  formatSignedCurrency,
+  describeFreshness
 } from "./shared.js";
 import { getSetupStatus, markWizardStep, setOnboarding } from "./onboarding.js";
 
 const VIEW_CHECKLIST = "checklist";
+// "Closed": prices are the last close, not live ticks (pre-market, weekends, holidays).
+const FRESHNESS_LABELS = { live: "Live", closed: "Closed", stale: "Stale" };
 const VIEW_LOADING = "loading";
 const VIEW_PNL = "pnl";
 const VIEW_EMPTY = "empty";
@@ -348,9 +351,10 @@ export function updatePnlInPlace(viewEl, state, watchlistItems) {
     holdingsCount.textContent = String(state.positions.length);
   }
   if (livePill) {
-    livePill.classList.toggle("is-stale", !!state.staleWarning);
+    const freshness = describeFreshness(state, Date.now(), state.refreshMinutes);
+    livePill.classList.toggle("is-stale", freshness === "stale");
     const label = livePill.querySelector(".live-label");
-    if (label) label.textContent = state.staleWarning ? "Stale" : "Live";
+    if (label) label.textContent = FRESHNESS_LABELS[freshness];
   }
 
   const moversList = viewEl.querySelector(".movers-list");
@@ -476,7 +480,8 @@ export function buildMoverItem(pos) {
   right.className = "mover-right";
   const moneySpan = document.createElement("span");
   moneySpan.className = `mover-money ${cls}`;
-  moneySpan.textContent = formatSignedCurrency(dayPnl, currency);
+  // null day P&L means the provider had no previous close: unknown, not zero.
+  moneySpan.textContent = pos.dayPnl == null ? "—" : formatSignedCurrency(dayPnl, currency);
   const changeSpan = document.createElement("span");
   changeSpan.className = `mover-change ${cls}`;
   changeSpan.textContent = `${pct >= 0 ? "+" : ""}${pct.toFixed(2)}%`;
@@ -519,12 +524,13 @@ export function renderHoldingsPanel(container, state, status) {
   heroLabel.id = "pnl-heading";
   heroLabel.textContent = "Your day so far";
   const livePill = document.createElement("span");
-  livePill.className = `live-pill${state.staleWarning ? " is-stale" : ""}`;
+  const freshness = describeFreshness(state, Date.now(), state.refreshMinutes);
+  livePill.className = `live-pill${freshness === "stale" ? " is-stale" : ""}`;
   const liveDot = document.createElement("span");
   liveDot.className = "dot";
   const liveLabel = document.createElement("span");
   liveLabel.className = "live-label";
-  liveLabel.textContent = state.staleWarning ? "Stale" : "Live";
+  liveLabel.textContent = FRESHNESS_LABELS[freshness];
   livePill.append(liveDot, liveLabel);
   heroTop.append(heroLabel, livePill);
 

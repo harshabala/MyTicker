@@ -7,6 +7,7 @@ const STORAGE_KEYS = {
   priceHistory: "pts_price_history",
   positionsState: "pts_positions_state",
   pollHealth: "pts_poll_health",
+  providerBackoff: "pts_provider_backoff",
   onboarding: "pts_onboarding",
   watchlist: "pts_watchlist",
   metrics: "pts_metrics",
@@ -301,26 +302,38 @@ function isHostTapeExcluded(hostname, excludedSites) {
   return false;
 }
 
+function positiveOrNull(value) {
+  return typeof value === "number" && Number.isFinite(value) && value > 0 ? value : null;
+}
+
 /**
  * Merge new quote snapshot into existing history.
  * History shape:
  * {
- *   [symbol]: Array<{ t: number, p: number }>
+ *   [symbol]: Array<{ t, p, prevClose, cur?, ms? }>
  * }
+ * t = poll time, p = price, prevClose = provider previous close (null when
+ * unknown), cur = quote currency, ms = market state ("open" | "closed").
+ * Quotes without a finite positive price are ignored.
  */
 function mergePriceSnapshots(history, quotes, timestamp) {
   const next = { ...history };
   const cutoff = timestamp - 15 * 60 * 1000; // keep last 15 minutes
 
   for (const q of quotes) {
-    const list = (next[q.symbol] || []).filter((s) => s.t >= cutoff);
-    list.push({ t: timestamp, p: q.lastPrice, prevClose: q.prevClose ?? null });
+    const price = positiveOrNull(q?.lastPrice);
+    if (!q?.symbol || price == null) continue;
+    const list = (Array.isArray(next[q.symbol]) ? next[q.symbol] : []).filter((s) => s.t >= cutoff);
+    const snapshot = { t: timestamp, p: price, prevClose: positiveOrNull(q.prevClose) };
+    if (q.currency === "INR" || q.currency === "USD") snapshot.cur = q.currency;
+    if (q.marketState === "open" || q.marketState === "closed") snapshot.ms = q.marketState;
+    list.push(snapshot);
     next[q.symbol] = list;
   }
 
   // Also prune any symbols that have become stale.
   for (const [sym, list] of Object.entries(next)) {
-    const filtered = list.filter((s) => s.t >= cutoff);
+    const filtered = Array.isArray(list) ? list.filter((s) => s.t >= cutoff) : [];
     if (!filtered.length) {
       delete next[sym];
     } else {
@@ -333,141 +346,169 @@ function mergePriceSnapshots(history, quotes, timestamp) {
 
 /**
  * Compute 5-minute and daily P&L for each holding.
- * Returns structure:
- * {
- *   positions: [
- *     {
- *       symbol, displayName, quantity, lastPrice,
- *       window5mPnl, window5mPnlPct,
- *       dayPnl, dayPnlPct
- *     }
- *   ],
- *   aggregate: {
- *     dayPnl, dayPnlPct
- *   }
- * }
+ *
+ * Day P&L = (last price − provider previous close) × quantity. When the
+ * provider has no previous close, day P&L is null (unknown), never an
+ * approximation from the 15-minute history.
+ *
+ * A position is `stale` when it has no quote from the poll at `now`
+ * (its latest snapshot is older, or it has never been priced).
+ *
+ * Aggregates only sum positions with a known baseline, and only when they
+ * share a currency: INR and USD are never added together. With mixed
+ * currencies the aggregate values are null and `aggregate.currency` is null.
+ * `aggregate.partial` is true when some holdings are missing from the total.
  */
 function computePositionsState(holdings, priceHistory, now) {
   const windowStart = now - 5 * 60 * 1000;
-  let totalCostDayBase = 0;
-  let totalValueNow = 0;
-  let totalCost5mBase = 0;
-  let totalValue5mNow = 0;
-  let stockCostBase = 0;
-  let stockValueNow = 0;
-  let cryptoCostBase = 0;
-  let cryptoValueNow = 0;
+  const totals = { dayBase: 0, dayNow: 0, fiveBase: 0, fiveNow: 0, stockBase: 0, stockNow: 0, cryptoBase: 0, cryptoNow: 0 };
+  const dayCurrencies = new Set();
+  const fiveCurrencies = new Set();
+  let missing = 0;
 
   const positions = holdings.map((h) => {
-    const history = priceHistory[h.symbol] || [];
-    if (!history.length) {
-      return {
-        symbol: h.symbol,
-        displayName: h.displayName || h.symbol,
-        quantity: h.quantity,
-        lastPrice: null,
-        window5mPnl: 0,
-        window5mPnlPct: 0,
-        dayPnl: 0,
-        dayPnlPct: 0,
-        assetClass: h.assetClass || "stock",
-        currency: inferDisplayCurrency(h),
-        brokerId: h.brokerId
-      };
-    }
-
-    const latest = history[history.length - 1];
-    const lastPrice = latest.p;
-
-    // 5-minute baseline: earliest sample >= windowStart; if none, earliest sample overall.
-    let baseline5m = history.find((s) => s.t >= windowStart)?.p ?? history[0].p;
-
-    const window5mPnl = (lastPrice - baseline5m) * h.quantity;
-    const window5mPnlPct = baseline5m ? ((lastPrice - baseline5m) / baseline5m) * 100 : 0;
-    totalCost5mBase += baseline5m * h.quantity;
-    totalValue5mNow += lastPrice * h.quantity;
-
-    // Daily baseline: prefer prevClose from the API (exchange-aware),
-    // which correctly handles timezone differences (e.g. an Indian user
-    // tracking NYSE stocks sees P&L relative to NYSE's previous close,
-    // not midnight IST). Falls back to earliest sample of the local day
-    // only when prevClose is unavailable.
-    let dayBaseline = latest.prevClose ?? null;
-    if (dayBaseline == null) {
-      const startOfDay = getStartOfDayTimestamp(now);
-      const daySample = history.find((s) => s.t >= startOfDay) ?? history[0];
-      dayBaseline = daySample.p;
-    }
-
-    const dayPnl = (lastPrice - dayBaseline) * h.quantity;
-    const dayPnlPct = dayBaseline ? ((lastPrice - dayBaseline) / dayBaseline) * 100 : 0;
-
-    const positionValueBase = dayBaseline * h.quantity;
-    const positionValueNow = lastPrice * h.quantity;
-
-    totalCostDayBase += positionValueBase;
-    totalValueNow += positionValueNow;
-
+    const quantity = Number(h.quantity);
     const assetClass = h.assetClass || "stock";
-    if (assetClass === "crypto") {
-      cryptoCostBase += positionValueBase;
-      cryptoValueNow += positionValueNow;
-    } else {
-      stockCostBase += positionValueBase;
-      stockValueNow += positionValueNow;
-    }
-
-    return {
+    const history = Array.isArray(priceHistory?.[h.symbol]) ? priceHistory[h.symbol] : [];
+    const latest = history[history.length - 1];
+    const lastPrice = positiveOrNull(latest?.p);
+    const currency = latest?.cur === "INR" || latest?.cur === "USD" ? latest.cur : inferDisplayCurrency(h);
+    const base = {
       symbol: h.symbol,
       displayName: h.displayName || h.symbol,
       quantity: h.quantity,
+      assetClass,
+      currency,
+      brokerId: h.brokerId
+    };
+
+    if (lastPrice == null || !Number.isFinite(quantity) || quantity <= 0) {
+      missing++;
+      return {
+        ...base,
+        lastPrice: null,
+        window5mPnl: 0,
+        window5mPnlPct: 0,
+        dayPnl: null,
+        dayPnlPct: null,
+        stale: true,
+        priceAt: null,
+        marketState: null
+      };
+    }
+
+    // 5-minute baseline: earliest valid sample >= windowStart; if none, the latest.
+    const baseline5m = positiveOrNull(history.find((s) => s.t >= windowStart && positiveOrNull(s.p))?.p) ?? lastPrice;
+    const window5mPnl = (lastPrice - baseline5m) * quantity;
+    const window5mPnlPct = ((lastPrice - baseline5m) / baseline5m) * 100;
+    totals.fiveBase += baseline5m * quantity;
+    totals.fiveNow += lastPrice * quantity;
+    fiveCurrencies.add(currency);
+
+    // Daily baseline: the provider's previous close (exchange-aware and
+    // split-adjusted), so an Indian user tracking NYSE stocks sees P&L
+    // against NYSE's previous close, not midnight IST.
+    const dayBaseline = positiveOrNull(latest.prevClose);
+    let dayPnl = null;
+    let dayPnlPct = null;
+    if (dayBaseline != null) {
+      dayPnl = (lastPrice - dayBaseline) * quantity;
+      dayPnlPct = ((lastPrice - dayBaseline) / dayBaseline) * 100;
+      const positionValueBase = dayBaseline * quantity;
+      const positionValueNow = lastPrice * quantity;
+      totals.dayBase += positionValueBase;
+      totals.dayNow += positionValueNow;
+      dayCurrencies.add(currency);
+      if (assetClass === "crypto") {
+        totals.cryptoBase += positionValueBase;
+        totals.cryptoNow += positionValueNow;
+      } else {
+        totals.stockBase += positionValueBase;
+        totals.stockNow += positionValueNow;
+      }
+    } else {
+      missing++;
+    }
+
+    return {
+      ...base,
       lastPrice,
       window5mPnl,
       window5mPnlPct,
       dayPnl,
       dayPnlPct,
-      assetClass: h.assetClass || "stock",
-      currency: inferDisplayCurrency(h),
-      brokerId: h.brokerId
+      stale: latest.t < now,
+      priceAt: latest.t,
+      marketState: latest.ms || null
     };
   });
 
-  const aggregateDayPnl = totalValueNow - totalCostDayBase;
-  const aggregateDayPnlPct =
-    totalCostDayBase > 0 ? (aggregateDayPnl / totalCostDayBase) * 100 : 0;
-
-  const aggregateWindow5mPnl = totalValue5mNow - totalCost5mBase;
-  const aggregateWindow5mPnlPct =
-    totalCost5mBase > 0 ? (aggregateWindow5mPnl / totalCost5mBase) * 100 : 0;
-
-  const stockDayPnl = stockValueNow - stockCostBase;
-  const stockDayPnlPct = stockCostBase > 0 ? (stockDayPnl / stockCostBase) * 100 : 0;
-
-  const cryptoDayPnl = cryptoValueNow - cryptoCostBase;
-  const cryptoDayPnlPct =
-    cryptoCostBase > 0 ? (cryptoDayPnl / cryptoCostBase) * 100 : 0;
+  const pct = (gain, basis) => (basis > 0 ? (gain / basis) * 100 : 0);
+  const dayMixed = dayCurrencies.size > 1;
+  const fiveMixed = fiveCurrencies.size > 1;
+  const aggregateDayPnl = totals.dayNow - totals.dayBase;
+  const aggregateWindow5mPnl = totals.fiveNow - totals.fiveBase;
+  const stockDayPnl = totals.stockNow - totals.stockBase;
+  const cryptoDayPnl = totals.cryptoNow - totals.cryptoBase;
 
   return {
     positions,
     aggregate: {
-      dayPnl: aggregateDayPnl,
-      dayPnlPct: aggregateDayPnlPct,
-      window5mPnl: aggregateWindow5mPnl,
-      window5mPnlPct: aggregateWindow5mPnlPct,
-      stockDayPnl,
-      stockDayPnlPct,
-      cryptoDayPnl,
-      cryptoDayPnlPct
+      currency: dayMixed ? null : ([...dayCurrencies][0] || inferDisplayCurrency(positions)),
+      partial: missing > 0,
+      dayPnl: dayMixed ? null : aggregateDayPnl,
+      dayPnlPct: dayMixed ? null : pct(aggregateDayPnl, totals.dayBase),
+      window5mPnl: fiveMixed ? null : aggregateWindow5mPnl,
+      window5mPnlPct: fiveMixed ? null : pct(aggregateWindow5mPnl, totals.fiveBase),
+      stockDayPnl: dayMixed ? null : stockDayPnl,
+      stockDayPnlPct: dayMixed ? null : pct(stockDayPnl, totals.stockBase),
+      cryptoDayPnl: dayMixed ? null : cryptoDayPnl,
+      cryptoDayPnlPct: dayMixed ? null : pct(cryptoDayPnl, totals.cryptoBase)
     }
   };
+}
+
+/**
+ * Summarise market state across priced positions: "open" if any is open,
+ * "closed" if every known state is closed, otherwise null (unknown).
+ */
+function summarizeMarketState(positions = []) {
+  const states = positions.map((p) => p?.marketState).filter((s) => s === "open" || s === "closed");
+  if (!states.length) return null;
+  return states.includes("open") ? "open" : "closed";
+}
+
+/**
+ * How fresh is a stored positions state? Used by the popup and tape so old
+ * prices are never labelled live.
+ * - "stale": the worker flagged it, or it has not been rewritten for
+ *   max(5 min, 3 refresh intervals) (worker stopped, machine asleep, etc.)
+ * - "closed": fresh, but every known market is closed (last close shown)
+ * - "live": fresh and at least one market open (or state unknown)
+ */
+function describeFreshness(state, now = Date.now(), refreshMinutes = 1) {
+  if (!state) return "stale";
+  const maxAge = Math.max(5 * 60 * 1000, 3 * Math.max(1, Number(refreshMinutes) || 1) * 60 * 1000);
+  const updatedAt = Number(state.updatedAt);
+  if (state.staleWarning || !Number.isFinite(updatedAt) || now - updatedAt > maxAge) return "stale";
+  return state.marketState === "closed" ? "closed" : "live";
 }
 
 /**
  * Format a number with a leading sign.
  * Centralised here to avoid duplication across content script and popup.
  */
+/** Round to cents (half away from zero) so -0.004 renders as 0.00, never "-0.00". */
+function roundToCents(value) {
+  const raw = Number(value);
+  if (!Number.isFinite(raw)) return 0;
+  // Half away from zero; the tiny relative nudge absorbs binary error (x.xx5).
+  const cents = Math.round(Math.abs(raw) * 100 * (1 + 1e-12));
+  return cents === 0 ? 0 : Math.sign(raw) * cents / 100;
+}
+
 function formatSigned(value) {
-  const num = Number(value) || 0;
+  const num = roundToCents(value);
   if (num > 0) return `+${num.toFixed(2)}`;
   return num.toFixed(2);
 }
@@ -585,7 +626,7 @@ function hydrateTickerQuoteItems(items = [], quotes = [], priceHistory = {}) {
  * Signed currency for P&L displays (e.g. +₹1,234.56).
  */
 function formatSignedCurrency(value, currency = "INR") {
-  const num = Number(value) || 0;
+  const num = roundToCents(value);
   const abs = formatCurrency(Math.abs(num), currency);
   if (num > 0) return `+${abs}`;
   if (num < 0) return `-${abs}`;
@@ -622,6 +663,9 @@ export {
   recordActiveDay,
   mergePriceSnapshots,
   computePositionsState,
+  summarizeMarketState,
+  describeFreshness,
+  roundToCents,
   formatSigned,
   formatCurrency,
   formatQuotePrice,

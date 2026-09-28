@@ -33,7 +33,6 @@
   "host_permissions": [
     "https://finnhub.io/*",
     "https://query1.finance.yahoo.com/*",
-    "https://query2.finance.yahoo.com/*",
     "https://api.coingecko.com/*",
     "https://data-api.binance.vision/*"
   ],

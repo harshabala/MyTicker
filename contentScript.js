@@ -5,6 +5,7 @@ let formatQuotePrice;
 let formatSigned;
 let formatSignedCurrency;
 let isHostTapeExcluded;
+let describeFreshness;
 
 const TICKER_CONTAINER_ID = "pts-ticker-container";
 const ORIGINAL_MARGIN_ATTR = "data-pts-original-margin-top";
@@ -125,7 +126,7 @@ function bootstrap() {
   try {
     const bridge = globalThis.__MYTICKER_CONTENT_SHARED__;
     if (!bridge) throw new Error("Content shared bridge was not loaded");
-    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency, isHostTapeExcluded } = bridge);
+    ({ STORAGE_KEYS, formatQuotePrice, formatSigned, formatSignedCurrency, isHostTapeExcluded, describeFreshness } = bridge);
     if (typeof isHostTapeExcluded !== "function") {
       isHostTapeExcluded = () => false;
     }
@@ -526,7 +527,10 @@ function positionKey(pos) {
 }
 
 function updateStaleIndicator(container, parts, state) {
-  if (state?.staleWarning) {
+  const freshness = typeof describeFreshness === "function"
+    ? describeFreshness(state, Date.now(), state?.refreshMinutes)
+    : state?.staleWarning ? "stale" : "live";
+  if (freshness === "stale") {
     if (!parts.stale) {
       parts.stale = document.createElement("div");
       parts.stale.className = "pts-stale-indicator";
@@ -617,7 +621,9 @@ function updateItemElement(item, pos, isGroupBoundary) {
   nameSpan.textContent = pos.displayName || pos.symbol || "—";
   priceSpan.textContent = formatQuotePrice(pos.lastPrice, pos.currency || "USD");
   changeSpan.textContent = `${formatSigned(changePct)}%`;
-  pnlSpan.textContent = isHolding ? `p&l ${formatSignedCurrency(dayPnl, pos.currency || "USD")}` : "";
+  // null day P&L = no previous close from the provider: unknown, not zero.
+  const pnlText = pos.dayPnl == null ? "—" : formatSignedCurrency(dayPnl, pos.currency || "USD");
+  pnlSpan.textContent = isHolding ? `p&l ${pnlText}` : "";
   pnlSpan.hidden = !isHolding;
   staleSpan.textContent = pos.stale ? "stale" : "";
   staleSpan.hidden = !pos.stale;

@@ -10,9 +10,9 @@ function assert(condition, message) {
 
 console.log("\n🔐 Finnhub vault");
 const record = await createVaultRecord("finnhub-secret-token", "123456");
-assert(record.version === 1 && record.iterations === 310000, "stores versioned PBKDF2 metadata");
+assert(record.version === 1 && record.iterations === 600000, "stores versioned PBKDF2 metadata");
 assert(typeof record.salt === "string" && typeof record.iv === "string" && typeof record.ciphertext === "string", "stores only encoded encrypted fields");
-assert(!JSON.stringify(record).includes("finnhub-secret-token") && VAULT_ITERATIONS === 310000, "never stores the plaintext secret");
+assert(!JSON.stringify(record).includes("finnhub-secret-token") && VAULT_ITERATIONS === 600000, "never stores the plaintext secret");
 assert(await decryptVaultRecord(record, "123456") === "finnhub-secret-token", "decrypts with the correct unlock code");
 const material = await deriveVaultKeyMaterial(record, "123456");
 assert(typeof material === "string" && material.length > 20 && material !== "finnhub-secret-token", "derives session-safe AES key material without retaining the API key");

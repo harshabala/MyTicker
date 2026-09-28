@@ -340,6 +340,22 @@
         margin-top: 4px;
       }
 
+      /* Advisory only: the colour and word carry the level, nothing is blocked. */
+      .code-strength::before {
+        content: "";
+        display: inline-block;
+        width: 6px;
+        height: 6px;
+        margin-right: 6px;
+        border-radius: 50%;
+        vertical-align: middle;
+        background: var(--text-tertiary);
+      }
+      .code-strength[data-level="weak"]::before,
+      .code-strength[data-level="invalid"]::before { background: var(--red); }
+      .code-strength[data-level="fair"]::before { background: var(--brand-gold); }
+      .code-strength[data-level="strong"]::before { background: var(--green); }
+
       .tape-size-options {
         display: flex;
         flex-wrap: wrap;
@@ -2538,8 +2554,9 @@
                 <div class="field" aria-labelledby="vaultProtectionTitle">
                   <div class="field-label" id="vaultProtectionTitle">Protect your Finnhub key</div>
                   <label class="sr-only" for="vaultUnlockCode">Create unlock code</label>
-                  <input type="password" id="vaultUnlockCode" minlength="6" placeholder="6+ character unlock code" autocomplete="new-password" />
-                  <input type="password" id="vaultUnlockConfirm" minlength="6" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
+                  <input type="password" id="vaultUnlockCode" minlength="6" maxlength="128" placeholder="Unlock code or passphrase (6+ characters)" autocomplete="new-password" aria-describedby="vaultCodeStrength" />
+                  <div class="field-hint code-strength" id="vaultCodeStrength" data-level="empty" aria-live="polite">Use 12+ characters, or a few random words with spaces.</div>
+                  <input type="password" id="vaultUnlockConfirm" minlength="6" maxlength="128" placeholder="Confirm unlock code" autocomplete="new-password" style="margin-top: 8px;" />
                   <div class="field-hint" id="vaultStatus">No encrypted Finnhub key configured.</div>
                 </div>
                 <div class="btn-row">
@@ -2550,6 +2567,22 @@
                   <button class="btn btn-secondary btn-pressable" id="testConnectionButton" disabled title="Save your API key first">Test connection</button>
                   <span class="status-badge" id="providerStatus"></span>
                 </div>
+                <details class="provider-key-disclosure" id="section-change-unlock-code" hidden>
+                  <summary class="provider-key-summary">Change unlock code</summary>
+                  <div class="field">
+                    <label class="field-label" for="vaultCurrentCode">Current unlock code</label>
+                    <input type="password" id="vaultCurrentCode" maxlength="128" autocomplete="current-password" />
+                    <label class="field-label" for="vaultNewCode" style="margin-top: 8px;">New unlock code or passphrase</label>
+                    <input type="password" id="vaultNewCode" minlength="6" maxlength="128" autocomplete="new-password" aria-describedby="vaultNewCodeStrength" />
+                    <div class="field-hint code-strength" id="vaultNewCodeStrength" data-level="empty" aria-live="polite">Use 12+ characters, or a few random words with spaces.</div>
+                    <label class="sr-only" for="vaultNewCodeConfirm">Confirm new unlock code</label>
+                    <input type="password" id="vaultNewCodeConfirm" minlength="6" maxlength="128" placeholder="Confirm new unlock code" autocomplete="new-password" style="margin-top: 8px;" />
+                    <div class="field-hint">Your Finnhub key is re-encrypted with the new code. If anything goes wrong, the current code keeps working.</div>
+                  </div>
+                  <div class="btn-row">
+                    <button class="btn btn-secondary btn-pressable" id="changeUnlockCodeButton">Change unlock code</button>
+                  </div>
+                </details>
               </div>
             </details>
           </div>

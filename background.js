@@ -6,18 +6,18 @@ import {
   DEFAULT_SETTINGS,
   computePositionsState,
   mergePriceSnapshots,
-  inferDisplayCurrency,
   isActivated,
   withTickerItems,
   hydrateTickerQuoteItems,
-  appendDiagnosticLogEntry
-  , normalizeCryptoConfig,
-  migrateSettings
+  appendDiagnosticLogEntry,
+  normalizeCryptoConfig,
+  migrateSettings,
+  summarizeMarketState
 } from "./shared.js";
 
-import { getAllQuotes, getCryptoQuotes } from "./priceProviders.js";
+import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
 import { recordSuccessfulRefresh, markActivated } from "./metrics.js";
-import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial } from "./vault.js";
+import { createVaultRecord, deriveVaultKeyMaterial, decryptVaultRecordWithMaterial, vaultNeedsUpgrade, isValidUnlockCode } from "./vault.js";
 
 const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
 const FINNHUB_SESSION_KEY = "pts_finnhub_vault_aes_material";
@@ -44,6 +44,9 @@ const CRYPTO_ID_BY_SYMBOL = {
 
 // Issue #8: In-flight lock to prevent concurrent poll execution.
 let pollInFlight = false;
+// A poll requested while one is running (e.g. right after a CSV import) runs
+// once more afterwards instead of being dropped.
+let pollQueued = false;
 
 // Issue #10: Track consecutive API failures for stale-data warning (persisted).
 let consecutiveFailures = 0;
@@ -127,13 +130,18 @@ async function getVaultStatus() {
     chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]),
     chrome.storage.session.get([FINNHUB_SESSION_KEY])
   ]);
-  return { configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]), unlocked: !!session[FINNHUB_SESSION_KEY] };
+  return {
+    configured: !!(local[FINNHUB_VAULT_KEY] || local[LEGACY_FINNHUB_KEY]),
+    unlocked: !!session[FINNHUB_SESSION_KEY],
+    // A pre-vault plaintext key is waiting for the user to choose an unlock code.
+    legacy: !local[FINNHUB_VAULT_KEY] && !!local[LEGACY_FINNHUB_KEY]
+  };
 }
 
 async function createOrReplaceVault(payload) {
-  const code = String(payload?.unlockCode || "");
+  const code = payload?.unlockCode;
   const apiKey = String(payload?.apiKey || "").trim();
-  if (code.length < 6 || !apiKey) throw new Error("Invalid vault input");
+  if (!isValidUnlockCode(code) || !apiKey) throw new Error("Invalid vault input");
   const record = await createVaultRecord(apiKey, code);
   await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
   const material = await deriveVaultKeyMaterial(record, code);
@@ -143,16 +151,22 @@ async function createOrReplaceVault(payload) {
 }
 
 async function unlockVault(payload) {
-  const code = String(payload?.unlockCode || "");
-  if (code.length < 6) throw new Error("Invalid unlock code");
+  const code = payload?.unlockCode;
+  // Same bounds as creation (a legacy plaintext key is encrypted here too).
+  if (!isValidUnlockCode(code)) throw new Error("Invalid unlock code");
   const local = await chrome.storage.local.get([FINNHUB_VAULT_KEY, LEGACY_FINNHUB_KEY]);
   let record = local[FINNHUB_VAULT_KEY];
   if (local[FINNHUB_VAULT_KEY]) {
     // Validate the code before storing derived material; plaintext stays local.
     const material = await deriveVaultKeyMaterial(record, code);
-    await decryptVaultRecordWithMaterial(record, material);
-    await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
-    return getVaultStatus();
+    const apiKey = await decryptVaultRecordWithMaterial(record, material);
+    if (!vaultNeedsUpgrade(record)) {
+      await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: material });
+      return getVaultStatus();
+    }
+    // Re-wrap records from older releases with the current KDF cost.
+    record = await createVaultRecord(apiKey, code);
+    await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: record });
   } else if (local[LEGACY_FINNHUB_KEY]) {
     const apiKey = String(local[LEGACY_FINNHUB_KEY]).trim();
     record = await createVaultRecord(apiKey, code);
@@ -165,24 +179,70 @@ async function unlockVault(payload) {
   return getVaultStatus();
 }
 
+/**
+ * Re-encrypt the vault under a new unlock code. Atomic: the new record is
+ * built and verified in memory, then written with one storage.set of the
+ * single vault key, and only if the stored vault is still the one that was
+ * decrypted. A wrong current code, an invalid new code, a failed
+ * verification, or a concurrent change leaves the old vault untouched.
+ */
+async function changeUnlockCode(payload) {
+  const currentCode = payload?.currentCode;
+  const newCode = payload?.newCode;
+  if (typeof currentCode !== "string" || !currentCode || !isValidUnlockCode(newCode)) throw new Error("Invalid unlock code");
+  const record = (await chrome.storage.local.get([FINNHUB_VAULT_KEY]))[FINNHUB_VAULT_KEY];
+  if (!record) throw new Error("Vault not configured");
+
+  const apiKey = await decryptVaultRecordWithMaterial(record, await deriveVaultKeyMaterial(record, currentCode));
+  const nextRecord = await createVaultRecord(apiKey, newCode);
+  const nextMaterial = await deriveVaultKeyMaterial(nextRecord, newCode);
+  if (await decryptVaultRecordWithMaterial(nextRecord, nextMaterial) !== apiKey) throw new Error("Re-encryption check failed");
+
+  const latest = (await chrome.storage.local.get([FINNHUB_VAULT_KEY]))[FINNHUB_VAULT_KEY];
+  if (JSON.stringify(latest) !== JSON.stringify(record)) throw new Error("Vault changed during re-encryption");
+  await chrome.storage.local.set({ [FINNHUB_VAULT_KEY]: nextRecord });
+  // If this fails the vault is still valid; the stale material is dropped on
+  // next use and the user unlocks with the new code.
+  await chrome.storage.session.set({ [FINNHUB_SESSION_KEY]: nextMaterial });
+  return getVaultStatus();
+}
+
 async function lockVault() {
   await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
   return getVaultStatus();
 }
 
+/**
+ * Returns the decrypted Finnhub key, or "" when locked. Never throws: a
+ * session key that no longer matches the stored record (vault replaced
+ * mid-poll, corrupted storage, unsupported record) must not stop Yahoo and
+ * crypto prices. The stale material is dropped so the UI shows "locked" and
+ * the user is asked to unlock again.
+ */
 async function getUnlockedFinnhubKey() {
   const [local, session] = await Promise.all([
     chrome.storage.local.get([FINNHUB_VAULT_KEY]),
     chrome.storage.session.get([FINNHUB_SESSION_KEY])
   ]);
   if (!local[FINNHUB_VAULT_KEY] || !session[FINNHUB_SESSION_KEY]) return "";
-  return decryptVaultRecordWithMaterial(local[FINNHUB_VAULT_KEY], session[FINNHUB_SESSION_KEY]);
+  try {
+    return await decryptVaultRecordWithMaterial(local[FINNHUB_VAULT_KEY], session[FINNHUB_SESSION_KEY]);
+  } catch {
+    const latest = await chrome.storage.session.get([FINNHUB_SESSION_KEY]);
+    // Only drop the material we failed with; a concurrent unlock may have replaced it.
+    if (latest[FINNHUB_SESSION_KEY] === session[FINNHUB_SESSION_KEY]) {
+      await chrome.storage.session.remove(FINNHUB_SESSION_KEY);
+    }
+    return "";
+  }
 }
 
 async function testVaultConnection() {
   const apiKey = await getUnlockedFinnhubKey();
   if (!apiKey) throw new Error("Vault locked");
-  const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`);
+  const response = await fetch(`https://finnhub.io/api/v1/quote?symbol=AAPL&token=${encodeURIComponent(apiKey)}`, {
+    signal: AbortSignal.timeout(12_000)
+  });
   if (!response.ok) throw new Error("Finnhub request failed");
   const quote = await response.json();
   if (!Number.isFinite(quote?.c)) throw new Error("Finnhub quote unavailable");
@@ -231,6 +291,14 @@ async function ensurePollHealthLoaded() {
 
 ensurePollHealthLoaded();
 
+// Session storage holds vault key material. TRUSTED_CONTEXTS is Chrome's
+// default; set it explicitly so content scripts can never be granted access.
+try {
+  chrome.storage.session.setAccessLevel?.({ accessLevel: "TRUSTED_CONTEXTS" })?.catch?.(() => {});
+} catch {
+  // Older Chrome without setAccessLevel already defaults to trusted contexts.
+}
+
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   if (!message || typeof message !== "object" || typeof message.type !== "string" || !message.payload || typeof message.payload !== "object") return;
   if (message.type === "content-script-lifecycle") {
@@ -248,12 +316,13 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
   if (!isTrustedExtensionSender(sender)) return;
   if (message.type === "vault-status") {
-    getVaultStatus().then((status) => sendResponse({ ok: true, status }));
+    getVaultStatus().then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault status unavailable" }));
     return true;
   }
-  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock"].includes(message.type)) {
+  if (["vault-create", "vault-replace", "vault-unlock", "vault-lock", "vault-change-code"].includes(message.type)) {
     const action = message.type === "vault-unlock" ? unlockVault
-      : message.type === "vault-lock" ? lockVault : createOrReplaceVault;
+      : message.type === "vault-lock" ? lockVault
+      : message.type === "vault-change-code" ? changeUnlockCode : createOrReplaceVault;
     action(message.payload).then((status) => sendResponse({ ok: true, status })).catch(() => sendResponse({ ok: false, error: "Vault operation failed" }));
     return true;
   }
@@ -315,7 +384,10 @@ chrome.commands.onCommand.addListener((command) => {
 
 async function handlePricePoll() {
   // Issue #8: Prevent concurrent polls.
-  if (pollInFlight) return;
+  if (pollInFlight) {
+    pollQueued = true;
+    return;
+  }
   pollInFlight = true;
 
   try {
@@ -325,11 +397,14 @@ async function handlePricePoll() {
       chrome.storage.local.get([
         STORAGE_KEYS.holdings,
         STORAGE_KEYS.watchlist,
-        STORAGE_KEYS.priceHistory
+        STORAGE_KEYS.priceHistory,
+        STORAGE_KEYS.providerBackoff
       ])
     ]);
+    // Persisted so a restarted worker keeps honouring 429/5xx cooldowns.
+    const backoff = new ProviderBackoff(localData[STORAGE_KEYS.providerBackoff]);
 
-    const settings = syncData[STORAGE_KEYS.settings] || DEFAULT_SETTINGS;
+    const settings = migrateSettings(syncData[STORAGE_KEYS.settings]);
     if (!settings.enabled) return;
 
     const baseHoldings = localData[STORAGE_KEYS.holdings] || [];
@@ -347,7 +422,7 @@ async function handlePricePoll() {
     const holdings = buildCombinedHoldings(baseHoldings, settings);
     if (!holdings.length && !watchlist.length && !crypto.length) {
       // No market items to track; clear state so UI doesn't show stale data.
-      chrome.storage.local.set({
+      await chrome.storage.local.set({
         [STORAGE_KEYS.positionsState]: null
       });
       await recordDiagnostic({ ...diagnosticCounts, event: "state-write" });
@@ -360,7 +435,8 @@ async function handlePricePoll() {
     const apiKeyOverride = await getUnlockedFinnhubKey();
     const apiConfig = {
       apiKey: apiKeyOverride,
-      baseUrl: "https://finnhub.io/api/v1"
+      baseUrl: "https://finnhub.io/api/v1",
+      backoff
     };
 
     const equityWatchlist = watchlist.filter((item) => item.assetClass !== "crypto");
@@ -377,8 +453,11 @@ async function handlePricePoll() {
 
     const [equityQuotes, cryptoQuotes] = await Promise.all([
       getAllQuotes(equitySymbols, apiConfig),
-      getCryptoQuotes(cryptoSymbols)
+      getCryptoQuotes(cryptoSymbols, {}, { backoff })
     ]);
+    if (backoff.changed) {
+      await chrome.storage.local.set({ [STORAGE_KEYS.providerBackoff]: backoff.toJSON() });
+    }
     const quotes = [...equityQuotes, ...cryptoQuotes];
     const now = Date.now();
     await recordDiagnostic({
@@ -418,14 +497,28 @@ async function handlePricePoll() {
     });
 
     positionsState.updatedAt = now;
-    positionsState.displayCurrency = inferDisplayCurrency(baseHoldings);
+    positionsState.refreshMinutes = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+    // From priced positions, so a CSV currency column can never mislabel the total.
+    positionsState.displayCurrency = holdingsState.aggregate.currency ?? null;
+    positionsState.marketState = summarizeMarketState(holdingsState.positions);
 
-    // Issue #10: Stale if no successful fetch in 5+ minutes or repeated empty polls.
+    // Stale if no successful fetch in 5+ minutes, repeated empty polls, or any
+    // holding missed this poll (partial provider outage, locked Finnhub key):
+    // old prices must never be presented as live.
     const timeStale =
       lastSuccessfulFetch > 0 && now - lastSuccessfulFetch > STALE_TIME_THRESHOLD_MS;
     const failureStale = consecutiveFailures >= STALE_FAILURE_THRESHOLD;
-    if (timeStale || failureStale) {
+    const holdingStale = holdingsState.positions.some((position) => position.stale);
+    if (timeStale || failureStale || holdingStale) {
       positionsState.staleWarning = true;
+    }
+
+    // Holdings may have been re-imported or cleared while quotes were in
+    // flight; writing now would resurrect deleted positions. Skip this write;
+    // the poll requested by the import will rebuild state.
+    const latestHoldings = (await chrome.storage.local.get([STORAGE_KEYS.holdings]))[STORAGE_KEYS.holdings] || [];
+    if (JSON.stringify(latestHoldings) !== JSON.stringify(baseHoldings)) {
+      return;
     }
 
     // Issue #9: Wrap storage.set in try/catch to handle quota errors.
@@ -454,12 +547,16 @@ async function handlePricePoll() {
       await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
     }
   } catch (err) {
-    console.error("Error in handlePricePoll", err);
+    console.error("[MyTicker] price refresh failed", err?.name || "Error");
     consecutiveFailures++;
     await savePollHealth();
     await recordDiagnostic({ timestamp: Date.now(), event: "refresh-failed", error: true });
   } finally {
     pollInFlight = false;
+    if (pollQueued) {
+      pollQueued = false;
+      handlePricePoll();
+    }
   }
 }
 
