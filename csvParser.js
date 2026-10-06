@@ -176,6 +176,19 @@ function inferCurrencyFromSymbol(symbol) {
   return /\.(NS|BO)$/i.test(symbol) ? "INR" : "USD";
 }
 
+function flexGetRow(row, candidates) {
+  const keys = Array.isArray(candidates) ? candidates : [candidates];
+  for (const key of keys) {
+    if (!key) continue;
+    if (Object.hasOwn(row, key)) return row[key];
+    const lower = String(key).toLowerCase();
+    for (const k of Object.keys(row)) {
+      if (k.toLowerCase() === lower) return row[k];
+    }
+  }
+  return undefined;
+}
+
 /**
  * Map parsed CSV rows to normalized Holding objects using a preset or custom mapping.
  * mapping: { symbol, exchange, quantity, avgPrice, currency }
@@ -189,28 +202,17 @@ function inferCurrencyFromSymbol(symbol) {
 export function mapRowsToHoldings(rows, mapping, brokerId, defaults = {}) {
   const bySymbol = new Map();
 
-  // Exact header match first, then case-insensitive. Own properties only.
-  function flexGet(row, key) {
-    if (!key) return undefined;
-    if (Object.hasOwn(row, key)) return row[key];
-    const lowerKey = String(key).toLowerCase();
-    for (const k of Object.keys(row)) {
-      if (k.toLowerCase() === lowerKey) return row[k];
-    }
-    return undefined;
-  }
-
   for (const row of rows) {
-    const symbolRaw = String(flexGet(row, mapping.symbol) ?? "").trim();
+    const symbolRaw = String(flexGetRow(row, mapping.symbol) ?? "").trim();
     if (!symbolRaw || !SYMBOL_PATTERN.test(symbolRaw)) continue;
 
-    const quantity = parseBrokerNumber(flexGet(row, mapping.quantity));
+    const quantity = parseBrokerNumber(flexGetRow(row, mapping.quantity));
     if (!Number.isFinite(quantity) || quantity <= 0) continue;
-    const avgPriceParsed = parseBrokerNumber(flexGet(row, mapping.avgPrice));
+    const avgPriceParsed = parseBrokerNumber(flexGetRow(row, mapping.avgPrice));
     const avgPrice = Number.isFinite(avgPriceParsed) && avgPriceParsed > 0 ? avgPriceParsed : 0;
 
     // Determine exchange: from CSV column, then preset default.
-    let exchange = String(flexGet(row, mapping.exchange) ?? "").trim().toUpperCase();
+    let exchange = String(flexGetRow(row, mapping.exchange) ?? "").trim().toUpperCase();
     if (!exchange && defaults.exchange) exchange = String(defaults.exchange).toUpperCase();
 
     // Append exchange suffix to symbol if missing (e.g. IRFC -> IRFC.NS)
@@ -221,7 +223,7 @@ export function mapRowsToHoldings(rows, mapping, brokerId, defaults = {}) {
       fullSymbol += ".BO";
     }
 
-    const currencyRaw = String(flexGet(row, mapping.currency) ?? defaults.currency ?? "").trim().toUpperCase();
+    const currencyRaw = String(flexGetRow(row, mapping.currency) ?? defaults.currency ?? "").trim().toUpperCase();
     const inferred = inferCurrencyFromSymbol(fullSymbol);
     // A CSV currency that contradicts the quote source would mislabel prices.
     const currency = currencyRaw === inferred ? currencyRaw : inferred;
@@ -334,18 +336,6 @@ export const CRYPTO_EXPORT_PRESETS = {
     }
   }
 };
-
-function flexGetRow(row, candidates) {
-  const keys = Array.isArray(candidates) ? candidates : [candidates];
-  for (const key of keys) {
-    if (Object.hasOwn(row, key)) return row[key];
-    const lower = String(key).toLowerCase();
-    for (const k of Object.keys(row)) {
-      if (k.toLowerCase() === lower) return row[k];
-    }
-  }
-  return undefined;
-}
 
 function headerScoreForCryptoPreset(headers, preset) {
   const lowerHeaders = headers.map((h) => h.toLowerCase());

@@ -138,6 +138,19 @@ async function fetchInBatches(items, provider, backoff, fetchOne) {
   return results;
 }
 
+async function getCachedQuotes(cache, symbols, provider, backoff, fetchOne, now = Date.now()) {
+  const results = [];
+  const toFetch = [];
+  for (const symbol of symbols) {
+    const cached = cache[symbol];
+    if (cached && now - cached.timestamp < CACHE_TTL_MS) results.push(cached.data);
+    else toFetch.push(symbol);
+  }
+  const fetched = await fetchInBatches(toFetch, provider, backoff, fetchOne);
+  for (const quote of fetched) cache[quote.symbol] = { data: quote, timestamp: now };
+  return [...results, ...fetched];
+}
+
 /** Map a CoinGecko /simple/price response to quotes. */
 export function parseCoinGeckoPrices(ids, data) {
   return ids.flatMap((symbol) => {
@@ -299,24 +312,8 @@ export class FinnhubPriceProvider {
   async getQuotes(symbols, config) {
     const apiKey = config.apiKey;
     if (!apiKey || !symbols.length) return [];
-
     const baseUrl = sanitizeFinnhubBaseUrl(config.baseUrl);
-    const now = Date.now();
-    const results = [];
-    const toFetch = [];
-
-    for (const symbol of symbols) {
-      const cached = this._cache[symbol];
-      if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-        results.push(cached.data);
-      } else {
-        toFetch.push(symbol);
-      }
-    }
-
-    const fetched = await fetchInBatches(toFetch, "finnhub", this.backoff, (symbol) => this._fetchSingle(symbol, baseUrl, apiKey));
-    for (const quote of fetched) this._cache[quote.symbol] = { data: quote, timestamp: now };
-    return [...results, ...fetched];
+    return getCachedQuotes(this._cache, symbols, "finnhub", this.backoff, (symbol) => this._fetchSingle(symbol, baseUrl, apiKey));
   }
 
   async _fetchSingle(symbol, baseUrl, apiKey) {
@@ -398,23 +395,13 @@ export class YahooIndiaPriceProvider {
   }
 
   async getQuotes(symbols) {
-    const now = Date.now();
-    const results = [];
-    const toFetch = [];
-
-    for (const symbol of symbols) {
-      if (!isIndiaSymbol(symbol)) continue;
-      const cached = this._cache[symbol];
-      if (cached && now - cached.timestamp < CACHE_TTL_MS) {
-        results.push(cached.data);
-      } else {
-        toFetch.push(symbol);
-      }
-    }
-
-    const fetched = await fetchInBatches(toFetch, "yahoo", this.backoff, (symbol) => this._fetchSingle(symbol));
-    for (const quote of fetched) this._cache[quote.symbol] = { data: quote, timestamp: now };
-    return [...results, ...fetched];
+    return getCachedQuotes(
+      this._cache,
+      symbols.filter(isIndiaSymbol),
+      "yahoo",
+      this.backoff,
+      (symbol) => this._fetchSingle(symbol)
+    );
   }
 
   async _fetchSingle(symbol) {

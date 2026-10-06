@@ -633,16 +633,11 @@ function formatSignedCurrency(value, currency = "INR") {
   return abs;
 }
 
-function getStartOfDayTimestamp(now) {
-  const d = new Date(now);
-  d.setHours(0, 0, 0, 0);
-  return d.getTime();
-}
-
 // ES module exports for background, options, popup, and content script.
 export {
   STORAGE_KEYS,
   DIAGNOSTICS_LOG_LIMIT,
+  CONTENT_LIFECYCLE_STAGES,
   sanitizeDiagnosticEntry,
   appendDiagnosticLogEntry,
   DEFAULT_SETTINGS,
