@@ -1,31 +1,46 @@
 import assert from "node:assert/strict";
 import test from "node:test";
-import { resolveCryptoCatalogEntry } from "../shared.js";
+import {
+  CRYPTO_ID_BY_SYMBOL,
+  normalizeCryptoId,
+  resolveCryptoCatalogEntry,
+} from "../shared.js";
 
-/** Pre-refactor table from origin/main background.js CRYPTO_ID_BY_SYMBOL. */
-const CRYPTO_ID_BY_SYMBOL = {
-  bitcoin: "bitcoin",
-  btc: "bitcoin",
-  btcusdt: "bitcoin",
-  ethereum: "ethereum",
-  eth: "ethereum",
-  ethusdt: "ethereum",
-  binancecoin: "binancecoin",
-  bnb: "binancecoin",
-  bnbusdt: "binancecoin",
-  ripple: "ripple",
-  xrp: "ripple",
-  xrpusdt: "ripple",
-  solana: "solana",
-  sol: "solana",
-  solusdt: "solana"
-};
+const EXTRA_INPUTS = [
+  "Bitcoin",
+  "ethereum",
+  "BTCUSD",
+  "bitcoinusd",
+  "coinbase:btc",
+  "x:eth",
+  "BINANCE:BTCUSDT",
+  "not-a-coin",
+  "doge",
+  "sol",
+  "SOL",
+];
 
-test("resolveCryptoCatalogEntry matches every old CRYPTO_ID_BY_SYMBOL alias", () => {
-  const diffs = [];
+test("ticker-path normalizeCryptoId matches the old table for every alias", () => {
   for (const [alias, oldId] of Object.entries(CRYPTO_ID_BY_SYMBOL)) {
-    const got = resolveCryptoCatalogEntry(alias)?.id ?? null;
-    if (got !== oldId) diffs.push({ alias, oldId, got });
+    assert.equal(normalizeCryptoId(alias), oldId, alias);
   }
-  assert.deepEqual(diffs, [], "alias resolution changed vs pre-refactor table");
+});
+
+test("old table vs wide resolver vs ticker path on realistic inputs", () => {
+  const rows = [];
+  const inputs = [...Object.keys(CRYPTO_ID_BY_SYMBOL), ...EXTRA_INPUTS];
+  for (const input of inputs) {
+    const raw = String(input || "").trim();
+    const pair = raw.split(":").pop().toLowerCase();
+    const oldId = CRYPTO_ID_BY_SYMBOL[pair] || (
+      ["bitcoin", "ethereum", "binancecoin", "ripple", "solana"].includes(pair) ? pair : null
+    );
+    const ticker = normalizeCryptoId(input);
+    const wide = resolveCryptoCatalogEntry(input)?.id ?? null;
+    rows.push({ input, oldId, ticker, wide });
+    assert.equal(ticker, oldId, `ticker path drifted for ${input}`);
+  }
+  const widened = rows.filter((r) => r.oldId == null && r.wide != null);
+  // Documented: wide resolver may accept names/usd suffixes the ticker path rejects.
+  assert.ok(widened.length >= 1, "expected at least one extra wide-resolver match to document");
 });

@@ -183,6 +183,32 @@ const CRYPTO_LOOKUP = new Map(CRYPTO_CATALOG.flatMap((coin) => [
   [coin.id, coin], [coin.symbol.toLowerCase(), coin], [coin.name.toLowerCase(), coin]
 ]));
 
+/** Pre-refactor ticker id map (origin/main background.js). */
+const CRYPTO_ID_BY_SYMBOL = Object.freeze({
+  bitcoin: "bitcoin",
+  btc: "bitcoin",
+  btcusdt: "bitcoin",
+  ethereum: "ethereum",
+  eth: "ethereum",
+  ethusdt: "ethereum",
+  binancecoin: "binancecoin",
+  bnb: "binancecoin",
+  bnbusdt: "binancecoin",
+  ripple: "ripple",
+  xrp: "ripple",
+  xrpusdt: "ripple",
+  solana: "solana",
+  sol: "solana",
+  solusdt: "solana"
+});
+
+/** Narrow ticker-path resolver: split on colon, table lookup, else TOP5 id. */
+function normalizeCryptoId(symbol) {
+  const raw = String(symbol || "").trim();
+  const pair = raw.split(":").pop().toLowerCase();
+  return CRYPTO_ID_BY_SYMBOL[pair] || (CRYPTO_CATALOG.some((c) => c.id === pair) ? pair : null);
+}
+
 function resolveCryptoCatalogEntry(input) {
   let raw = String(input || "").trim().toLowerCase();
   if (!raw) return null;
@@ -644,6 +670,8 @@ export {
   SETTINGS_SCHEMA_VERSION,
   migrateSettings,
   CRYPTO_CATALOG,
+  CRYPTO_ID_BY_SYMBOL,
+  normalizeCryptoId,
   resolveCryptoCatalogEntry,
   normalizeCryptoConfig,
   normalizeManualCryptoHoldings,

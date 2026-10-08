@@ -15,7 +15,8 @@ import {
   summarizeMarketState,
   CONTENT_LIFECYCLE_STAGES,
   CRYPTO_CATALOG,
-  resolveCryptoCatalogEntry
+  resolveCryptoCatalogEntry,
+  normalizeCryptoId
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
@@ -572,7 +573,7 @@ function buildCryptoTickerItems(settings) {
     ? (Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : []).map((item) => item?.symbol)
     : DEFAULT_TOP5_CRYPTO;
 
-  return [...new Set(symbols.map((symbol) => resolveCryptoCatalogEntry(symbol)?.id).filter(Boolean))].map((symbol) => ({
+  return [...new Set(symbols.map((symbol) => normalizeCryptoId(symbol)).filter(Boolean))].map((symbol) => ({
     symbol,
     displayName: symbol,
     quantity: 0,
