@@ -431,13 +431,9 @@ function ensureTickerContainer(animate = false) {
   renderTicker(latestState);
 }
 
-function restoreBodyMargin() {
-  clearTapeReservation();
-}
-
 function removeTickerContainer() {
   if (!tickerHost || !tickerBar) {
-    restoreBodyMargin();
+    clearTapeReservation();
     tickerHost = null;
     tickerShadow = null;
     tickerBar = null;
@@ -462,7 +458,7 @@ function removeTickerContainer() {
   };
 
   if (prefersReducedMotion()) {
-    restoreBodyMargin();
+    clearTapeReservation();
     finish();
     return;
   }
@@ -472,7 +468,7 @@ function removeTickerContainer() {
   // Page reservation changes are deliberately immediate: the tape can be
   // toggled by keyboard and must never animate host-page layout or force sync
   // reflow. Only the tape itself uses transform/opacity on exit.
-  restoreBodyMargin();
+  clearTapeReservation();
 
   const onEnd = (e) => {
     if (e.propertyName !== "opacity") return;
@@ -717,18 +713,6 @@ function getGroupLabel(kind) {
   return "holdings";
 }
 
-function getInitials(name) {
-  if (!name) return "";
-  const parts = String(name)
-    .split(/\s+/)
-    .filter(Boolean);
-  if (!parts.length) return "";
-  if (parts.length === 1) {
-    return parts[0].slice(0, 2).toUpperCase();
-  }
-  return (parts[0][0] + parts[1][0]).toUpperCase();
-}
-
 function applyTickerSpeed(settings) {
   const duration =
     settings?.tickerStyleConfig?.tickerSpeed ||
@@ -741,14 +725,9 @@ function applyTickerSpeed(settings) {
   }
 }
 
-function getTapeScale(settings) {
-  const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
-  return { compact: 0.92, comfortable: 1.08, large: 1.20 }[size];
-}
-
 function applyTapeSize(settings) {
   const size = normalizeTapeScale(settings?.tickerStyleConfig?.tapeScale);
-  const scale = getTapeScale(settings);
+  const scale = { compact: 0.92, comfortable: 1.08, large: 1.20 }[size];
   document.documentElement.style.setProperty("--pts-tape-scale", String(scale));
   if (tickerBar) {
     tickerBar.setAttribute("data-tape-size", size);

@@ -2,12 +2,10 @@
 
 import { STORAGE_KEYS, recordActiveDay } from "./shared.js";
 
-const DEFAULT_METRICS = {
-  activatedAt: null,
-  firstRefreshAt: null,
-  activeDays: [],
-  imports: {}
-};
+async function writeMetrics(next) {
+  await chrome.storage.local.set({ [STORAGE_KEYS.metrics]: next });
+  return next;
+}
 
 export async function getMetrics() {
   const data = await chrome.storage.local.get([STORAGE_KEYS.metrics]);
@@ -20,32 +18,21 @@ export async function getMetrics() {
   };
 }
 
-export async function updateMetrics(patch) {
-  const current = await getMetrics();
-  const next = { ...current, ...patch };
-  await chrome.storage.local.set({ [STORAGE_KEYS.metrics]: next });
-  return next;
-}
-
 /** First successful quote fetch + active-day stamp (while ticker enabled). */
 export async function recordSuccessfulRefresh(now = Date.now()) {
   const current = await getMetrics();
-  const next = {
+  return writeMetrics({
     ...current,
     firstRefreshAt: current.firstRefreshAt ?? now,
     activeDays: recordActiveDay(current.activeDays, now)
-  };
-  await chrome.storage.local.set({ [STORAGE_KEYS.metrics]: next });
-  return next;
+  });
 }
 
 /** Record activation once (idempotent). */
 export async function markActivated(now = Date.now()) {
   const current = await getMetrics();
   if (current.activatedAt != null) return current;
-  const next = { ...current, activatedAt: now };
-  await chrome.storage.local.set({ [STORAGE_KEYS.metrics]: next });
-  return next;
+  return writeMetrics({ ...current, activatedAt: now });
 }
 
 /** Local import success/fail counters by broker preset. */
@@ -57,9 +44,5 @@ export async function recordImportResult(presetKey, ok) {
   if (ok) bucket.success += 1;
   else bucket.fail += 1;
   imports[key] = bucket;
-  const next = { ...current, imports };
-  await chrome.storage.local.set({ [STORAGE_KEYS.metrics]: next });
-  return next;
+  return writeMetrics({ ...current, imports });
 }
-
-export { DEFAULT_METRICS };

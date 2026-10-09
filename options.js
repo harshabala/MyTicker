@@ -8,7 +8,8 @@ import {
   normalizeWatchlistSymbol,
   resolveCryptoCatalogEntry,
   normalizeExcludedSiteEntry,
-  normalizeExcludedSites
+  normalizeExcludedSites,
+  normalizeTapeScale
 } from "./shared.js";
 import {
   BROKER_PRESETS,
@@ -67,7 +68,6 @@ const cryptoDropZone = document.getElementById("cryptoDropZone");
 const cryptoCsvFileEl = document.getElementById("cryptoCsvFile");
 const cryptoImportCsvButton = document.getElementById("cryptoImportCsvButton");
 const cryptoImportStatusEl = document.getElementById("cryptoImportStatus");
-const CRYPTO_FINDER_LABEL = "Add via Finder / File Explorer";
 let selectedCrypto = [];
 let cryptoImportInFlight = false;
 const watchlistTypeEl = document.getElementById("watchlistType");
@@ -114,12 +114,6 @@ const WIZARD_HINTS = {
   1: "Optional: add a Finnhub key if you hold US equities. Crypto quotes do not need it.",
   2: "Import your holdings (Zerodha CSV). Indian stocks price automatically — no API key.",
   3: "Open any tab — the strip and today's P&L appear when prices load."
-};
-
-const WIZARD_NEXT_LABELS = {
-  1: "Optional: US price key",
-  2: "Import holdings",
-  3: "Go live"
 };
 
 function prefersReducedMotion() {
@@ -315,52 +309,12 @@ function init() {
   watchlistInputEl?.addEventListener("input", () => { if (watchlistErrorEl) watchlistErrorEl.textContent = ""; });
 
   // Drop zone auto-imports. Finder button opens the file picker separately.
-  dropZone?.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.add("dragover");
-  });
-  dropZone?.addEventListener("dragleave", () => {
-    dropZone.classList.remove("dragover");
-  });
-  dropZone?.addEventListener("drop", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    dropZone.classList.remove("dragover");
-    const file = e.dataTransfer?.files?.[0];
-    if (file) {
-      handleImportCsv(file);
-    } else {
-      showToast("No file found in that drop. Use Add via Finder / File Explorer.", "error");
-    }
-  });
-  csvFileEl?.addEventListener("change", () => {
-    const file = csvFileEl.files?.[0];
-    if (file) handleImportCsv(file);
-    // Allow re-selecting the same file later
-    csvFileEl.value = "";
-  });
+  wireDropZone(dropZone, handleImportCsv, "No file found in that drop. Use Add via Finder / File Explorer.");
+  wireFileInput(csvFileEl, handleImportCsv);
 
   cryptoImportCsvButton?.addEventListener("click", () => cryptoCsvFileEl?.click());
-  cryptoDropZone?.addEventListener("dragover", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    cryptoDropZone.classList.add("dragover");
-  });
-  cryptoDropZone?.addEventListener("dragleave", () => cryptoDropZone.classList.remove("dragover"));
-  cryptoDropZone?.addEventListener("drop", (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    cryptoDropZone.classList.remove("dragover");
-    const file = e.dataTransfer?.files?.[0];
-    if (file) handleCryptoCsvImport(file);
-    else showToast("No file in that drop. Use Add via Finder / File Explorer.", "error");
-  });
-  cryptoCsvFileEl?.addEventListener("change", () => {
-    const file = cryptoCsvFileEl.files?.[0];
-    if (file) handleCryptoCsvImport(file);
-    cryptoCsvFileEl.value = "";
-  });
+  wireDropZone(cryptoDropZone, handleCryptoCsvImport, "No file in that drop. Use Add via Finder / File Explorer.");
+  wireFileInput(cryptoCsvFileEl, handleCryptoCsvImport);
 
   const importSampleBtn = document.getElementById("importSampleButton");
   if (importSampleBtn) {
@@ -475,13 +429,7 @@ function consolidateDataPanels() {
     const summary = document.createElement("summary");
     const label = document.createElement("span");
     label.className = "summary-label";
-    const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-    icon.classList.add("ui-icon");
-    icon.setAttribute("aria-hidden", "true");
-    const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-    use.setAttribute("href", "icons/phosphor-symbols.svg#ph-question");
-    icon.append(use);
-    label.append(icon, document.createTextNode(heading.textContent));
+    label.append(phosphorIcon("ph-question"), document.createTextNode(heading.textContent));
     summary.append(label);
     details.append(summary, card);
     section.dataset.disclosureReady = "true";
@@ -825,9 +773,14 @@ async function renderImportStats() {
   }
 }
 
-function setPill(el, ok, label) {
-  // Back-compat wrapper for any remaining callers.
-  setStatusCard(el, ok, label, el?.dataset?.label || "");
+function phosphorIcon(symbol) {
+  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+  icon.classList.add("ui-icon");
+  icon.setAttribute("aria-hidden", "true");
+  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
+  use.setAttribute("href", `icons/phosphor-symbols.svg#${symbol}`);
+  icon.append(use);
+  return icon;
 }
 
 function setStatusCard(el, ok, value, meta) {
@@ -835,12 +788,7 @@ function setStatusCard(el, ok, value, meta) {
   el.className = `status-card ${ok ? "ok" : "pending"}`;
   const icon = el.dataset.icon || "ph-chart-line-up";
   el.replaceChildren();
-  const iconEl = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  iconEl.classList.add("ui-icon");
-  iconEl.setAttribute("aria-hidden", "true");
-  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  use.setAttribute("href", `icons/phosphor-symbols.svg#${icon}`);
-  iconEl.append(use);
+  const iconEl = phosphorIcon(icon);
   const copy = document.createElement("span");
   copy.className = "status-copy";
   const valueEl = document.createElement("span");
@@ -981,21 +929,44 @@ async function handleImportCsv(fileOverride = null) {
   }
 }
 
-function setFinderButtonBusy(busy) {
-  if (!importCsvButton) return;
-  importCsvButton.disabled = !!busy;
+function setImportButtonBusy(button, busy) {
+  if (!button) return;
+  button.disabled = !!busy;
   if (busy) {
-    importCsvButton.textContent = "Importing…";
+    button.textContent = "Importing…";
     return;
   }
-  importCsvButton.replaceChildren();
-  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  icon.classList.add("ui-icon");
-  icon.setAttribute("aria-hidden", "true");
-  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
-  icon.append(use);
-  importCsvButton.append(icon, document.createTextNode(FINDER_BUTTON_LABEL));
+  button.replaceChildren();
+  button.append(phosphorIcon("ph-tray-arrow-down"), document.createTextNode(FINDER_BUTTON_LABEL));
+}
+
+function setFinderButtonBusy(busy) {
+  setImportButtonBusy(importCsvButton, busy);
+}
+
+function wireDropZone(zone, onFile, emptyMessage) {
+  zone?.addEventListener("dragover", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.add("dragover");
+  });
+  zone?.addEventListener("dragleave", () => zone.classList.remove("dragover"));
+  zone?.addEventListener("drop", (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zone.classList.remove("dragover");
+    const file = e.dataTransfer?.files?.[0];
+    if (file) onFile(file);
+    else showToast(emptyMessage, "error");
+  });
+}
+
+function wireFileInput(input, onFile) {
+  input?.addEventListener("change", () => {
+    const file = input.files?.[0];
+    if (file) onFile(file);
+    if (input) input.value = "";
+  });
 }
 
 /**
@@ -1332,6 +1303,14 @@ function storageSaveSucceeded() {
   return !chrome.runtime.lastError;
 }
 
+function withSettings(mutator, onDone) {
+  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
+    const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
+    mutator(settings);
+    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, onDone);
+  });
+}
+
 function handleSaveAppearance() {
   const tickerSpeed = clampTickerSpeed(tickerSpeedEl?.value);
   setTickerSpeedControls(tickerSpeed);
@@ -1339,15 +1318,13 @@ function handleSaveAppearance() {
   const tapeScale = normalizeTapeScale(selectedTapeScale);
   const theme = normalizeTheme(document.querySelector('input[name="theme"]:checked')?.value);
 
-  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
+  withSettings((settings) => {
     settings.tickerStyleConfig = {
       ...(settings.tickerStyleConfig || {}),
       tickerSpeed,
       tapeScale,
       theme
     };
-
     settings.portfolioFilters = {
       ...(settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters),
       showStocks: showStocksEl.checked,
@@ -1355,18 +1332,16 @@ function handleSaveAppearance() {
     };
     settings.enabled = tickerTapeEnabledEl ? !!tickerTapeEnabledEl.checked : settings.enabled !== false;
     settings.excludedSites = normalizeExcludedSites(excludedSites);
-
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
-      if (!storageSaveSucceeded()) {
-        setSettingsSaveFeedback("appearance", false, "Could not save");
-        showToast("Appearance could not be saved. Try again.", "error");
-        return;
-      }
-      applyDocumentTheme(theme);
-      setSettingsSaveFeedback("appearance", true);
-      showToast("Appearance saved", "success");
-      requestImmediatePoll();
-    });
+  }, () => {
+    if (!storageSaveSucceeded()) {
+      setSettingsSaveFeedback("appearance", false, "Could not save");
+      showToast("Appearance could not be saved. Try again.", "error");
+      return;
+    }
+    applyDocumentTheme(theme);
+    setSettingsSaveFeedback("appearance", true);
+    showToast("Appearance saved", "success");
+    requestImmediatePoll();
   });
 }
 
@@ -1417,25 +1392,22 @@ function handleSaveCrypto() {
   const mode = cryptoModeEl.value || "off";
   const manualHoldings = normalizeManualCryptoHoldings(selectedCrypto);
 
-  chrome.storage.sync.get([STORAGE_KEYS.settings], (data) => {
-    const settings = data[STORAGE_KEYS.settings] || { ...DEFAULT_SETTINGS };
+  withSettings((settings) => {
     settings.cryptoConfig = {
       includeCrypto: mode !== "off",
       mode,
       manualHoldings
     };
-
-    chrome.storage.sync.set({ [STORAGE_KEYS.settings]: migrateSettings(settings) }, () => {
-      if (!storageSaveSucceeded()) {
-        setSettingsSaveFeedback("crypto", false, "Could not save");
-        showToast("Crypto settings could not be saved. Try again.", "error");
-        return;
-      }
-      setSettingsSaveFeedback("crypto", true);
-      showToast("Crypto settings saved", "success");
-      requestImmediatePoll();
-      refreshSetupUI();
-    });
+  }, () => {
+    if (!storageSaveSucceeded()) {
+      setSettingsSaveFeedback("crypto", false, "Could not save");
+      showToast("Crypto settings could not be saved. Try again.", "error");
+      return;
+    }
+    setSettingsSaveFeedback("crypto", true);
+    showToast("Crypto settings saved", "success");
+    requestImmediatePoll();
+    refreshSetupUI();
   });
 }
 
@@ -1445,20 +1417,7 @@ function getCryptoImportMode() {
 }
 
 function setCryptoImportButtonBusy(busy) {
-  if (!cryptoImportCsvButton) return;
-  cryptoImportCsvButton.disabled = !!busy;
-  if (busy) {
-    cryptoImportCsvButton.textContent = "Importing…";
-    return;
-  }
-  cryptoImportCsvButton.replaceChildren();
-  const icon = document.createElementNS("http://www.w3.org/2000/svg", "svg");
-  icon.classList.add("ui-icon");
-  icon.setAttribute("aria-hidden", "true");
-  const use = document.createElementNS("http://www.w3.org/2000/svg", "use");
-  use.setAttribute("href", "icons/phosphor-symbols.svg#ph-tray-arrow-down");
-  icon.append(use);
-  cryptoImportCsvButton.append(icon, document.createTextNode(CRYPTO_FINDER_LABEL));
+  setImportButtonBusy(cryptoImportCsvButton, busy);
 }
 
 /**
@@ -1532,18 +1491,17 @@ async function handleCryptoCsvImport(file) {
 chrome.storage.onChanged.addListener((changes, areaName) => {
   if (
     areaName === "local" &&
-    (changes[STORAGE_KEYS.holdings] ||
-      changes[STORAGE_KEYS.positionsState])
+    (changes[STORAGE_KEYS.holdings] || changes[STORAGE_KEYS.positionsState])
   ) {
     refreshSetupUI();
   }
+  if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
+    const speed = changes[STORAGE_KEYS.settings].newValue?.tickerStyleConfig?.tickerSpeed;
+    if (speed) {
+      document.documentElement.style.setProperty("--pts-ticker-duration", `${Number(speed)}s`);
+    }
+  }
 });
-
-function normalizeTapeScale(value) {
-  return ["compact", "comfortable", "large"].includes(value)
-    ? value
-    : DEFAULT_SETTINGS.tickerStyleConfig.tapeScale;
-}
 
 function normalizeTheme(value) {
   return ["system", "light", "dark"].includes(value) ? value : "system";
@@ -1560,28 +1518,6 @@ function requestImmediatePoll() {
     void chrome.runtime.lastError;
   });
 }
-
-function parseCryptoHoldings(text) {
-  const lines = text
-    .split(/\r?\n/)
-    .map((l) => l.trim())
-    .filter(Boolean);
-  const result = [];
-  for (const line of lines) {
-    const [symbolRaw, qtyRaw] = line.split(",");
-    if (!symbolRaw) continue;
-    const qty = Number((qtyRaw || "0").trim());
-    if (!qty || Number.isNaN(qty)) continue;
-    const coin = resolveCryptoCatalogEntry(symbolRaw.trim());
-    if (!coin) continue;
-    result.push({
-      symbol: coin.id,
-      quantity: qty
-    });
-  }
-  return result;
-}
-
 
 function handleRefreshPreview() {
   if (holdingsPreviewEl) {
@@ -1765,16 +1701,4 @@ function showToast(message, type = "success") {
   }, 3000);
 }
 
-// Keep the content script animation duration in sync via CSS variable.
-chrome.storage.onChanged.addListener((changes, areaName) => {
-  if (areaName === "sync" && changes[STORAGE_KEYS.settings]) {
-    const newSettings = changes[STORAGE_KEYS.settings].newValue;
-    const speed = newSettings?.tickerStyleConfig?.tickerSpeed;
-    if (speed) {
-      document.documentElement.style.setProperty(
-        "--pts-ticker-duration",
-        `${Number(speed)}s`
-      );
-    }
-  }
-});
+

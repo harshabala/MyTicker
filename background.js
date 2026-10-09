@@ -12,7 +12,11 @@ import {
   appendDiagnosticLogEntry,
   normalizeCryptoConfig,
   migrateSettings,
-  summarizeMarketState
+  summarizeMarketState,
+  CONTENT_LIFECYCLE_STAGES,
+  CRYPTO_CATALOG,
+  resolveCryptoCatalogEntry,
+  normalizeCryptoId
 } from "./shared.js";
 
 import { getAllQuotes, getCryptoQuotes, ProviderBackoff } from "./priceProviders.js";
@@ -23,24 +27,7 @@ const FINNHUB_VAULT_KEY = "pts_finnhub_vault";
 const FINNHUB_SESSION_KEY = "pts_finnhub_vault_aes_material";
 const LEGACY_FINNHUB_KEY = "pts_price_api_key";
 
-const DEFAULT_TOP5_CRYPTO = ["bitcoin", "ethereum", "binancecoin", "ripple", "solana"];
-const CRYPTO_ID_BY_SYMBOL = {
-  bitcoin: "bitcoin",
-  btc: "bitcoin",
-  btcusdt: "bitcoin",
-  ethereum: "ethereum",
-  eth: "ethereum",
-  ethusdt: "ethereum",
-  binancecoin: "binancecoin",
-  bnb: "binancecoin",
-  bnbusdt: "binancecoin",
-  ripple: "ripple",
-  xrp: "ripple",
-  xrpusdt: "ripple",
-  solana: "solana",
-  sol: "solana",
-  solusdt: "solana"
-};
+const DEFAULT_TOP5_CRYPTO = CRYPTO_CATALOG.map((coin) => coin.id);
 
 // Issue #8: In-flight lock to prevent concurrent poll execution.
 let pollInFlight = false;
@@ -80,10 +67,6 @@ async function recordDiagnostic(entry) {
     [STORAGE_KEYS.diagnosticsLog]: appendDiagnosticLogEntry(data[STORAGE_KEYS.diagnosticsLog], entry)
   });
 }
-
-const CONTENT_LIFECYCLE_STAGES = new Set([
-  "loaded", "storage-settings-read", "mount-success", "render-success", "fatal-error"
-]);
 
 function safeOrigin(value) {
   try {
@@ -332,13 +315,25 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   }
 });
 
+function refreshPeriodMinutes(settings) {
+  return settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+}
+
+function ensurePricePollAlarm(settings, { replace = false } = {}) {
+  const periodInMinutes = refreshPeriodMinutes(settings);
+  const create = () => chrome.alarms.create("price-poll", { delayInMinutes: 0.1, periodInMinutes });
+  if (replace) {
+    create();
+    return;
+  }
+  chrome.alarms.get("price-poll", (existing) => {
+    if (!existing) create();
+  });
+}
+
 chrome.runtime.onInstalled.addListener((details) => {
   migrateStoredSettings().then((settings) => {
-    const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
-    chrome.alarms.create("price-poll", {
-      delayInMinutes: 0.1,
-      periodInMinutes: interval
-    });
+    ensurePricePollAlarm(settings, { replace: true });
   }).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
   if (details.reason === "install") {
@@ -355,15 +350,7 @@ chrome.runtime.onInstalled.addListener((details) => {
 
 // Re-create alarm on service worker startup (MV3 workers restart frequently).
 migrateStoredSettings().then((settings) => {
-  const interval = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
-  chrome.alarms.get("price-poll", (existing) => {
-    if (!existing) {
-      chrome.alarms.create("price-poll", {
-        delayInMinutes: 0.1,
-        periodInMinutes: interval
-      });
-    }
-  });
+  ensurePricePollAlarm(settings);
 }).catch((error) => console.warn("[MyTicker] settings migration failed", error));
 
 chrome.alarms.onAlarm.addListener((alarm) => {
@@ -497,7 +484,7 @@ async function handlePricePoll() {
     });
 
     positionsState.updatedAt = now;
-    positionsState.refreshMinutes = settings.priceProviderConfig?.refreshMinutes || DEFAULT_SETTINGS.priceProviderConfig.refreshMinutes;
+    positionsState.refreshMinutes = refreshPeriodMinutes(settings);
     // From priced positions, so a CSV currency column can never mislabel the total.
     positionsState.displayCurrency = holdingsState.aggregate.currency ?? null;
     positionsState.marketState = summarizeMarketState(holdingsState.positions);
@@ -521,30 +508,25 @@ async function handlePricePoll() {
       return;
     }
 
-    // Issue #9: Wrap storage.set in try/catch to handle quota errors.
-    try {
+    const persistState = async () => {
       await chrome.storage.local.set({
         [STORAGE_KEYS.priceHistory]: newHistory,
         [STORAGE_KEYS.positionsState]: positionsState
       });
       await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
+    };
+    try {
+      await persistState();
     } catch (storageErr) {
       console.warn("[MyTicker] Storage quota exceeded, pruning history", storageErr);
       // Aggressive prune: keep only last 5 minutes of history.
       const aggressiveCutoff = now - 5 * 60 * 1000;
       for (const [sym, list] of Object.entries(newHistory)) {
         const pruned = list.filter((s) => s.t >= aggressiveCutoff);
-        if (!pruned.length) {
-          delete newHistory[sym];
-        } else {
-          newHistory[sym] = pruned;
-        }
+        if (!pruned.length) delete newHistory[sym];
+        else newHistory[sym] = pruned;
       }
-      await chrome.storage.local.set({
-        [STORAGE_KEYS.priceHistory]: newHistory,
-        [STORAGE_KEYS.positionsState]: positionsState
-      });
-      await recordDiagnostic({ ...diagnosticCounts, timestamp: now, event: "state-write", quoteCount: quotes.length });
+      await persistState();
     }
   } catch (err) {
     console.error("[MyTicker] price refresh failed", err?.name || "Error");
@@ -562,19 +544,8 @@ async function handlePricePoll() {
 
 function buildCombinedHoldings(baseHoldings, settings) {
   const filters = settings.portfolioFilters || DEFAULT_SETTINGS.portfolioFilters;
-
-  const enriched = [];
-
-  if (filters.showStocks) {
-    for (const h of baseHoldings) {
-      enriched.push({
-        ...h,
-        assetClass: h.assetClass || "stock"
-      });
-    }
-  }
-
-  return enriched;
+  if (!filters.showStocks) return [];
+  return baseHoldings.map((h) => ({ ...h, assetClass: h.assetClass || "stock" }));
 }
 
 function normalizeWatchlist(items) {
@@ -599,27 +570,14 @@ function buildCryptoTickerItems(settings) {
   if (!filters.showCrypto || cryptoConfig.mode === "off") return [];
 
   const symbols = cryptoConfig.mode === "manual"
-    ? (Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : [])
-      .map((item) => item?.symbol)
+    ? (Array.isArray(cryptoConfig.manualHoldings) ? cryptoConfig.manualHoldings : []).map((item) => item?.symbol)
     : DEFAULT_TOP5_CRYPTO;
 
-  return [...new Set(symbols.map(normalizeCryptoId).filter(Boolean))].map((symbol) => ({
+  return [...new Set(symbols.map((symbol) => normalizeCryptoId(symbol)).filter(Boolean))].map((symbol) => ({
     symbol,
-    displayName: cleanCryptoDisplayName(symbol),
+    displayName: symbol,
     quantity: 0,
     assetClass: "crypto",
     currency: "USD"
   }));
-}
-
-function normalizeCryptoId(symbol) {
-  const raw = String(symbol || "").trim();
-  const pair = raw.split(":").pop().toLowerCase();
-  return CRYPTO_ID_BY_SYMBOL[pair] || (DEFAULT_TOP5_CRYPTO.includes(pair) ? pair : null);
-}
-
-// Strip exchange prefix (e.g. "BINANCE:BTCUSDT" → "BTCUSDT")
-function cleanCryptoDisplayName(symbol) {
-  const parts = symbol.split(":");
-  return parts.length > 1 ? parts[parts.length - 1] : symbol;
 }

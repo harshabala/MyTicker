@@ -1,7 +1,8 @@
 import {
   STORAGE_KEYS,
   formatSignedCurrency,
-  describeFreshness
+  describeFreshness,
+  inferDisplayCurrency
 } from "./shared.js";
 import { getSetupStatus, markWizardStep, setOnboarding } from "./onboarding.js";
 
@@ -14,7 +15,6 @@ const VIEW_EMPTY = "empty";
 
 let currentView = null;
 let checklistStaggered = false;
-let lastAggregateSign = null;
 let popupHasRendered = false;
 let activeTab = "holdings"; // holdings | watchlist
 let lastPnlPayload = null; // for tab switches without full re-fetch
@@ -74,20 +74,20 @@ function openSettings() {
   }
 }
 
-function setTab(tab, mainContent) {
+function syncTabSelection(tab) {
   activeTab = tab;
-  const tabHoldings = document.getElementById("tabHoldings");
-  const tabWatchlist = document.getElementById("tabWatchlist");
-  const panels = {
-    holdings: document.getElementById("panelHoldings"),
-    watchlist: document.getElementById("panelWatchlist")
-  };
-  [["holdings", tabHoldings], ["watchlist", tabWatchlist]].forEach(([name, tabEl]) => {
+  [["holdings", "tabHoldings", "panelHoldings"], ["watchlist", "tabWatchlist", "panelWatchlist"]].forEach(([name, tabId, panelId]) => {
     const selected = name === tab;
+    const tabEl = document.getElementById(tabId);
+    const panel = document.getElementById(panelId);
     tabEl?.setAttribute("aria-selected", selected ? "true" : "false");
     tabEl?.setAttribute("tabindex", selected ? "0" : "-1");
-    if (panels[name]) panels[name].hidden = !selected;
+    if (panel) panel.hidden = !selected;
   });
+}
+
+function setTab(tab, mainContent) {
+  syncTabSelection(tab);
   if (lastPnlPayload && currentView === VIEW_PNL) {
     renderActiveTab(mainContent, lastPnlPayload);
   } else {
@@ -227,14 +227,7 @@ function renderActiveTab(container, payload) {
   const { state, watchlistItems, status } = payload;
   const panel = document.getElementById(activeTab === "watchlist" ? "panelWatchlist" : "panelHoldings");
   if (!panel) return;
-  ["holdings", "watchlist"].forEach((name) => {
-    const selected = name === activeTab;
-    const tab = document.getElementById(name === "holdings" ? "tabHoldings" : "tabWatchlist");
-    const tabPanel = document.getElementById(name === "holdings" ? "panelHoldings" : "panelWatchlist");
-    tab?.setAttribute("aria-selected", selected ? "true" : "false");
-    tab?.setAttribute("tabindex", selected ? "0" : "-1");
-    if (tabPanel) tabPanel.hidden = !selected;
-  });
+  syncTabSelection(activeTab);
   panel.replaceChildren();
   panel.className = "popup-view";
   if (activeTab === "watchlist") {
@@ -302,6 +295,25 @@ export function getAggregateDisplay(currency, value, percentage) {
   };
 }
 
+function aggregateDisplays(state) {
+  const currency = state.displayCurrency;
+  const agg = state.aggregate || {};
+  const dayPnl = Number(agg.dayPnl) || 0;
+  return {
+    currency,
+    dayPnl,
+    dayDisplay: getAggregateDisplay(currency, dayPnl, Number(agg.dayPnlPct) || 0),
+    fiveDisplay: getAggregateDisplay(currency, Number(agg.window5mPnl) || 0, Number(agg.window5mPnlPct) || 0)
+  };
+}
+
+function topMovers(positions) {
+  return [...positions]
+    .filter((p) => p.lastPrice != null)
+    .sort((a, b) => Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0))
+    .slice(0, 3);
+}
+
 export function updatePnlInPlace(viewEl, state, watchlistItems) {
   if (activeTab === "watchlist") {
     renderActiveTab(viewEl, { state, watchlistItems, status: null });
@@ -309,14 +321,7 @@ export function updatePnlInPlace(viewEl, state, watchlistItems) {
   }
   if (!state?.positions?.length) return;
 
-  const currency = state.displayCurrency;
-  const agg = state.aggregate || {};
-  const dayPnl = Number(agg.dayPnl) || 0;
-  const dayPnlPct = Number(agg.dayPnlPct) || 0;
-  const window5mPnl = Number(agg.window5mPnl) || 0;
-  const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
-  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
+  const { currency, dayPnl, dayDisplay, fiveDisplay } = aggregateDisplays(state);
 
   const pnlValue = viewEl.querySelector(".pnl-value");
   const pnlPct = viewEl.querySelector(".pnl-pct");
@@ -360,20 +365,10 @@ export function updatePnlInPlace(viewEl, state, watchlistItems) {
   const moversList = viewEl.querySelector(".movers-list");
   if (moversList) {
     moversList.replaceChildren();
-    const movers = [...state.positions]
-      .filter((p) => p.lastPrice != null)
-      .sort(
-        (a, b) =>
-          Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0)
-      )
-      .slice(0, 3);
-    for (const pos of movers) {
+    for (const pos of topMovers(state.positions)) {
       moversList.appendChild(buildMoverItem(pos));
     }
   }
-
-  const newSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
-  lastAggregateSign = newSign;
 }
 
 function renderSetupChecklist(container, status) {
@@ -465,9 +460,7 @@ function renderEmptyState(container, status) {
 export function buildMoverItem(pos) {
   const pct = Number(pos.dayPnlPct) || 0;
   const dayPnl = Number(pos.dayPnl) || 0;
-  const currency = pos.currency === "INR" || pos.currency === "USD"
-    ? pos.currency
-    : /\.(NS|BO)$/i.test(pos.symbol || "") ? "INR" : "USD";
+  const currency = inferDisplayCurrency(pos);
   const cls = pct > 0 ? "pnl-positive" : pct < 0 ? "pnl-negative" : "pnl-flat";
   const item = document.createElement("div");
   item.className = "mover-item";
@@ -496,15 +489,7 @@ export function renderHoldingsPanel(container, state, status) {
     return;
   }
 
-  const currency = state.displayCurrency;
-  const agg = state.aggregate || {};
-  const dayPnl = Number(agg.dayPnl) || 0;
-  const dayPnlPct = Number(agg.dayPnlPct) || 0;
-  const window5mPnl = Number(agg.window5mPnl) || 0;
-  const window5mPnlPct = Number(agg.window5mPnlPct) || 0;
-  const dayDisplay = getAggregateDisplay(currency, dayPnl, dayPnlPct);
-  const fiveDisplay = getAggregateDisplay(currency, window5mPnl, window5mPnlPct);
-  lastAggregateSign = currency && dayPnl > 0 ? "up" : currency && dayPnl < 0 ? "down" : "flat";
+  const { currency, dayPnl, dayDisplay, fiveDisplay } = aggregateDisplays(state);
   const firstValue = status && !status.firstValueSeen;
 
   // Hero
@@ -591,13 +576,7 @@ export function renderHoldingsPanel(container, state, status) {
     setOnboarding({ firstValueSeen: true }).catch(() => {});
   }
 
-  // Movers
-  const movers = [...state.positions]
-    .filter((p) => p.lastPrice != null)
-    .sort(
-      (a, b) => Math.abs(Number(b.dayPnlPct) || 0) - Math.abs(Number(a.dayPnlPct) || 0)
-    )
-    .slice(0, 3);
+  const movers = topMovers(state.positions);
 
   if (movers.length) {
     const section = document.createElement("div");
